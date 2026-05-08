@@ -401,3 +401,104 @@ def test_compare_fails_for_malformed_results(tmp_path: Path) -> None:
 
     assert output.exit_code == 1
     assert "malformed results.jsonl line 1" in output.output
+
+
+def test_ui_generates_self_contained_config_and_run_html(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    context_dir = tmp_path / "contexts"
+    (context_dir / "baseline").mkdir(parents=True)
+    (context_dir / "experiment").mkdir(parents=True)
+    (context_dir / "baseline" / "AGENTS.md").write_text("# Baseline\n", encoding="utf-8")
+    (context_dir / "experiment" / "AGENTS.md").write_text("# Experiment\n", encoding="utf-8")
+    (tmp_path / "tasks.yaml").write_text(
+        """
+tasks:
+  - id: "task-1"
+    prompt: "Fix docs."
+    category: "documentation"
+    difficulty: "easy"
+""",
+        encoding="utf-8",
+    )
+    config_path = tmp_path / "context-eval.yaml"
+    config_path.write_text(
+        """
+repo:
+  path: "./repo"
+  base_ref: "main"
+agent:
+  name: "test-agent"
+  command: "agent -p {prompt_file}"
+tasks: "./tasks.yaml"
+variants:
+  baseline:
+    description: "Baseline"
+    overlays:
+      - source: "./contexts/baseline/AGENTS.md"
+        target: "AGENTS.md"
+  experiment:
+    description: "Experiment"
+    overlays:
+      - source: "./contexts/experiment/AGENTS.md"
+        target: "AGENTS.md"
+evaluation:
+  commands:
+    - "python -m pytest"
+""",
+        encoding="utf-8",
+    )
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    (run_dir / "run_metadata.json").write_text('{"run_id": "run-1"}', encoding="utf-8")
+    result = CaseResult(
+        run_id="run-1",
+        case_id="task-1__baseline",
+        task_id="task-1",
+        variant="baseline",
+        repo_ref="main",
+        agent_name="agent",
+        network="disabled",
+        status="completed",
+        validation_status="passed",
+        confidence="high",
+        changed_files=1,
+        touched_paths=["a.py"],
+    )
+    (run_dir / "results.jsonl").write_text(result.model_dump_json() + "\n", encoding="utf-8")
+    output_path = tmp_path / "context-eval-ui.html"
+
+    output = CliRunner().invoke(
+        app,
+        [
+            "ui",
+            "--config",
+            str(config_path),
+            "--run-dir",
+            str(run_dir),
+            "--output",
+            str(output_path),
+        ],
+    )
+
+    assert output.exit_code == 0
+    assert output_path.exists()
+    html = output_path.read_text(encoding="utf-8")
+    assert "context-eval local UI" in html
+    assert str(repo.resolve()) in html
+    assert "agent -p {prompt_file}" in html
+    assert "task-1" in html
+    assert "baseline" in html
+    assert "experiment" in html
+    assert "run-1" in html
+    assert "completed" in html
+    assert "pass_rate=100.0%" in html
+    assert "http://" not in html
+    assert "https://" not in html
+
+
+def test_ui_requires_config_or_run_dir(tmp_path: Path) -> None:
+    output = CliRunner().invoke(app, ["ui", "--output", str(tmp_path / "ui.html")])
+
+    assert output.exit_code == 1
+    assert "requires --config or --run-dir" in output.output

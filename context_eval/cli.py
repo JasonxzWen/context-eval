@@ -13,6 +13,7 @@ from context_eval.init import create_starter_files
 from context_eval.inspect_run import inspect_run
 from context_eval.reports.markdown import render_markdown_report
 from context_eval.runner import ContextEvalRunner
+from context_eval.ui import render_local_ui
 
 app = typer.Typer(help="Context A/B testing framework for coding agents.")
 console = Console()
@@ -154,6 +155,24 @@ def compare_command(
     except Exception as exc:
         console.print(f"[red]Error:[/red] {exc}")
         raise typer.Exit(code=1) from exc
+
+
+@app.command("ui")
+def ui_command(
+    config: Annotated[Path | None, typer.Option("--config", "-c", exists=True, dir_okay=False)] = None,
+    run_dir: Annotated[Path | None, typer.Option("--run-dir", exists=True, file_okay=False)] = None,
+    output: Annotated[
+        Path,
+        typer.Option("--output", "-o", dir_okay=False, help="HTML file to write."),
+    ] = Path("context-eval-ui.html"),
+) -> None:
+    """Generate a self-contained local HTML interface."""
+    try:
+        output_path = render_local_ui(config_path=config, run_dir=run_dir, output_path=output)
+    except Exception as exc:
+        console.print(f"[red]Error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+    console.print(f"[green]UI written:[/green] {output_path}")
 
 
 @app.command("validate-config")

@@ -90,6 +90,12 @@ Compare variant metrics for an existing run:
 context-eval compare .context-eval/runs/<run-id>
 ```
 
+Generate a local visual HTML interface for config and run data:
+
+```bash
+context-eval ui --config examples/basic/context-eval.yaml --run-dir .context-eval/runs/<run-id>
+```
+
 ## Configuration Example
 
 ```yaml
