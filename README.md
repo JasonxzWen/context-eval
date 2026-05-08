@@ -204,5 +204,7 @@ you want to opt in to those maintainer workflows. See
 - Richer validation metadata.
 - CI-friendly result comparisons.
 
+For the staged SDD+TDD roadmap, see `docs/development-plan.md`.
+
 context-eval compares context variants under controlled conditions. It does not
 measure the absolute capability of an agent.
