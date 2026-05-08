@@ -3,6 +3,7 @@ from pathlib import Path
 from typer.testing import CliRunner
 
 from context_eval.cli import app
+from context_eval.config import validate_config_files
 
 
 def test_validate_config_exposes_strict_option(tmp_path: Path) -> None:
@@ -191,3 +192,48 @@ evaluation:
     assert "docs-easy" in max_tasks_result.output
     assert "runtime-hard" not in max_tasks_result.output
     assert not output_dir.exists()
+
+
+def test_init_generates_valid_starter_files(tmp_path: Path) -> None:
+    result = CliRunner().invoke(
+        app,
+        [
+            "init",
+            "--directory",
+            str(tmp_path),
+            "--repo-path",
+            ".",
+            "--agent-command",
+            "agent -p {prompt_file}",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert (tmp_path / "context-eval.yaml").exists()
+    assert (tmp_path / "tasks.yaml").exists()
+    assert (tmp_path / "contexts" / "baseline" / "AGENTS.md").exists()
+    assert (tmp_path / "contexts" / "experiment" / "AGENTS.md").exists()
+
+    config, task_file = validate_config_files(tmp_path / "context-eval.yaml")
+    assert config.repo.path == tmp_path.resolve()
+    assert config.agent.command == "agent -p {prompt_file}"
+    assert task_file.tasks[0].id == "sample-task"
+
+
+def test_init_refuses_to_overwrite_existing_files_without_force(tmp_path: Path) -> None:
+    (tmp_path / "tasks.yaml").write_text("existing\n", encoding="utf-8")
+
+    result = CliRunner().invoke(app, ["init", "--directory", str(tmp_path)])
+
+    assert result.exit_code == 1
+    assert "already exists" in result.output
+    assert (tmp_path / "tasks.yaml").read_text(encoding="utf-8") == "existing\n"
+
+
+def test_init_force_overwrites_existing_files(tmp_path: Path) -> None:
+    (tmp_path / "tasks.yaml").write_text("existing\n", encoding="utf-8")
+
+    result = CliRunner().invoke(app, ["init", "--directory", str(tmp_path), "--force"])
+
+    assert result.exit_code == 0
+    assert "sample-task" in (tmp_path / "tasks.yaml").read_text(encoding="utf-8")

@@ -8,11 +8,48 @@ from rich.console import Console
 
 from context_eval.config import ConfigError, filter_tasks, validate_config_files
 from context_eval.dry_run import render_dry_run
+from context_eval.init import create_starter_files
 from context_eval.reports.markdown import render_markdown_report
 from context_eval.runner import ContextEvalRunner
 
 app = typer.Typer(help="Context A/B testing framework for coding agents.")
 console = Console()
+
+
+@app.command("init")
+def init_command(
+    directory: Annotated[
+        Path,
+        typer.Option("--directory", "-d", file_okay=False, help="Directory to initialize."),
+    ] = Path("."),
+    repo_path: Annotated[
+        str,
+        typer.Option("--repo-path", help="Repo path to write into context-eval.yaml."),
+    ] = ".",
+    agent_command: Annotated[
+        str,
+        typer.Option("--agent-command", help="Agent command template to write."),
+    ] = "agent -p {prompt_file}",
+    force: Annotated[
+        bool,
+        typer.Option("--force", help="Overwrite starter files if they already exist."),
+    ] = False,
+) -> None:
+    """Generate starter config, tasks, and context files."""
+    try:
+        created = create_starter_files(
+            directory=directory,
+            repo_path=repo_path,
+            agent_command=agent_command,
+            force=force,
+        )
+    except ConfigError as exc:
+        console.print(f"[red]Error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    console.print(f"[green]Initialized context-eval files in:[/green] {directory.resolve()}")
+    for path in created:
+        console.print(f"- {path}")
 
 
 @app.command()

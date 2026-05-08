@@ -48,6 +48,12 @@ Initialize the self-contained fixture repository:
 python examples/fixture-repo/setup_fixture_repo.py
 ```
 
+Create a starter evaluation directory for your own repo:
+
+```bash
+context-eval init --directory my-eval --repo-path ../my-repo --agent-command "myAgent -p {prompt_file}"
+```
+
 Validate the example config:
 
 ```bash
