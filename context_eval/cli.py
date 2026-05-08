@@ -9,6 +9,7 @@ from rich.console import Console
 from context_eval.config import ConfigError, filter_tasks, validate_config_files
 from context_eval.dry_run import render_dry_run
 from context_eval.init import create_starter_files
+from context_eval.inspect_run import inspect_run
 from context_eval.reports.markdown import render_markdown_report
 from context_eval.runner import ContextEvalRunner
 
@@ -128,6 +129,18 @@ def report_command(run_dir: Annotated[Path, typer.Argument(exists=True, file_oka
         console.print(f"[red]Error:[/red] {exc}")
         raise typer.Exit(code=1) from exc
     console.print(f"[green]Report written:[/green] {report_path}")
+
+
+@app.command("inspect-run")
+def inspect_run_command(
+    run_dir: Annotated[Path, typer.Argument(exists=True, file_okay=False)],
+) -> None:
+    """Print a terminal summary for an existing run directory."""
+    try:
+        inspect_run(run_dir, console)
+    except Exception as exc:
+        console.print(f"[red]Error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
 
 
 @app.command("validate-config")

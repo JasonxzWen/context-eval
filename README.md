@@ -78,6 +78,12 @@ Regenerate a report:
 context-eval report .context-eval/runs/<run-id>
 ```
 
+Inspect an existing run in the terminal:
+
+```bash
+context-eval inspect-run .context-eval/runs/<run-id>
+```
+
 ## Configuration Example
 
 ```yaml

@@ -4,6 +4,7 @@ from typer.testing import CliRunner
 
 from context_eval.cli import app
 from context_eval.config import validate_config_files
+from context_eval.models import CaseResult
 
 
 def test_validate_config_exposes_strict_option(tmp_path: Path) -> None:
@@ -258,3 +259,49 @@ def test_init_force_overwrites_existing_files(tmp_path: Path) -> None:
 
     assert result.exit_code == 0
     assert "sample-task" in (tmp_path / "tasks.yaml").read_text(encoding="utf-8")
+
+
+def test_inspect_run_prints_results_from_jsonl(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    (run_dir / "run_metadata.json").write_text(
+        '{"run_id": "run-1", "agent": {"name": "agent"}, "repo": {"base_ref": "main"}}',
+        encoding="utf-8",
+    )
+    result = CaseResult(
+        run_id="run-1",
+        case_id="task-1__baseline",
+        trial_index=1,
+        task_id="task-1",
+        variant="baseline",
+        repo_ref="main",
+        agent_name="agent",
+        network="disabled",
+        status="completed",
+        validation_status="passed",
+        confidence="high",
+        changed_files=2,
+    )
+    (run_dir / "results.jsonl").write_text(result.model_dump_json() + "\n", encoding="utf-8")
+
+    output = CliRunner().invoke(app, ["inspect-run", str(run_dir)])
+
+    assert output.exit_code == 0
+    assert "run-1" in output.output
+    assert "Results: 1" in output.output
+    assert "task-1" in output.output
+    assert "baseline" in output.output
+    assert "completed" in output.output
+    assert "passed" in output.output
+    assert "high" in output.output
+    assert "2" in output.output
+
+
+def test_inspect_run_fails_for_missing_results(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+
+    output = CliRunner().invoke(app, ["inspect-run", str(run_dir)])
+
+    assert output.exit_code == 1
+    assert "results file not found" in output.output
