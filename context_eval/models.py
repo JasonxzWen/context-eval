@@ -142,6 +142,8 @@ class CaseResult(BaseModel):
     config_hash: str | None = None
     task_hash: str | None = None
     variant_hash: str | None = None
+    case_id: str | None = None
+    trial_index: int = 1
     task_id: str
     variant: str
     repo_ref: str

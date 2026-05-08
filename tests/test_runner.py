@@ -377,3 +377,43 @@ def test_runner_records_workspace_failure_without_running_case_steps(tmp_path: P
     assert result["workspace_retained"] is False
     assert result["errors"]
     assert not sentinel_path.exists()
+
+
+def test_runner_repeats_selected_cases_for_trials(tmp_path: Path) -> None:
+    repo = _create_repo(tmp_path)
+    overlay_source = tmp_path / "ctx" / "AGENTS.md"
+    overlay_source.parent.mkdir()
+    overlay_source.write_text("# Instructions\n", encoding="utf-8")
+
+    agent_script = tmp_path / "agent.py"
+    agent_script.write_text("print('trial run')\n", encoding="utf-8")
+    task_file = TaskFile(tasks=[TaskConfig(id="repeat", prompt="Do nothing.")])
+    config = _base_config(
+        tmp_path=tmp_path,
+        repo=repo,
+        agent_command=f'"{sys.executable}" "{agent_script}"',
+        overlay_source=overlay_source,
+    )
+
+    run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        trials=2,
+        cleanup=True,
+        console=_quiet_console(),
+    ).run()
+    results = [
+        json.loads(line)
+        for line in (run_dir / "results.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+
+    assert len(results) == 2
+    assert [result["trial_index"] for result in results] == [1, 2]
+    assert [result["case_id"] for result in results] == [
+        "repeat__baseline__trial-1",
+        "repeat__baseline__trial-2",
+    ]
+    assert len({result["prompt_path"] for result in results}) == 2
+    assert len({result["stdout_path"] for result in results}) == 2
+    assert len({result["patch_path"] for result in results}) == 2
+    assert len({result["workspace_path"] for result in results}) == 2

@@ -22,8 +22,10 @@ def create_workspace(
     run_dir: Path,
     task_id: str,
     variant: str,
+    case_id: str | None = None,
 ) -> Path:
-    workspace = run_dir / "workspaces" / f"{slugify(task_id)}__{slugify(variant)}"
+    workspace_name = slugify(case_id) if case_id else f"{slugify(task_id)}__{slugify(variant)}"
+    workspace = run_dir / "workspaces" / workspace_name
     workspace.parent.mkdir(parents=True, exist_ok=True)
     if workspace.exists():
         shutil.rmtree(workspace)

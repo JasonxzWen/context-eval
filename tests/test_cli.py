@@ -193,6 +193,27 @@ evaluation:
     assert "runtime-hard" not in max_tasks_result.output
     assert not output_dir.exists()
 
+    trials_result = CliRunner().invoke(
+        app,
+        [
+            "run",
+            "--config",
+            str(config_path),
+            "--dry-run",
+            "--trials",
+            "2",
+            "--variant",
+            "baseline",
+            "--max-tasks",
+            "1",
+        ],
+    )
+
+    assert trials_result.exit_code == 0
+    assert "trial=2" in trials_result.output
+    assert "docs-easy__baseline__trial-2" in trials_result.output
+    assert not output_dir.exists()
+
 
 def test_init_generates_valid_starter_files(tmp_path: Path) -> None:
     result = CliRunner().invoke(

@@ -40,6 +40,21 @@ repo path, ref, or worktree setup problems and is distinct from
 `internal_error`, which is reserved for unexpected runner failures after setup
 has begun.
 
+## Repeated Trials
+
+Use `context-eval run --trials N` to repeat every selected task and variant case
+`N` times. This helps inspect nondeterministic agent behavior without copying
+task definitions.
+
+Each result row includes:
+
+- `trial_index`: the 1-based trial number for that task and variant.
+- `case_id`: the stable artifact identifier for the row. With one trial, it is
+  `task-id__variant`. With multiple trials, it appends `__trial-N`.
+
+Repeated trials write distinct prompt, log, patch, artifact, and workspace paths
+so result rows do not overwrite each other.
+
 ## Result Stability
 
 Every JSONL result row includes:

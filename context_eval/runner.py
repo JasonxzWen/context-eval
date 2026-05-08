@@ -36,6 +36,7 @@ class ContextEvalRunner:
         cleanup: bool = False,
         max_tasks: int | None = None,
         variants: list[str] | None = None,
+        trials: int = 1,
         console: Console | None = None,
     ) -> None:
         self.config = config
@@ -43,6 +44,9 @@ class ContextEvalRunner:
         self.cleanup = cleanup
         self.max_tasks = max_tasks
         self.selected_variants = variants or []
+        if trials < 1:
+            raise ValueError("trials must be at least 1")
+        self.trials = trials
         self.console = console or Console()
         self.config_hash = stable_hash(
             config.model_dump(mode="json", exclude={"output_dir"})
@@ -60,10 +64,20 @@ class ContextEvalRunner:
 
         for task in tasks:
             for variant_name in variant_names:
-                self.console.print(f"Running task={task.id} variant={variant_name}")
-                result = self._run_case(run_id, run_dir, agent, task, variant_name)
-                with results_path.open("a", encoding="utf-8") as handle:
-                    handle.write(result.model_dump_json() + "\n")
+                for trial_index in range(1, self.trials + 1):
+                    self.console.print(
+                        f"Running task={task.id} variant={variant_name} trial={trial_index}"
+                    )
+                    result = self._run_case(
+                        run_id,
+                        run_dir,
+                        agent,
+                        task,
+                        variant_name,
+                        trial_index,
+                    )
+                    with results_path.open("a", encoding="utf-8") as handle:
+                        handle.write(result.model_dump_json() + "\n")
 
         render_markdown_report(run_dir)
         return run_dir
@@ -129,10 +143,11 @@ class ContextEvalRunner:
         agent: CommandTemplateAgent,
         task: TaskConfig,
         variant_name: str,
+        trial_index: int,
     ) -> CaseResult:
         started = time.monotonic()
         repo_ref = task.repo_ref or self.config.repo.base_ref
-        case_name = f"{slugify(task.id)}__{slugify(variant_name)}"
+        case_name = self._case_id(task.id, variant_name, trial_index)
         prompt_path = run_dir / "prompts" / f"{case_name}.md"
         patch_path = run_dir / "patches" / f"{case_name}.patch"
         stdout_path = run_dir / "logs" / f"{case_name}.agent.stdout.log"
@@ -148,6 +163,8 @@ class ContextEvalRunner:
             config_hash=self.config_hash,
             task_hash=stable_hash(task.model_dump(mode="json")),
             variant_hash=stable_hash(self.config.variants[variant_name].model_dump(mode="json")),
+            case_id=case_name,
+            trial_index=trial_index,
             task_id=task.id,
             variant=variant_name,
             repo_ref=repo_ref,
@@ -163,6 +180,7 @@ class ContextEvalRunner:
                 run_dir,
                 task.id,
                 variant_name,
+                case_id=case_name,
             )
             result.workspace_path = self._rel(run_dir, workspace)
             result.workspace_retained = workspace.exists()
@@ -257,11 +275,17 @@ class ContextEvalRunner:
             patch_path = (
                 run_dir
                 / "patches"
-                / f"{slugify(result.task_id)}__{slugify(result.variant)}.patch"
+                / f"{result.case_id or f'{slugify(result.task_id)}__{slugify(result.variant)}'}.patch"
             )
             if patch_path.exists():
                 result.patch_path = self._rel(run_dir, patch_path)
         return result
+
+    def _case_id(self, task_id: str, variant_name: str, trial_index: int) -> str:
+        base = f"{slugify(task_id)}__{slugify(variant_name)}"
+        if self.trials == 1:
+            return base
+        return f"{base}__trial-{trial_index}"
 
     def _write_validation_logs(
         self,

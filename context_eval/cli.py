@@ -65,6 +65,7 @@ def run(
         typer.Option("--dry-run", help="Preview selected cases without creating run artifacts."),
     ] = False,
     max_tasks: Annotated[int | None, typer.Option("--max-tasks", min=1)] = None,
+    trials: Annotated[int, typer.Option("--trials", min=1, help="Trials per task/variant.")] = 1,
     variant: Annotated[
         list[str] | None,
         typer.Option("--variant", help="Variant to run. Repeatable."),
@@ -97,6 +98,7 @@ def run(
                 tasks=task_file,
                 variants=variant,
                 max_tasks=max_tasks,
+                trials=trials,
                 console=console,
             )
             return
@@ -106,6 +108,7 @@ def run(
             cleanup=cleanup,
             max_tasks=max_tasks,
             variants=variant,
+            trials=trials,
             console=console,
         )
         run_dir = runner.run()
