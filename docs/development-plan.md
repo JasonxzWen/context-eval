@@ -310,6 +310,8 @@ Status: planned.
   - show the selected task x variant matrix before execution;
   - display current and previous run results from local `results.jsonl` and
     `run_metadata.json` files.
+- Use `docs/local-ui-config-editor.md` as the contract for the local UI config
+  editor, YAML export, and any future explicit local save behavior.
 
 ### Test Plan
 
