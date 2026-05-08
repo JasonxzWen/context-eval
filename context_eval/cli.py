@@ -62,10 +62,14 @@ def report_command(run_dir: Annotated[Path, typer.Argument(exists=True, file_oka
 def validate_config(
     config: Annotated[Path, typer.Option("--config", "-c", exists=True, dir_okay=False)],
     tasks: Annotated[Path | None, typer.Option("--tasks", dir_okay=False)] = None,
+    strict: Annotated[
+        bool,
+        typer.Option("--strict", help="Verify local Git repo and refs without side effects."),
+    ] = False,
 ) -> None:
     """Validate configuration and task YAML files."""
     try:
-        loaded_config, task_file = validate_config_files(config, tasks)
+        loaded_config, task_file = validate_config_files(config, tasks, strict=strict)
     except ConfigError as exc:
         console.print(f"[red]Invalid config:[/red] {exc}")
         raise typer.Exit(code=1) from exc

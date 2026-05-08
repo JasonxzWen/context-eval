@@ -6,6 +6,7 @@ from typing import Any
 import yaml
 from pydantic import ValidationError
 
+from context_eval.logging import run_command
 from context_eval.models import ContextEvalConfig, TaskFile
 
 
@@ -67,6 +68,8 @@ def load_tasks(path: Path) -> TaskFile:
 def validate_config_files(
     config_path: Path,
     tasks_override: Path | None = None,
+    *,
+    strict: bool = False,
 ) -> tuple[ContextEvalConfig, TaskFile]:
     config = load_config(config_path)
     tasks_path = tasks_override.resolve() if tasks_override else config.tasks
@@ -81,4 +84,42 @@ def validate_config_files(
                     f"variant '{name}' overlay source does not exist: {overlay.source}"
                 )
 
+    if strict:
+        _validate_strict_config(config, tasks)
+
     return config, tasks
+
+
+def _validate_strict_config(config: ContextEvalConfig, tasks: TaskFile) -> None:
+    repo_check = run_command(
+        ["git", "-C", str(config.repo.path), "rev-parse", "--is-inside-work-tree"],
+        cwd=config.repo.path,
+        shell=False,
+    )
+    if repo_check.exit_code != 0 or repo_check.stdout.strip() != "true":
+        raise ConfigError(f"repo.path is not a Git repository: {config.repo.path}")
+
+    _require_git_ref(
+        config.repo.path,
+        config.repo.base_ref,
+        f"repo.base_ref does not resolve: {config.repo.base_ref}",
+    )
+    for task in tasks.tasks:
+        if task.repo_ref:
+            _require_git_ref(
+                config.repo.path,
+                task.repo_ref,
+                f"task '{task.id}' repo_ref does not resolve: {task.repo_ref}",
+            )
+
+
+def _require_git_ref(repo_path: Path, ref: str, message: str) -> None:
+    result = run_command(
+        ["git", "-C", str(repo_path), "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"],
+        cwd=repo_path,
+        shell=False,
+    )
+    if result.exit_code != 0:
+        detail = result.stderr.strip() or result.stdout.strip()
+        suffix = f" ({detail})" if detail else ""
+        raise ConfigError(f"{message}{suffix}")
