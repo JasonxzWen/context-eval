@@ -19,6 +19,7 @@ RunStatus = Literal[
 ]
 ValidationStatus = Literal["passed", "failed", "skipped"]
 Confidence = Literal["high", "medium", "low"]
+CleanupStatus = Literal["skipped", "succeeded", "failed"]
 
 
 class RepoConfig(BaseModel):
@@ -154,6 +155,8 @@ class CaseResult(BaseModel):
     stdout_path: str | None = None
     stderr_path: str | None = None
     patch_path: str | None = None
+    workspace_retained: bool = False
+    cleanup_status: CleanupStatus = "skipped"
     changed_files: int = 0
     insertions: int = 0
     deletions: int = 0

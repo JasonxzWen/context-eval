@@ -52,5 +52,14 @@ uniqueness. If another run has already created the timestamp directory,
 context-eval appends a numeric suffix and records that selected value as the
 `run_id` in `run_metadata.json` and every `results.jsonl` row.
 
+Each JSONL result row also records workspace cleanup state:
+
+- `workspace_retained`: whether a case workspace still exists after the runner
+  finishes cleanup handling.
+- `cleanup_status`: `skipped` when cleanup was not requested or no workspace was
+  created, `succeeded` when requested cleanup removed the workspace, and
+  `failed` when cleanup was requested but the workspace remained or cleanup
+  raised an error.
+
 context-eval evaluates the effect of context variants, not the absolute
 capability of an agent.

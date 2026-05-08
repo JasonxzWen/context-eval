@@ -165,6 +165,7 @@ class ContextEvalRunner:
                 variant_name,
             )
             result.workspace_path = self._rel(run_dir, workspace)
+            result.workspace_retained = workspace.exists()
 
             try:
                 apply_overlays(workspace, self.config.variants[variant_name].overlays)
@@ -239,8 +240,8 @@ class ContextEvalRunner:
             errors.append(str(exc))
             return self._finish_result(result, run_dir, started, errors)
         finally:
-            if self.cleanup and workspace is not None:
-                remove_workspace(self.config.repo.path, workspace)
+            if workspace is not None:
+                self._record_cleanup(result, workspace, errors)
 
     def _finish_result(
         self,
@@ -272,6 +273,34 @@ class ContextEvalRunner:
             stderr_path = run_dir / "logs" / f"{case_name}.validation.{index}.stderr.log"
             stdout_path.write_text(command_result.stdout, encoding="utf-8")
             stderr_path.write_text(command_result.stderr, encoding="utf-8")
+
+    def _record_cleanup(
+        self,
+        result: CaseResult,
+        workspace: Path,
+        errors: list[str],
+    ) -> None:
+        if not self.cleanup:
+            result.cleanup_status = "skipped"
+            result.workspace_retained = workspace.exists()
+            return
+
+        try:
+            remove_workspace(self.config.repo.path, workspace)
+        except Exception as exc:
+            errors.append(f"workspace cleanup failed: {exc}")
+            result.cleanup_status = "failed"
+            result.workspace_retained = workspace.exists()
+            result.errors = errors
+            return
+
+        result.workspace_retained = workspace.exists()
+        if result.workspace_retained:
+            errors.append("workspace cleanup failed: workspace still exists after cleanup")
+            result.cleanup_status = "failed"
+        else:
+            result.cleanup_status = "succeeded"
+        result.errors = errors
 
     @staticmethod
     def _rel(run_dir: Path, path: Path) -> str:

@@ -134,6 +134,8 @@ def test_runner_creates_versioned_result_report_and_agent_patch(tmp_path: Path) 
     assert result["confidence"] == "high"
     assert result["changed_files"] == 1
     assert result["touched_paths"] == ["README.md"]
+    assert result["workspace_retained"] is False
+    assert result["cleanup_status"] == "succeeded"
     assert not (run_dir / result["workspace_path"]).exists()
 
     patch = (run_dir / result["patch_path"]).read_text(encoding="utf-8")
@@ -258,3 +260,70 @@ def test_runner_guards_unique_run_directories_for_same_second(
         result = json.loads((run_dir / "results.jsonl").read_text(encoding="utf-8"))
         assert metadata["run_id"] == run_dir.name
         assert result["run_id"] == run_dir.name
+
+
+def test_runner_records_cleanup_skipped_when_workspace_is_retained(tmp_path: Path) -> None:
+    repo = _create_repo(tmp_path)
+    overlay_source = tmp_path / "ctx" / "AGENTS.md"
+    overlay_source.parent.mkdir()
+    overlay_source.write_text("# Instructions\n", encoding="utf-8")
+
+    agent_script = tmp_path / "agent.py"
+    agent_script.write_text("print('no changes')\n", encoding="utf-8")
+    task_file = TaskFile(tasks=[TaskConfig(id="retain-workspace", prompt="Do nothing.")])
+    config = _base_config(
+        tmp_path=tmp_path,
+        repo=repo,
+        agent_command=f'"{sys.executable}" "{agent_script}"',
+        overlay_source=overlay_source,
+    )
+
+    run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        cleanup=False,
+        console=_quiet_console(),
+    ).run()
+    result = json.loads((run_dir / "results.jsonl").read_text(encoding="utf-8"))
+
+    assert result["workspace_retained"] is True
+    assert result["cleanup_status"] == "skipped"
+    assert (run_dir / result["workspace_path"]).exists()
+
+
+def test_runner_records_cleanup_failure_without_hiding_result(
+    tmp_path: Path, monkeypatch
+) -> None:
+    repo = _create_repo(tmp_path)
+    overlay_source = tmp_path / "ctx" / "AGENTS.md"
+    overlay_source.parent.mkdir()
+    overlay_source.write_text("# Instructions\n", encoding="utf-8")
+
+    agent_script = tmp_path / "agent.py"
+    agent_script.write_text("print('no changes')\n", encoding="utf-8")
+    task_file = TaskFile(tasks=[TaskConfig(id="cleanup-fails", prompt="Do nothing.")])
+    config = _base_config(
+        tmp_path=tmp_path,
+        repo=repo,
+        agent_command=f'"{sys.executable}" "{agent_script}"',
+        overlay_source=overlay_source,
+    )
+
+    def fail_cleanup(repo_path: Path, workspace: Path) -> None:
+        raise RuntimeError("cannot remove workspace")
+
+    monkeypatch.setattr("context_eval.runner.remove_workspace", fail_cleanup)
+
+    run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        cleanup=True,
+        console=_quiet_console(),
+    ).run()
+    result = json.loads((run_dir / "results.jsonl").read_text(encoding="utf-8"))
+
+    assert result["status"] == "completed"
+    assert result["workspace_retained"] is True
+    assert result["cleanup_status"] == "failed"
+    assert (run_dir / result["workspace_path"]).exists()
+    assert any("workspace cleanup failed" in error for error in result["errors"])
