@@ -1,0 +1,8 @@
+tasks:
+  - id: "minimal-doc-fix"
+    title: "Make a minimal documentation fix"
+    prompt: |
+      Find a small documentation issue and fix it with the smallest reasonable change.
+      Do not change runtime behavior.
+    category: "documentation"
+    difficulty: "easy"

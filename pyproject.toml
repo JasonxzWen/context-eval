@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "context-eval"
+version = "0.1.0"
+description = "Context A/B testing framework for coding agents in real repositories."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+  { name = "context-eval contributors" }
+]
+dependencies = [
+  "typer>=0.12",
+  "pydantic>=2",
+  "PyYAML>=6",
+  "rich>=13",
+  "Jinja2>=3",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8",
+  "ruff>=0.6",
+]
+
+[project.scripts]
+context-eval = "context_eval.cli:app"
+
+[tool.setuptools.packages.find]
+include = ["context_eval*"]
+
+[tool.setuptools.package-data]
+context_eval = ["reports/templates/*.j2"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

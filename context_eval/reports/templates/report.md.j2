@@ -1,0 +1,64 @@
+# context-eval Report
+
+context-eval evaluates the effect of context variants, not the absolute capability of an agent.
+
+## Run Summary
+
+- Run ID: `{{ metadata.get("run_id", "unknown") }}`
+- Created at: `{{ metadata.get("created_at", "unknown") }}`
+- Results: {{ results|length }}
+- Agent: `{{ metadata.get("agent", {}).get("name", "unknown") }}`
+- Repo: `{{ metadata.get("repo", {}).get("path", "unknown") }}`
+- Base ref: `{{ metadata.get("repo", {}).get("base_ref", "unknown") }}`
+
+## Config Summary
+
+| Variant | Description |
+| --- | --- |
+{% for name, variant in metadata.get("variants", {}).items() -%}
+| `{{ name }}` | {{ variant.get("description", "") }} |
+{% endfor %}
+
+## Task x Variant Matrix
+
+| Task |{% for variant in variants %} {{ variant }} |{% endfor %}
+| --- |{% for variant in variants %} --- |{% endfor %}
+{% for task_id, row in matrix.items() -%}
+| `{{ task_id }}` |{% for variant in variants %}{% set item = row.get(variant) %} {% if item %}`{{ item.status }}` / `{{ item.validation_status }}` / `{{ item.confidence }}`{% else %}-{% endif %} |{% endfor %}
+{% endfor %}
+
+## Variant Metrics
+
+| Variant | Passed | Pass rate | Avg duration seconds | Avg changed files |
+| --- | ---: | ---: | ---: | ---: |
+{% for stat in variant_stats -%}
+| `{{ stat.variant }}` | {{ stat.passed }}/{{ stat.total }} | {{ "%.1f%%"|format(stat.pass_rate * 100) }} | {{ "%.2f"|format(stat.avg_duration) }} | {{ "%.2f"|format(stat.avg_changed_files) }} |
+{% endfor %}
+
+## Failed Cases
+
+{% if failed_cases -%}
+| Task | Variant | Status | Validation | Errors |
+| --- | --- | --- | --- | --- |
+{% for item in failed_cases -%}
+| `{{ item.task_id }}` | `{{ item.variant }}` | `{{ item.status }}` | `{{ item.validation_status }}` | {{ item.errors | join("; ") }} |
+{% endfor %}
+{% else -%}
+No failed cases recorded.
+{% endif %}
+
+## Artifacts
+
+| Task | Variant | Prompt | Patch | Agent stdout | Agent stderr |
+| --- | --- | --- | --- | --- | --- |
+{% for item in results -%}
+| `{{ item.task_id }}` | `{{ item.variant }}` | {% if item.prompt_path %}[prompt]({{ item.prompt_path }}){% else %}-{% endif %} | {% if item.patch_path %}[patch]({{ item.patch_path }}){% else %}-{% endif %} | {% if item.stdout_path %}[stdout]({{ item.stdout_path }}){% else %}-{% endif %} | {% if item.stderr_path %}[stderr]({{ item.stderr_path }}){% else %}-{% endif %} |
+{% endfor %}
+
+## Confidence Warning
+
+{% if low_confidence -%}
+{{ low_confidence|length }} result(s) have low confidence because no validation command was available. Patch and diff data alone do not establish correctness.
+{% else -%}
+All results used validation commands. Passing validation still does not replace human review for production changes.
+{% endif %}

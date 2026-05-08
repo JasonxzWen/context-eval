@@ -1,0 +1,29 @@
+repo:
+  path: "../.."
+  base_ref: "HEAD"
+
+agent:
+  name: "example-agent"
+  command: "python -c \"from pathlib import Path; print(Path(r'{prompt_file}').read_text(encoding='utf-8')[:120])\""
+  timeout_minutes: 5
+  network: "disabled"
+
+tasks: "./tasks.yaml"
+
+variants:
+  baseline:
+    description: "Original AGENTS.md"
+    overlays:
+      - source: "./contexts/baseline/AGENTS.md"
+        target: "AGENTS.md"
+
+  experiment:
+    description: "Optimized AGENTS.md with DeepWiki"
+    overlays:
+      - source: "./contexts/experiment/AGENTS.md"
+        target: "AGENTS.md"
+      - source: "./contexts/experiment/docs"
+        target: "docs/deepwiki"
+
+evaluation:
+  commands: []
