@@ -32,6 +32,14 @@ paths.
 - `medium`: validation commands exist but one or more failed.
 - `low`: no validation commands were available.
 
+## Case Statuses
+
+Result rows use `workspace_failed` when Git workspace preparation fails before
+overlays, agent execution, or validation commands can run. This status is for
+repo path, ref, or worktree setup problems and is distinct from
+`internal_error`, which is reserved for unexpected runner failures after setup
+has begun.
+
 ## Result Stability
 
 Every JSONL result row includes:

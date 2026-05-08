@@ -327,3 +327,53 @@ def test_runner_records_cleanup_failure_without_hiding_result(
     assert result["cleanup_status"] == "failed"
     assert (run_dir / result["workspace_path"]).exists()
     assert any("workspace cleanup failed" in error for error in result["errors"])
+
+
+def test_runner_records_workspace_failure_without_running_case_steps(tmp_path: Path) -> None:
+    repo = _create_repo(tmp_path)
+    overlay_source = tmp_path / "ctx" / "AGENTS.md"
+    overlay_source.parent.mkdir()
+    overlay_source.write_text("# Instructions\n", encoding="utf-8")
+
+    agent_script = tmp_path / "agent.py"
+    sentinel_path = tmp_path / "agent-ran.txt"
+    agent_script.write_text(
+        f"from pathlib import Path\nPath({str(sentinel_path)!r}).write_text('ran')\n",
+        encoding="utf-8",
+    )
+    task_file = TaskFile(
+        tasks=[
+            TaskConfig(
+                id="missing-ref",
+                prompt="Do nothing.",
+                repo_ref="refs/heads/does-not-exist",
+                validation=ValidationConfig(commands=["python -c \"raise SystemExit(42)\""]),
+            )
+        ]
+    )
+    config = _base_config(
+        tmp_path=tmp_path,
+        repo=repo,
+        agent_command=f'"{sys.executable}" "{agent_script}"',
+        overlay_source=overlay_source,
+    )
+
+    run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        cleanup=True,
+        console=_quiet_console(),
+    ).run()
+    result = json.loads((run_dir / "results.jsonl").read_text(encoding="utf-8"))
+
+    assert result["status"] == "workspace_failed"
+    assert result["workspace_path"] is None
+    assert result["prompt_path"] is None
+    assert result["stdout_path"] is None
+    assert result["stderr_path"] is None
+    assert result["validation_results"] == []
+    assert result["validation_status"] == "skipped"
+    assert result["cleanup_status"] == "skipped"
+    assert result["workspace_retained"] is False
+    assert result["errors"]
+    assert not sentinel_path.exists()

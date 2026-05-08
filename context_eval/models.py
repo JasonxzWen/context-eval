@@ -14,6 +14,7 @@ RunStatus = Literal[
     "agent_failed",
     "timeout",
     "overlay_failed",
+    "workspace_failed",
     "validation_failed",
     "internal_error",
 ]

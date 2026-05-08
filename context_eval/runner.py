@@ -235,6 +235,7 @@ class ContextEvalRunner:
             return self._finish_result(result, run_dir, started, errors)
         except WorkspaceError as exc:
             errors.append(str(exc))
+            result.status = "workspace_failed"
             return self._finish_result(result, run_dir, started, errors)
         except Exception as exc:  # pragma: no cover - protects long batch runs
             errors.append(str(exc))
