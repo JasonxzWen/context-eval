@@ -11,7 +11,6 @@ Imported capability roots:
 - `.agents/skills/`
 - `.codex/skills/`
 - `.codex/agents/`
-- `docs/`
 - `openspec/`
 - `scripts/`
 
@@ -24,3 +23,13 @@ The imported assets are used as project-local development support: skill
 definitions, focused agent role configs, OpenSpec helpers, Ralph loop scripts,
 and validation utilities. They are not part of the `context_eval` runtime
 package unless explicitly referenced by future packaging changes.
+
+Most upstream skill-hub documentation was intentionally removed from this
+repository because it describes general skill-pack research, source-project
+analysis, and local setup workflows that are not specific to context-eval. This
+file is the retained provenance record.
+
+The optional Codex configuration is tracked as `.codex/config.example.toml`.
+Maintainers can copy it to `.codex/config.toml` locally when they want to opt in
+to the project-local skills and agent roles. The active `.codex/config.toml`
+path is ignored so ordinary clones do not silently enable external tooling.

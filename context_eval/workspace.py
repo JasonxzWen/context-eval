@@ -16,7 +16,13 @@ def slugify(value: str) -> str:
     return slug or "case"
 
 
-def create_workspace(repo_path: Path, repo_ref: str, run_dir: Path, task_id: str, variant: str) -> Path:
+def create_workspace(
+    repo_path: Path,
+    repo_ref: str,
+    run_dir: Path,
+    task_id: str,
+    variant: str,
+) -> Path:
     workspace = run_dir / "workspaces" / f"{slugify(task_id)}__{slugify(variant)}"
     workspace.parent.mkdir(parents=True, exist_ok=True)
     if workspace.exists():
@@ -28,7 +34,9 @@ def create_workspace(repo_path: Path, repo_ref: str, run_dir: Path, task_id: str
         shell=False,
     )
     if result.exit_code != 0:
-        raise WorkspaceError(result.stderr.strip() or result.stdout.strip() or "git worktree add failed")
+        raise WorkspaceError(
+            result.stderr.strip() or result.stdout.strip() or "git worktree add failed"
+        )
     return workspace
 
 

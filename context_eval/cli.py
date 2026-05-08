@@ -18,9 +18,15 @@ console = Console()
 def run(
     config: Annotated[Path, typer.Option("--config", "-c", exists=True, dir_okay=False)],
     tasks: Annotated[Path | None, typer.Option("--tasks", dir_okay=False)] = None,
-    cleanup: Annotated[bool, typer.Option("--cleanup", help="Delete workspaces after each case.")] = False,
+    cleanup: Annotated[
+        bool,
+        typer.Option("--cleanup", help="Delete workspaces after each case."),
+    ] = False,
     max_tasks: Annotated[int | None, typer.Option("--max-tasks", min=1)] = None,
-    variant: Annotated[list[str] | None, typer.Option("--variant", help="Variant to run. Repeatable.")] = None,
+    variant: Annotated[
+        list[str] | None,
+        typer.Option("--variant", help="Variant to run. Repeatable."),
+    ] = None,
 ) -> None:
     """Run tasks across context variants."""
     try:

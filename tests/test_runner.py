@@ -1,0 +1,212 @@
+import io
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+from rich.console import Console
+
+from context_eval import __version__
+from context_eval.models import (
+    RESULT_SCHEMA_VERSION,
+    AgentConfig,
+    ContextEvalConfig,
+    EvaluationConfig,
+    OverlayConfig,
+    RepoConfig,
+    TaskConfig,
+    TaskFile,
+    ValidationConfig,
+    VariantConfig,
+)
+from context_eval.runner import ContextEvalRunner
+
+
+def _run_git(repo: Path, *args: str) -> None:
+    subprocess.run(
+        ["git", *args],
+        cwd=repo,
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+
+def _create_repo(tmp_path: Path) -> Path:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _run_git(repo, "init")
+    (repo / "README.md").write_text("base\n", encoding="utf-8")
+    _run_git(repo, "add", "README.md")
+    _run_git(
+        repo,
+        "-c",
+        "user.email=test@example.com",
+        "-c",
+        "user.name=Test",
+        "commit",
+        "-m",
+        "init",
+    )
+    return repo
+
+
+def _quiet_console() -> Console:
+    return Console(file=io.StringIO(), force_terminal=False)
+
+
+def _base_config(
+    *,
+    tmp_path: Path,
+    repo: Path,
+    agent_command: str,
+    overlay_source: Path,
+    validation_commands: list[str] | None = None,
+) -> ContextEvalConfig:
+    return ContextEvalConfig(
+        repo=RepoConfig(path=repo, base_ref="HEAD"),
+        agent=AgentConfig(name="test-agent", command=agent_command, timeout_minutes=1),
+        variants={
+            "baseline": VariantConfig(
+                description="Baseline",
+                overlays=[OverlayConfig(source=overlay_source, target="AGENTS.md")],
+            )
+        },
+        output_dir=tmp_path / "runs",
+        evaluation=EvaluationConfig(commands=validation_commands or []),
+    )
+
+
+def test_runner_creates_versioned_result_report_and_agent_patch(tmp_path: Path) -> None:
+    repo = _create_repo(tmp_path)
+    overlay_source = tmp_path / "ctx" / "AGENTS.md"
+    overlay_source.parent.mkdir()
+    overlay_source.write_text("# Instructions\n", encoding="utf-8")
+
+    agent_script = tmp_path / "agent.py"
+    agent_script.write_text(
+        "from pathlib import Path\n"
+        "p = Path('README.md')\n"
+        "p.write_text(p.read_text(encoding='utf-8') + 'agent line\\n', encoding='utf-8')\n",
+        encoding="utf-8",
+    )
+    validation_script = tmp_path / "validate.py"
+    validation_script.write_text(
+        "from pathlib import Path\n"
+        "readme = Path('README.md').read_text(encoding='utf-8')\n"
+        "raise SystemExit(0 if 'agent line' in readme else 1)\n",
+        encoding="utf-8",
+    )
+
+    task_file = TaskFile(
+        tasks=[
+            TaskConfig(
+                id="smoke",
+                prompt="Append a line.",
+                validation=ValidationConfig(commands=[f'"{sys.executable}" "{validation_script}"']),
+            )
+        ]
+    )
+    config = _base_config(
+        tmp_path=tmp_path,
+        repo=repo,
+        agent_command=f'"{sys.executable}" "{agent_script}"',
+        overlay_source=overlay_source,
+    )
+
+    run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        cleanup=True,
+        console=_quiet_console(),
+    ).run()
+    result = json.loads((run_dir / "results.jsonl").read_text(encoding="utf-8"))
+
+    assert result["schema_version"] == RESULT_SCHEMA_VERSION
+    assert result["context_eval_version"] == __version__
+    assert len(result["config_hash"]) == 16
+    assert len(result["task_hash"]) == 16
+    assert len(result["variant_hash"]) == 16
+    assert result["status"] == "completed"
+    assert result["validation_status"] == "passed"
+    assert result["confidence"] == "high"
+    assert result["changed_files"] == 1
+    assert result["touched_paths"] == ["README.md"]
+    assert not (run_dir / result["workspace_path"]).exists()
+
+    patch = (run_dir / result["patch_path"]).read_text(encoding="utf-8")
+    assert "AGENTS.md" not in patch
+    assert "+agent line" in patch
+
+    report = (run_dir / "report.md").read_text(encoding="utf-8")
+    assert "context-eval evaluates the effect of context variants" in report
+    assert result["config_hash"] in report
+
+
+def test_runner_marks_validation_failure(tmp_path: Path) -> None:
+    repo = _create_repo(tmp_path)
+    overlay_source = tmp_path / "ctx" / "AGENTS.md"
+    overlay_source.parent.mkdir()
+    overlay_source.write_text("# Instructions\n", encoding="utf-8")
+
+    agent_script = tmp_path / "agent.py"
+    agent_script.write_text("print('no changes')\n", encoding="utf-8")
+    validation_script = tmp_path / "validate.py"
+    validation_script.write_text("raise SystemExit(1)\n", encoding="utf-8")
+
+    task_file = TaskFile(
+        tasks=[
+            TaskConfig(
+                id="failing-validation",
+                prompt="Do nothing.",
+                validation=ValidationConfig(commands=[f'"{sys.executable}" "{validation_script}"']),
+            )
+        ]
+    )
+    config = _base_config(
+        tmp_path=tmp_path,
+        repo=repo,
+        agent_command=f'"{sys.executable}" "{agent_script}"',
+        overlay_source=overlay_source,
+    )
+
+    run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        cleanup=True,
+        console=_quiet_console(),
+    ).run()
+    result = json.loads((run_dir / "results.jsonl").read_text(encoding="utf-8"))
+
+    assert result["status"] == "validation_failed"
+    assert result["validation_status"] == "failed"
+    assert result["confidence"] == "medium"
+    assert result["validation_results"][0]["exit_code"] == 1
+
+
+def test_runner_records_overlay_failure(tmp_path: Path) -> None:
+    repo = _create_repo(tmp_path)
+    agent_script = tmp_path / "agent.py"
+    agent_script.write_text("raise SystemExit(0)\n", encoding="utf-8")
+    missing_overlay = tmp_path / "missing" / "AGENTS.md"
+    task_file = TaskFile(tasks=[TaskConfig(id="overlay-fail", prompt="Do nothing.")])
+    config = _base_config(
+        tmp_path=tmp_path,
+        repo=repo,
+        agent_command=f'"{sys.executable}" "{agent_script}"',
+        overlay_source=missing_overlay,
+    )
+
+    run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        cleanup=True,
+        console=_quiet_console(),
+    ).run()
+    result = json.loads((run_dir / "results.jsonl").read_text(encoding="utf-8"))
+
+    assert result["status"] == "overlay_failed"
+    assert result["validation_status"] == "skipped"
+    assert result["confidence"] == "low"
+    assert result["errors"]

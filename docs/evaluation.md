@@ -32,5 +32,20 @@ paths.
 - `medium`: validation commands exist but one or more failed.
 - `low`: no validation commands were available.
 
+## Result Stability
+
+Every JSONL result row includes:
+
+- `schema_version`
+- `context_eval_version`
+- `config_hash`
+- `task_hash`
+- `variant_hash`
+
+The hashes are deterministic summaries of the effective config, task, and
+variant records. `config_hash` excludes the run output directory so moving
+artifacts does not change the experiment identity. These hashes are intended for
+grouping and reproducibility checks, not for cryptographic security.
+
 context-eval evaluates the effect of context variants, not the absolute
 capability of an agent.

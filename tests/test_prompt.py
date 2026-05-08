@@ -16,7 +16,9 @@ def test_command_template_variable_replacement() -> None:
         },
     )
 
-    assert command == "myAgent --workspace /repo/work -p /tmp/prompt.md --task bug-1 --variant experiment"
+    assert command == (
+        "myAgent --workspace /repo/work -p /tmp/prompt.md --task bug-1 --variant experiment"
+    )
 
 
 def test_prompt_contains_task_prompt_and_no_commit_instruction() -> None:

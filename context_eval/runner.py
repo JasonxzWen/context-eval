@@ -7,12 +7,20 @@ from pathlib import Path
 
 from rich.console import Console
 
+from context_eval import __version__
 from context_eval.adapters.command import CommandTemplateAgent
 from context_eval.config import load_tasks
 from context_eval.contexts.overlay import OverlayError, apply_overlays
 from context_eval.evaluators.command import run_validation_commands
 from context_eval.evaluators.diff import collect_git_diff, create_diff_baseline
-from context_eval.models import CaseResult, ContextEvalConfig, TaskConfig, TaskFile
+from context_eval.hashing import stable_hash
+from context_eval.models import (
+    RESULT_SCHEMA_VERSION,
+    CaseResult,
+    ContextEvalConfig,
+    TaskConfig,
+    TaskFile,
+)
 from context_eval.prompt import render_prompt, write_prompt_file
 from context_eval.reports.markdown import render_markdown_report
 from context_eval.workspace import WorkspaceError, create_workspace, remove_workspace, slugify
@@ -36,6 +44,9 @@ class ContextEvalRunner:
         self.max_tasks = max_tasks
         self.selected_variants = variants or []
         self.console = console or Console()
+        self.config_hash = stable_hash(
+            config.model_dump(mode="json", exclude={"output_dir"})
+        )
 
     def run(self) -> Path:
         run_id = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -72,7 +83,10 @@ class ContextEvalRunner:
 
     def _write_metadata(self, run_id: str, run_dir: Path) -> None:
         metadata = {
+            "schema_version": RESULT_SCHEMA_VERSION,
+            "context_eval_version": __version__,
             "run_id": run_id,
+            "config_hash": self.config_hash,
             "created_at": datetime.now().isoformat(timespec="seconds"),
             "config_path": str(self.config.config_path) if self.config.config_path else None,
             "repo": {
@@ -86,7 +100,10 @@ class ContextEvalRunner:
                 "network": self.config.agent.network,
             },
             "variants": {
-                name: {"description": variant.description}
+                name: {
+                    "description": variant.description,
+                    "hash": stable_hash(variant.model_dump(mode="json")),
+                }
                 for name, variant in self.config.variants.items()
             },
         }
@@ -118,6 +135,9 @@ class ContextEvalRunner:
 
         result = CaseResult(
             run_id=run_id,
+            config_hash=self.config_hash,
+            task_hash=stable_hash(task.model_dump(mode="json")),
+            variant_hash=stable_hash(self.config.variants[variant_name].model_dump(mode="json")),
             task_id=task.id,
             variant=variant_name,
             repo_ref=repo_ref,
@@ -127,7 +147,13 @@ class ContextEvalRunner:
         )
 
         try:
-            workspace = create_workspace(self.config.repo.path, repo_ref, run_dir, task.id, variant_name)
+            workspace = create_workspace(
+                self.config.repo.path,
+                repo_ref,
+                run_dir,
+                task.id,
+                variant_name,
+            )
             result.workspace_path = self._rel(run_dir, workspace)
 
             try:
@@ -216,7 +242,11 @@ class ContextEvalRunner:
         result.duration_seconds = time.monotonic() - started
         result.errors = errors
         if result.patch_path is None:
-            patch_path = run_dir / "patches" / f"{slugify(result.task_id)}__{slugify(result.variant)}.patch"
+            patch_path = (
+                run_dir
+                / "patches"
+                / f"{slugify(result.task_id)}__{slugify(result.variant)}.patch"
+            )
             if patch_path.exists():
                 result.patch_path = self._rel(run_dir, patch_path)
         return result

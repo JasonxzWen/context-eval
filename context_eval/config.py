@@ -64,7 +64,10 @@ def load_tasks(path: Path) -> TaskFile:
         raise ConfigError(str(exc)) from exc
 
 
-def validate_config_files(config_path: Path, tasks_override: Path | None = None) -> tuple[ContextEvalConfig, TaskFile]:
+def validate_config_files(
+    config_path: Path,
+    tasks_override: Path | None = None,
+) -> tuple[ContextEvalConfig, TaskFile]:
     config = load_config(config_path)
     tasks_path = tasks_override.resolve() if tasks_override else config.tasks
     tasks = load_tasks(tasks_path)
@@ -74,6 +77,8 @@ def validate_config_files(config_path: Path, tasks_override: Path | None = None)
     for name, variant in config.variants.items():
         for overlay in variant.overlays:
             if not overlay.source.exists():
-                raise ConfigError(f"variant '{name}' overlay source does not exist: {overlay.source}")
+                raise ConfigError(
+                    f"variant '{name}' overlay source does not exist: {overlay.source}"
+                )
 
     return config, tasks

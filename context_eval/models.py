@@ -5,7 +5,10 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from context_eval import __version__
 
+
+RESULT_SCHEMA_VERSION = "1"
 RunStatus = Literal[
     "completed",
     "agent_failed",
@@ -131,7 +134,12 @@ class DiffStats(BaseModel):
 
 
 class CaseResult(BaseModel):
+    schema_version: str = RESULT_SCHEMA_VERSION
+    context_eval_version: str = __version__
     run_id: str
+    config_hash: str | None = None
+    task_hash: str | None = None
+    variant_hash: str | None = None
     task_id: str
     variant: str
     repo_ref: str

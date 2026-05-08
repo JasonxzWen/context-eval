@@ -175,6 +175,10 @@ Each run creates `.context-eval/runs/<run-id>` with:
 - Git patches
 - retained workspaces by default
 
+Each JSONL row includes a `schema_version`, `context_eval_version`,
+`config_hash`, `task_hash`, and `variant_hash` so downstream analysis can detect
+schema changes and group results by the exact evaluated inputs.
+
 Use `--cleanup` to remove workspaces after each case.
 
 ## Development Capability Library
@@ -185,8 +189,11 @@ from `JasonxzWen/skill-hub` under `.agents/`, `.codex/`, `openspec/`, and
 OpenSpec helpers, Ralph loop utilities, and skill validation scripts for
 maintainers working on context-eval.
 
-The upstream `AGENTS.md` and `README.md` files are intentionally not included.
-See `docs/skill-hub-import.md` for provenance and import scope.
+The upstream `AGENTS.md`, `README.md`, and general-purpose skill-hub research
+docs are intentionally not included. Optional Codex configuration is provided as
+`.codex/config.example.toml`; copy it to `.codex/config.toml` locally only when
+you want to opt in to those maintainer workflows. See
+`docs/skill-hub-import.md` for provenance and import scope.
 
 ## Roadmap
 

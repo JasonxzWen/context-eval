@@ -33,3 +33,10 @@ run output directory, which is `.context-eval/runs` under the current working
 directory.
 
 `network` is recorded in results. The MVP does not implement network isolation.
+
+## Maintainer Tooling
+
+Project-local skills and agent role configs from `skill-hub` are vendored for
+maintainers, but active Codex configuration is opt-in. Copy
+`.codex/config.example.toml` to `.codex/config.toml` locally only when you want
+to enable those workflows.

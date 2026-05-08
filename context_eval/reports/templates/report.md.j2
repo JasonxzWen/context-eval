@@ -5,6 +5,9 @@ context-eval evaluates the effect of context variants, not the absolute capabili
 ## Run Summary
 
 - Run ID: `{{ metadata.get("run_id", "unknown") }}`
+- Schema version: `{{ metadata.get("schema_version", "unknown") }}`
+- context-eval version: `{{ metadata.get("context_eval_version", "unknown") }}`
+- Config hash: `{{ metadata.get("config_hash", "unknown") }}`
 - Created at: `{{ metadata.get("created_at", "unknown") }}`
 - Results: {{ results|length }}
 - Agent: `{{ metadata.get("agent", {}).get("name", "unknown") }}`

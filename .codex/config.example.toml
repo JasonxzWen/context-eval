@@ -1,0 +1,41 @@
+# Optional maintainer-local Codex config.
+#
+# Copy this file to `.codex/config.toml` only when you want to opt in to the
+# vendored skill-hub development environment. It is intentionally not tracked as
+# `.codex/config.toml`, so installing or cloning context-eval does not silently
+# enable external MCP servers or change Codex runtime behavior.
+
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+web_search = "live"
+
+persistent_instructions = """
+Use project-local .codex/skills and .agents/skills when a matching development
+workflow applies.
+"""
+
+[features]
+multi_agent = true
+
+[agents]
+max_threads = 6
+max_depth = 1
+
+[agents.explorer]
+description = "Read-only codebase explorer for gathering evidence before changes are proposed."
+config_file = "agents/explorer.toml"
+
+[agents.reviewer]
+description = """
+Reviewer focused on correctness, security, behavioral regressions, and missing
+tests.
+"""
+config_file = "agents/reviewer.toml"
+
+[agents.docs_researcher]
+description = "Documentation specialist that verifies APIs, framework behavior, and release notes."
+config_file = "agents/docs-researcher.toml"
+
+# External MCP servers from skill-hub are intentionally omitted here. Add them
+# locally only when the required credentials, network policy, and toolchain are
+# appropriate for your environment.
