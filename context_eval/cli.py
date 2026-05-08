@@ -6,6 +6,7 @@ from typing import Annotated
 import typer
 from rich.console import Console
 
+from context_eval.compare import compare_run
 from context_eval.config import ConfigError, filter_tasks, validate_config_files
 from context_eval.dry_run import render_dry_run
 from context_eval.init import create_starter_files
@@ -138,6 +139,18 @@ def inspect_run_command(
     """Print a terminal summary for an existing run directory."""
     try:
         inspect_run(run_dir, console)
+    except Exception as exc:
+        console.print(f"[red]Error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+
+
+@app.command("compare")
+def compare_command(
+    run_dir: Annotated[Path, typer.Argument(exists=True, file_okay=False)],
+) -> None:
+    """Compare variant metrics for an existing run directory."""
+    try:
+        compare_run(run_dir, console)
     except Exception as exc:
         console.print(f"[red]Error:[/red] {exc}")
         raise typer.Exit(code=1) from exc

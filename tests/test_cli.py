@@ -305,3 +305,99 @@ def test_inspect_run_fails_for_missing_results(tmp_path: Path) -> None:
 
     assert output.exit_code == 1
     assert "results file not found" in output.output
+
+
+def test_compare_prints_variant_metrics_from_jsonl(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    (run_dir / "run_metadata.json").write_text(
+        '{"run_id": "run-1", "agent": {"name": "agent"}, "repo": {"base_ref": "main"}}',
+        encoding="utf-8",
+    )
+    results = [
+        CaseResult(
+            run_id="run-1",
+            case_id="task-1__baseline",
+            task_id="task-1",
+            variant="baseline",
+            repo_ref="main",
+            agent_name="agent",
+            network="disabled",
+            status="completed",
+            validation_status="passed",
+            confidence="high",
+            duration_seconds=2.0,
+            changed_files=1,
+            touched_paths=["a.py"],
+        ),
+        CaseResult(
+            run_id="run-1",
+            case_id="task-2__baseline",
+            task_id="task-2",
+            variant="baseline",
+            repo_ref="main",
+            agent_name="agent",
+            network="disabled",
+            status="timeout",
+            timeout=True,
+            validation_status="failed",
+            confidence="medium",
+            duration_seconds=4.0,
+            changed_files=3,
+            touched_paths=["a.py", "b.py"],
+        ),
+        CaseResult(
+            run_id="run-1",
+            case_id="task-1__experiment",
+            task_id="task-1",
+            variant="experiment",
+            repo_ref="main",
+            agent_name="agent",
+            network="disabled",
+            status="agent_failed",
+            validation_status="skipped",
+            confidence="low",
+            duration_seconds=1.0,
+            changed_files=0,
+            touched_paths=[],
+        ),
+    ]
+    (run_dir / "results.jsonl").write_text(
+        "\n".join(result.model_dump_json() for result in results) + "\n",
+        encoding="utf-8",
+    )
+
+    output = CliRunner().invoke(app, ["compare", str(run_dir)])
+
+    assert output.exit_code == 0
+    assert "run-1" in output.output
+    assert "baseline" in output.output
+    assert "experiment" in output.output
+    assert "pass_rate=50.0%" in output.output
+    assert "timeout_rate=50.0%" in output.output
+    assert "agent_failure_rate=100.0%" in output.output
+    assert "validation_failure_rate=50.0%" in output.output
+    assert "avg_duration=3.00" in output.output
+    assert "avg_changed_files=2.00" in output.output
+    assert "common_touched_paths=a.py" in output.output
+
+
+def test_compare_fails_for_missing_results(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+
+    output = CliRunner().invoke(app, ["compare", str(run_dir)])
+
+    assert output.exit_code == 1
+    assert "results file not found" in output.output
+
+
+def test_compare_fails_for_malformed_results(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    (run_dir / "results.jsonl").write_text("{not-json}\n", encoding="utf-8")
+
+    output = CliRunner().invoke(app, ["compare", str(run_dir)])
+
+    assert output.exit_code == 1
+    assert "malformed results.jsonl line 1" in output.output

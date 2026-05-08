@@ -84,6 +84,12 @@ Inspect an existing run in the terminal:
 context-eval inspect-run .context-eval/runs/<run-id>
 ```
 
+Compare variant metrics for an existing run:
+
+```bash
+context-eval compare .context-eval/runs/<run-id>
+```
+
 ## Configuration Example
 
 ```yaml
