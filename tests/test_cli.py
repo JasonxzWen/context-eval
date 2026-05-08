@@ -101,3 +101,93 @@ variants:
 
     assert result.exit_code == 1
     assert "unknown task id" in result.output
+
+
+def test_run_dry_run_prints_matrix_and_creates_no_artifacts(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    context_dir = tmp_path / "contexts"
+    (context_dir / "baseline").mkdir(parents=True)
+    (context_dir / "experiment").mkdir(parents=True)
+    (context_dir / "baseline" / "AGENTS.md").write_text("# Baseline\n", encoding="utf-8")
+    (context_dir / "experiment" / "AGENTS.md").write_text("# Experiment\n", encoding="utf-8")
+    tasks_path = tmp_path / "tasks.yaml"
+    tasks_path.write_text(
+        """
+tasks:
+  - id: "docs-easy"
+    prompt: "Fix docs."
+    category: "documentation"
+    difficulty: "easy"
+  - id: "runtime-hard"
+    prompt: "Fix runtime."
+    category: "runtime"
+    difficulty: "hard"
+""",
+        encoding="utf-8",
+    )
+    config_path = tmp_path / "context-eval.yaml"
+    output_dir = tmp_path / "runs"
+    config_path.write_text(
+        f"""
+repo:
+  path: "./repo"
+  base_ref: "main"
+agent:
+  name: "test-agent"
+  command: "agent -p {{prompt_file}}"
+tasks: "./tasks.yaml"
+output_dir: "{output_dir.as_posix()}"
+variants:
+  baseline:
+    description: "Baseline"
+    overlays:
+      - source: "./contexts/baseline/AGENTS.md"
+        target: "AGENTS.md"
+  experiment:
+    description: "Experiment"
+    overlays:
+      - source: "./contexts/experiment/AGENTS.md"
+        target: "AGENTS.md"
+evaluation:
+  commands:
+    - "python -m pytest"
+""",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "run",
+            "--config",
+            str(config_path),
+            "--dry-run",
+            "--category",
+            "documentation",
+            "--variant",
+            "experiment",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Dry run" in result.output
+    assert "docs-easy" in result.output
+    assert "runtime-hard" not in result.output
+    assert "experiment" in result.output
+    assert "baseline" not in result.output
+    assert "repo_ref=main" in result.output
+    assert "AGENTS.md -> AGENTS.md" in result.output
+    assert "prompts/docs-easy__experiment.md" in result.output
+    assert "python -m pytest" in result.output
+    assert not output_dir.exists()
+
+    max_tasks_result = CliRunner().invoke(
+        app,
+        ["run", "--config", str(config_path), "--dry-run", "--max-tasks", "1"],
+    )
+
+    assert max_tasks_result.exit_code == 0
+    assert "docs-easy" in max_tasks_result.output
+    assert "runtime-hard" not in max_tasks_result.output
+    assert not output_dir.exists()

@@ -54,6 +54,12 @@ Validate the example config:
 context-eval validate-config --config examples/basic/context-eval.yaml
 ```
 
+Preview the task x variant matrix without creating workspaces or run artifacts:
+
+```bash
+context-eval run --config examples/basic/context-eval.yaml --dry-run
+```
+
 Run an evaluation:
 
 ```bash

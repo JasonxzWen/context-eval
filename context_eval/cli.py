@@ -7,6 +7,7 @@ import typer
 from rich.console import Console
 
 from context_eval.config import ConfigError, filter_tasks, validate_config_files
+from context_eval.dry_run import render_dry_run
 from context_eval.reports.markdown import render_markdown_report
 from context_eval.runner import ContextEvalRunner
 
@@ -21,6 +22,10 @@ def run(
     cleanup: Annotated[
         bool,
         typer.Option("--cleanup", help="Delete workspaces after each case."),
+    ] = False,
+    dry_run: Annotated[
+        bool,
+        typer.Option("--dry-run", help="Preview selected cases without creating run artifacts."),
     ] = False,
     max_tasks: Annotated[int | None, typer.Option("--max-tasks", min=1)] = None,
     variant: Annotated[
@@ -49,6 +54,15 @@ def run(
             categories=category,
             difficulties=difficulty,
         )
+        if dry_run:
+            render_dry_run(
+                config=loaded_config,
+                tasks=task_file,
+                variants=variant,
+                max_tasks=max_tasks,
+                console=console,
+            )
+            return
         runner = ContextEvalRunner(
             config=loaded_config,
             tasks=task_file,
