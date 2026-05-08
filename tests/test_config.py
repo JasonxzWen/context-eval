@@ -4,7 +4,8 @@ from pathlib import Path
 import pytest
 
 from context_eval.config import ConfigError
-from context_eval.config import load_config, load_tasks, validate_config_files
+from context_eval.config import filter_tasks, load_config, load_tasks, validate_config_files
+from context_eval.models import TaskConfig, TaskFile
 
 
 def _run_git(repo: Path, *args: str) -> None:
@@ -156,3 +157,66 @@ def test_strict_validation_requires_task_repo_refs_to_resolve(tmp_path: Path) ->
 
     with pytest.raises(ConfigError, match="task 'task-1' repo_ref does not resolve"):
         validate_config_files(config_path, strict=True)
+
+
+def test_filter_tasks_combines_dimensions_without_mutating_task_file() -> None:
+    task_file = TaskFile(
+        tasks=[
+            TaskConfig(
+                id="docs-easy",
+                prompt="Fix docs.",
+                category="documentation",
+                difficulty="easy",
+            ),
+            TaskConfig(
+                id="docs-hard",
+                prompt="Rewrite docs.",
+                category="documentation",
+                difficulty="hard",
+            ),
+            TaskConfig(
+                id="runtime-easy",
+                prompt="Fix runtime.",
+                category="runtime",
+                difficulty="easy",
+            ),
+        ]
+    )
+
+    filtered = filter_tasks(
+        task_file,
+        task_ids=[],
+        categories=["documentation"],
+        difficulties=["easy", "medium"],
+    )
+
+    assert [task.id for task in filtered.tasks] == ["docs-easy"]
+    assert [task.id for task in task_file.tasks] == [
+        "docs-easy",
+        "docs-hard",
+        "runtime-easy",
+    ]
+
+
+def test_filter_tasks_rejects_unknown_task_ids() -> None:
+    task_file = TaskFile(tasks=[TaskConfig(id="known", prompt="Fix docs.")])
+
+    with pytest.raises(ConfigError, match="unknown task id"):
+        filter_tasks(
+            task_file,
+            task_ids=["known", "missing"],
+            categories=[],
+            difficulties=[],
+        )
+
+
+def test_filter_tasks_rejects_empty_selection() -> None:
+    task_file = TaskFile(tasks=[TaskConfig(id="known", prompt="Fix docs.", category="docs")])
+
+    with pytest.raises(ConfigError, match="task filters selected no tasks"):
+        filter_tasks(
+            task_file,
+            task_ids=[],
+            categories=["runtime"],
+            difficulties=[],
+        )

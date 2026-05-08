@@ -6,7 +6,7 @@ from typing import Annotated
 import typer
 from rich.console import Console
 
-from context_eval.config import ConfigError, load_config, validate_config_files
+from context_eval.config import ConfigError, filter_tasks, validate_config_files
 from context_eval.reports.markdown import render_markdown_report
 from context_eval.runner import ContextEvalRunner
 
@@ -27,10 +27,28 @@ def run(
         list[str] | None,
         typer.Option("--variant", help="Variant to run. Repeatable."),
     ] = None,
+    task_id: Annotated[
+        list[str] | None,
+        typer.Option("--task-id", help="Task ID to run. Repeatable."),
+    ] = None,
+    category: Annotated[
+        list[str] | None,
+        typer.Option("--category", help="Task category to run. Repeatable."),
+    ] = None,
+    difficulty: Annotated[
+        list[str] | None,
+        typer.Option("--difficulty", help="Task difficulty to run. Repeatable."),
+    ] = None,
 ) -> None:
     """Run tasks across context variants."""
     try:
         loaded_config, task_file = validate_config_files(config, tasks)
+        task_file = filter_tasks(
+            task_file,
+            task_ids=task_id,
+            categories=category,
+            difficulties=difficulty,
+        )
         runner = ContextEvalRunner(
             config=loaded_config,
             tasks=task_file,
