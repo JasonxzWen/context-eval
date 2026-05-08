@@ -14,6 +14,18 @@ def test_ci_workflow_contains_required_quality_gates() -> None:
     assert "windows-latest" in text
 
 
+def test_skill_validation_ci_job_installs_script_dependencies() -> None:
+    workflow = Path(".github/workflows/ci.yml")
+    text = workflow.read_text(encoding="utf-8")
+    skill_job = text.split("  skill-validation:", maxsplit=1)[1]
+
+    assert "actions/setup-python@v5" in skill_job
+    assert 'python -m pip install -e ".[dev]"' in skill_job
+    assert skill_job.index('python -m pip install -e ".[dev]"') < skill_job.index(
+        "scripts\\validate-skills.ps1 -SkipExternal"
+    )
+
+
 def test_release_checklist_and_changelog_exist() -> None:
     checklist = Path("docs/release-checklist.md")
     changelog = Path("CHANGELOG.md")

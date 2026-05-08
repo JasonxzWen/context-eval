@@ -325,6 +325,7 @@ Status: planned.
   - ruff
   - example config validation
   - skill validation with `-SkipExternal`
+- Ensure every CI job installs the dependencies needed by the commands it runs.
 - Add packaging check with `python -m build` once `build` is in dev
   dependencies.
 - Add `CHANGELOG.md`.
