@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import json
 from html import escape
 from pathlib import Path
 from typing import Any
 
 from context_eval.compare import _variant_stats
 from context_eval.config import ConfigError, validate_config_files
+from context_eval.config_editor import EditableConfigModel, build_editable_model
 from context_eval.inspect_run import _load_metadata, _load_results
 from context_eval.models import CaseResult, ContextEvalConfig, TaskFile
 from context_eval.workspace import slugify
@@ -47,6 +49,9 @@ def _html(
     metadata: dict[str, Any],
 ) -> str:
     run_id = metadata.get("run_id") or (results[0].run_id if results else "none")
+    editor = (
+        build_editable_model(config, tasks) if config is not None and tasks is not None else None
+    )
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -117,7 +122,7 @@ def _html(
       font: 700 12px/1.2 Consolas, "Courier New", monospace;
       text-transform: uppercase;
     }}
-    input, textarea {{
+    input, textarea, select {{
       width: 100%;
       min-width: 0;
       border: 1px solid var(--line);
@@ -128,6 +133,31 @@ def _html(
       font: 14px/1.4 Consolas, "Courier New", monospace;
     }}
     textarea {{ min-height: 92px; resize: vertical; }}
+    select {{ appearance: auto; }}
+    fieldset {{
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 14px;
+      margin: 0 0 14px;
+      background: rgba(255, 255, 255, 0.55);
+    }}
+    legend {{
+      color: var(--accent);
+      font: 700 12px/1.2 Consolas, "Courier New", monospace;
+      text-transform: uppercase;
+      padding: 0 6px;
+    }}
+    .subgrid {{
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }}
+    .resolved {{
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }}
     table {{
       width: 100%;
       border-collapse: collapse;
@@ -174,7 +204,7 @@ def _html(
       background: rgba(255, 255, 255, 0.55);
     }}
     @media (max-width: 760px) {{
-      header, .grid {{ grid-template-columns: 1fr; }}
+      header, .grid, .subgrid {{ grid-template-columns: 1fr; }}
       h1 {{ font-size: 28px; }}
       th, td {{ font-size: 13px; }}
     }}
@@ -188,73 +218,90 @@ def _html(
     </div>
     <div class="stamp">run {escape(str(run_id))}</div>
   </header>
-  {_config_section(config, tasks)}
-  {_matrix_section(config, tasks)}
+  {_config_section(config, tasks, editor)}
+  {_matrix_section(editor)}
   {_metrics_section(results)}
   {_results_section(results)}
 </main>
+{_editor_script(editor)}
 </body>
 </html>
 """
 
 
-def _config_section(config: ContextEvalConfig | None, tasks: TaskFile | None) -> str:
-    if config is None or tasks is None:
+def _config_section(
+    config: ContextEvalConfig | None,
+    tasks: TaskFile | None,
+    editor: EditableConfigModel | None,
+) -> str:
+    if config is None or tasks is None or editor is None:
         return _empty_section("Configuration", "No config file loaded.")
 
-    validation_commands = "\n".join(config.evaluation.commands) or "none"
-    task_ids = "\n".join(task.id for task in tasks.tasks)
+    evaluation_commands = "\n".join(editor.evaluation_commands)
 
     return f"""
+<div data-role="config-editor">
 <section>
   <h2>Configuration</h2>
   <div class="grid">
-    {_input("Repo path", str(config.repo.path))}
-    {_input("Base ref", config.repo.base_ref)}
-    {_input("Agent command", config.agent.command)}
-    {_input("Agent timeout minutes", str(config.agent.timeout_minutes))}
-    {_textarea("Validation commands", validation_commands)}
-    {_textarea("Tasks", task_ids)}
+    {_input("Repo path", editor.repo.path, "repo.path")}
+    {_input("Base ref", editor.repo.base_ref, "repo.base_ref")}
+    {_input("Agent name", editor.agent.name, "agent.name")}
+    {_input("Agent command", editor.agent.command, "agent.command")}
+    {_input(
+        "Agent timeout minutes",
+        str(editor.agent.timeout_minutes),
+        "agent.timeout_minutes",
+        input_type="number",
+    )}
+    {_select("Agent network", editor.agent.network, "agent.network", ["disabled", "enabled"])}
+    {_input("Tasks file", editor.tasks_path, "tasks_path")}
+    {_textarea("Validation commands", evaluation_commands, "evaluation_commands")}
   </div>
+  <div class="resolved">Resolved repo: <code>{escape(str(config.repo.path))}</code></div>
 </section>
 <section>
   <h2>Variants</h2>
-  <table>
-    <thead><tr><th>Name</th><th>Description</th><th>Overlays</th></tr></thead>
-    <tbody>
-      {''.join(_variant_row(name, variant) for name, variant in config.variants.items())}
-    </tbody>
-  </table>
+  {''.join(_variant_editor(index, variant) for index, variant in enumerate(editor.variants))}
 </section>
+<section>
+  <h2>Tasks</h2>
+  {''.join(_task_editor(index, task) for index, task in enumerate(editor.tasks))}
+</section>
+</div>
 """
 
 
-def _matrix_section(config: ContextEvalConfig | None, tasks: TaskFile | None) -> str:
-    if config is None or tasks is None:
+def _matrix_section(editor: EditableConfigModel | None) -> str:
+    if editor is None:
         return _empty_section("Task x Variant Matrix", "No matrix available.")
 
-    rows = []
-    for task in tasks.tasks:
-        for variant_name in config.variants:
-            repo_ref = task.repo_ref or config.repo.base_ref
-            case_id = f"{slugify(task.id)}__{slugify(variant_name)}"
-            rows.append(
-                "<tr>"
-                f"<td><code>{escape(task.id)}</code></td>"
-                f"<td><code>{escape(variant_name)}</code></td>"
-                f"<td><code>{escape(repo_ref)}</code></td>"
-                f"<td><code>prompts/{escape(case_id)}.md</code></td>"
-                "</tr>"
-            )
     return f"""
 <section>
   <h2>Task x Variant Matrix</h2>
   <table>
     <thead><tr><th>Task</th><th>Variant</th><th>Repo ref</th><th>Prompt path</th></tr></thead>
-    <tbody>{''.join(rows)}</tbody>
+    <tbody id="matrix-body">{_matrix_rows(editor)}</tbody>
   </table>
 </section>
 """
+
+
+def _matrix_rows(editor: EditableConfigModel) -> str:
+    rows = []
+    for task in editor.tasks:
+        for variant in editor.variants:
+            repo_ref = task.repo_ref or editor.repo.base_ref
+            case_id = f"{slugify(task.id)}__{slugify(variant.name)}"
+            rows.append(
+                "<tr>"
+                f"<td><code>{escape(task.id)}</code></td>"
+                f"<td><code>{escape(variant.name)}</code></td>"
+                f"<td><code>{escape(repo_ref)}</code></td>"
+                f"<td><code>prompts/{escape(case_id)}.md</code></td>"
+                "</tr>"
+            )
+    return "".join(rows)
 
 
 def _metrics_section(results: list[CaseResult]) -> str:
@@ -306,7 +353,10 @@ def _results_section(results: list[CaseResult]) -> str:
   <h2>Run Results</h2>
   <table>
     <thead>
-      <tr><th>Case</th><th>Task</th><th>Variant</th><th>Trial</th><th>Status</th><th>Validation</th><th>Confidence</th><th>Changed</th></tr>
+      <tr>
+        <th>Case</th><th>Task</th><th>Variant</th><th>Trial</th>
+        <th>Status</th><th>Validation</th><th>Confidence</th><th>Changed</th>
+      </tr>
     </thead>
     <tbody>{''.join(rows)}</tbody>
   </table>
@@ -314,32 +364,49 @@ def _results_section(results: list[CaseResult]) -> str:
 """
 
 
-def _input(label: str, value: str) -> str:
+def _input(
+    label: str,
+    value: str,
+    field: str,
+    *,
+    input_type: str = "text",
+    data: dict[str, str | int] | None = None,
+) -> str:
     return (
         f'<label>{escape(label)}'
-        f'<input value="{escape(value, quote=True)}" spellcheck="false">'
+        f'<input type="{escape(input_type, quote=True)}" value="{escape(value, quote=True)}" '
+        f'data-field="{escape(field, quote=True)}"{_data_attrs(data)} spellcheck="false">'
         "</label>"
     )
 
 
-def _textarea(label: str, value: str) -> str:
+def _textarea(
+    label: str,
+    value: str,
+    field: str,
+    *,
+    data: dict[str, str | int] | None = None,
+) -> str:
     return (
         f'<label>{escape(label)}'
-        f"<textarea spellcheck=\"false\">{escape(value)}</textarea>"
+        f'<textarea data-field="{escape(field, quote=True)}"{_data_attrs(data)} '
+        f'spellcheck="false">{escape(value)}</textarea>'
         "</label>"
     )
 
 
-def _variant_row(name, variant) -> str:
-    overlays = ", ".join(
-        f"{overlay.source.name} -> {overlay.target}" for overlay in variant.overlays
+def _select(label: str, value: str, field: str, options: list[str]) -> str:
+    if value not in options:
+        options = [value, *options]
+    rendered_options = "".join(
+        f'<option value="{escape(option, quote=True)}"'
+        f'{" selected" if option == value else ""}>{escape(option)}</option>'
+        for option in options
     )
     return (
-        "<tr>"
-        f"<td><code>{escape(name)}</code></td>"
-        f"<td>{escape(variant.description)}</td>"
-        f"<td><code>{escape(overlays or 'none')}</code></td>"
-        "</tr>"
+        f'<label>{escape(label)}'
+        f'<select data-field="{escape(field, quote=True)}">{rendered_options}</select>'
+        "</label>"
     )
 
 
@@ -348,3 +415,195 @@ def _empty_section(title: str, message: str) -> str:
         f"<section><h2>{escape(title)}</h2>"
         f'<div class="empty">{escape(message)}</div></section>'
     )
+
+
+def _variant_editor(index: int, variant) -> str:
+    data = {"variant-index": index}
+    return f"""
+  <fieldset>
+    <legend>Variant {index + 1}</legend>
+    <div class="grid">
+      {_input("Name", variant.name, "variant.name", data=data)}
+      {_textarea("Description", variant.description, "variant.description", data=data)}
+    </div>
+    {_overlay_editors(index, variant.overlays)}
+  </fieldset>
+"""
+
+
+def _overlay_editors(variant_index: int, overlays) -> str:
+    if not overlays:
+        return '<div class="empty">No overlays configured.</div>'
+    rendered = []
+    for overlay_index, overlay in enumerate(overlays):
+        data = {"variant-index": variant_index, "overlay-index": overlay_index}
+        rendered.append(
+            '<div class="subgrid">'
+            f'{_input("Overlay source", overlay.source, "overlay.source", data=data)}'
+            f'{_input("Overlay target", overlay.target, "overlay.target", data=data)}'
+            "</div>"
+        )
+    return "".join(rendered)
+
+
+def _task_editor(index: int, task) -> str:
+    data = {"task-index": index}
+    task_validation_commands = "\n".join(task.validation_commands)
+    return f"""
+  <fieldset>
+    <legend>Task {index + 1}</legend>
+    <div class="grid">
+      {_input("ID", task.id, "task.id", data=data)}
+      {_input("Title", task.title or "", "task.title", data=data)}
+      {_input("Repo ref", task.repo_ref or "", "task.repo_ref", data=data)}
+      {_input("Category", task.category or "", "task.category", data=data)}
+      {_input("Difficulty", task.difficulty or "", "task.difficulty", data=data)}
+      {_textarea(
+        "Task validation commands",
+        task_validation_commands,
+        "task.validation_commands",
+        data=data,
+    )}
+    </div>
+    {_textarea("Prompt", task.prompt, "task.prompt", data=data)}
+  </fieldset>
+"""
+
+
+def _data_attrs(data: dict[str, str | int] | None) -> str:
+    if not data:
+        return ""
+    return "".join(
+        f' data-{escape(str(key), quote=True)}="{escape(str(value), quote=True)}"'
+        for key, value in data.items()
+    )
+
+
+def _editor_script(editor: EditableConfigModel | None) -> str:
+    if editor is None:
+        return ""
+
+    return f"""
+<script type="application/json" id="editable-model">{_json_script_data(editor)}</script>
+<script>
+(() => {{
+  const modelNode = document.getElementById("editable-model");
+  if (!modelNode) {{
+    return;
+  }}
+
+  const editableModel = JSON.parse(modelNode.textContent);
+
+  function splitLines(value) {{
+    return String(value)
+      .split(/\\r?\\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+  }}
+
+  function optionalText(value) {{
+    const trimmed = String(value).trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }}
+
+  function slugify(value) {{
+    const slug = String(value).replace(/[^A-Za-z0-9_.-]+/g, "-").replace(/^-+|-+$/g, "");
+    return slug || "case";
+  }}
+
+  function syncModelFromInputs() {{
+    document
+      .querySelectorAll('[data-role="config-editor"] [data-field]')
+      .forEach((control) => {{
+        const field = control.dataset.field;
+        const value = control.value;
+
+        if (field === "repo.path") {{
+          editableModel.repo.path = value;
+        }} else if (field === "repo.base_ref") {{
+          editableModel.repo.base_ref = value;
+        }} else if (field === "agent.name") {{
+          editableModel.agent.name = value;
+        }} else if (field === "agent.command") {{
+          editableModel.agent.command = value;
+        }} else if (field === "agent.timeout_minutes") {{
+          editableModel.agent.timeout_minutes = Number.parseInt(value, 10) || 1;
+        }} else if (field === "agent.network") {{
+          editableModel.agent.network = value;
+        }} else if (field === "tasks_path") {{
+          editableModel.tasks_path = value;
+        }} else if (field === "evaluation_commands") {{
+          editableModel.evaluation_commands = splitLines(value);
+        }} else if (field === "variant.name" || field === "variant.description") {{
+          const variant = editableModel.variants[Number(control.dataset.variantIndex)];
+          if (variant) {{
+            variant[field.split(".")[1]] = value;
+          }}
+        }} else if (field === "overlay.source" || field === "overlay.target") {{
+          const variant = editableModel.variants[Number(control.dataset.variantIndex)];
+          const overlay = variant?.overlays[Number(control.dataset.overlayIndex)];
+          if (overlay) {{
+            overlay[field.split(".")[1]] = value;
+          }}
+        }} else if (field.startsWith("task.")) {{
+          const task = editableModel.tasks[Number(control.dataset.taskIndex)];
+          if (task) {{
+            const key = field.split(".")[1];
+            task[key] = key === "validation_commands" ? splitLines(value) : optionalText(value);
+            if (key === "id" || key === "prompt") {{
+              task[key] = value;
+            }}
+          }}
+        }}
+      }});
+
+    renderMatrix();
+  }}
+
+  function appendCell(row, value) {{
+    const cell = document.createElement("td");
+    const code = document.createElement("code");
+    code.textContent = value;
+    cell.appendChild(code);
+    row.appendChild(cell);
+  }}
+
+  function renderMatrix() {{
+    const body = document.getElementById("matrix-body");
+    if (!body) {{
+      return;
+    }}
+
+    body.textContent = "";
+    editableModel.tasks.forEach((task) => {{
+      editableModel.variants.forEach((variant) => {{
+        const taskId = task.id || "task";
+        const variantName = variant.name || "variant";
+        const repoRef = task.repo_ref || editableModel.repo.base_ref;
+        const caseId = `${{slugify(taskId)}}__${{slugify(variantName)}}`;
+        const row = document.createElement("tr");
+        appendCell(row, taskId);
+        appendCell(row, variantName);
+        appendCell(row, repoRef);
+        appendCell(row, `prompts/${{caseId}}.md`);
+        body.appendChild(row);
+      }});
+    }});
+  }}
+
+  document
+    .querySelectorAll('[data-role="config-editor"] [data-field]')
+    .forEach((control) => {{
+      control.addEventListener("input", syncModelFromInputs);
+      control.addEventListener("change", syncModelFromInputs);
+    }});
+
+  syncModelFromInputs();
+}})();
+</script>
+"""
+
+
+def _json_script_data(editor: EditableConfigModel) -> str:
+    raw = json.dumps(editor.model_dump(mode="json"), ensure_ascii=True)
+    return raw.replace("&", "\\u0026").replace("<", "\\u003c").replace(">", "\\u003e")

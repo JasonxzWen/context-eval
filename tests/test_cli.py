@@ -595,8 +595,38 @@ evaluation:
     assert "run-1" in html
     assert "completed" in html
     assert "pass_rate=100.0%" in html
+    assert 'data-role="config-editor"' in html
+    for field in [
+        "repo.path",
+        "repo.base_ref",
+        "agent.name",
+        "agent.command",
+        "agent.timeout_minutes",
+        "agent.network",
+        "tasks_path",
+        "evaluation_commands",
+        "variant.name",
+        "variant.description",
+        "overlay.source",
+        "overlay.target",
+        "task.id",
+        "task.title",
+        "task.prompt",
+        "task.repo_ref",
+        "task.category",
+        "task.difficulty",
+        "task.validation_commands",
+    ]:
+        assert f'data-field="{field}"' in html
+    assert 'id="matrix-body"' in html
+    assert "function renderMatrix" in html
+    assert 'addEventListener("input"' in html
     assert "http://" not in html
     assert "https://" not in html
+    assert "<script src=" not in html
+    assert "fetch(" not in html
+    assert "XMLHttpRequest" not in html
+    assert "localStorage" not in html
 
 
 def test_ui_requires_config_or_run_dir(tmp_path: Path) -> None:
