@@ -21,9 +21,10 @@ Every feature phase follows the same loop:
    artifacts when the behavior is file or report oriented.
 5. Documentation: update README or examples only when the user workflow changes.
 
-Phase work should not introduce LLM judges, web dashboards, issue mining, or
-real network isolation unless a later spec explicitly changes the project
-scope.
+Phase work should not introduce LLM judges, hosted or multi-user web
+dashboards, issue mining, or real network isolation unless a later spec
+explicitly changes the project scope. Local-only web or visual interfaces are
+in scope when they help users configure runs or inspect local evaluation data.
 
 ## Phase 0: Baseline Stewardship
 
@@ -233,6 +234,12 @@ Status: planned.
 - JSONL should remain the source of truth.
 - Users should be able to regenerate reports and inspect summaries without
   rerunning agents.
+- Users should have a local web interface or other visual interface for
+  configuring evaluation environments and viewing current or historical test
+  data without editing YAML or reading JSONL directly.
+- The visual interface must remain local-first: it may read and write local
+  config/task files and local run artifacts, but it must not require a hosted
+  service, remote database, or networked dashboard backend.
 
 ### Changes
 
@@ -242,18 +249,33 @@ Status: planned.
   duration, average changed files, and common touched paths.
 - Add result export helpers for CSV and compact JSON summary.
 - Improve report template readability for multiple tasks and variants.
+- Add a local visualization entrypoint, such as `context-eval ui`, a generated
+  static HTML report, or a terminal UI, that can:
+  - configure repo path, base ref, agent command, variants, overlays, tasks, and
+    validation commands;
+  - validate the edited configuration before a run starts;
+  - show the selected task x variant matrix before execution;
+  - display current and previous run results from local `results.jsonl` and
+    `run_metadata.json` files.
 
 ### Test Plan
 
 - Report tests using synthetic JSONL fixtures.
 - Snapshot-style assertions for Markdown sections and key table rows.
 - CLI tests for missing or malformed run directories.
+- Interface tests for config editing, validation feedback, and result loading
+  from local run artifacts.
 
 ### Acceptance Criteria
 
 - Report generation works from JSONL and metadata alone.
 - Low-confidence results are clearly called out.
 - Aggregations are deterministic and documented.
+- A user can configure an evaluation environment through the local visual
+  interface, validate it, and inspect current test data without opening YAML or
+  JSONL files directly.
+- The visual interface can run offline against local files and does not create
+  or depend on a hosted dashboard service.
 
 ## Phase 6: Adapter And Prompt Extensibility
 
@@ -303,6 +325,9 @@ Status: planned.
   - ruff
   - example config validation
   - skill validation with `-SkipExternal`
+- Ensure every CI job installs the dependencies needed by the commands it runs.
+- Keep `-SkipExternal` skill validation independent from maintainer-home tools
+  that are not available on hosted CI runners.
 - Add packaging check with `python -m build` once `build` is in dev
   dependencies.
 - Add `CHANGELOG.md`.
@@ -345,4 +370,5 @@ Before a phase is considered complete:
 5. `context-eval init`.
 6. Trial support.
 7. Report/inspect commands.
-8. CI workflow and release checklist.
+8. Local visual interface for config and run data.
+9. CI workflow and release checklist.

@@ -6,6 +6,7 @@ from typing import Any
 import yaml
 from pydantic import ValidationError
 
+from context_eval.logging import run_command
 from context_eval.models import ContextEvalConfig, TaskFile
 
 
@@ -64,9 +65,44 @@ def load_tasks(path: Path) -> TaskFile:
         raise ConfigError(str(exc)) from exc
 
 
+def filter_tasks(
+    task_file: TaskFile,
+    *,
+    task_ids: list[str] | None = None,
+    categories: list[str] | None = None,
+    difficulties: list[str] | None = None,
+) -> TaskFile:
+    selected_task_ids = task_ids or []
+    selected_categories = categories or []
+    selected_difficulties = difficulties or []
+
+    known_ids = {task.id for task in task_file.tasks}
+    unknown_ids = [task_id for task_id in selected_task_ids if task_id not in known_ids]
+    if unknown_ids:
+        raise ConfigError(f"unknown task id(s): {', '.join(unknown_ids)}")
+
+    tasks = list(task_file.tasks)
+    if selected_task_ids:
+        allowed = set(selected_task_ids)
+        tasks = [task for task in tasks if task.id in allowed]
+    if selected_categories:
+        allowed = set(selected_categories)
+        tasks = [task for task in tasks if task.category in allowed]
+    if selected_difficulties:
+        allowed = set(selected_difficulties)
+        tasks = [task for task in tasks if task.difficulty in allowed]
+
+    if (selected_task_ids or selected_categories or selected_difficulties) and not tasks:
+        raise ConfigError("task filters selected no tasks")
+
+    return TaskFile(tasks=tasks)
+
+
 def validate_config_files(
     config_path: Path,
     tasks_override: Path | None = None,
+    *,
+    strict: bool = False,
 ) -> tuple[ContextEvalConfig, TaskFile]:
     config = load_config(config_path)
     tasks_path = tasks_override.resolve() if tasks_override else config.tasks
@@ -81,4 +117,42 @@ def validate_config_files(
                     f"variant '{name}' overlay source does not exist: {overlay.source}"
                 )
 
+    if strict:
+        _validate_strict_config(config, tasks)
+
     return config, tasks
+
+
+def _validate_strict_config(config: ContextEvalConfig, tasks: TaskFile) -> None:
+    repo_check = run_command(
+        ["git", "-C", str(config.repo.path), "rev-parse", "--is-inside-work-tree"],
+        cwd=config.repo.path,
+        shell=False,
+    )
+    if repo_check.exit_code != 0 or repo_check.stdout.strip() != "true":
+        raise ConfigError(f"repo.path is not a Git repository: {config.repo.path}")
+
+    _require_git_ref(
+        config.repo.path,
+        config.repo.base_ref,
+        f"repo.base_ref does not resolve: {config.repo.base_ref}",
+    )
+    for task in tasks.tasks:
+        if task.repo_ref:
+            _require_git_ref(
+                config.repo.path,
+                task.repo_ref,
+                f"task '{task.id}' repo_ref does not resolve: {task.repo_ref}",
+            )
+
+
+def _require_git_ref(repo_path: Path, ref: str, message: str) -> None:
+    result = run_command(
+        ["git", "-C", str(repo_path), "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"],
+        cwd=repo_path,
+        shell=False,
+    )
+    if result.exit_code != 0:
+        detail = result.stderr.strip() or result.stdout.strip()
+        suffix = f" ({detail})" if detail else ""
+        raise ConfigError(f"{message}{suffix}")

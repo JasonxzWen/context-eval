@@ -1,8 +1,8 @@
 tasks:
-  - id: "minimal-doc-fix"
-    title: "Make a minimal documentation fix"
+  - id: "fix-greeting-punctuation"
+    title: "Fix greeting punctuation"
     prompt: |
-      Find a small documentation issue and fix it with the smallest reasonable change.
-      Do not change runtime behavior.
-    category: "documentation"
+      Fix the fixture greeting so it matches the existing tests.
+      Keep the change minimal and do not rewrite unrelated files.
+    category: "runtime"
     difficulty: "easy"

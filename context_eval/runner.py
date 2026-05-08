@@ -36,6 +36,7 @@ class ContextEvalRunner:
         cleanup: bool = False,
         max_tasks: int | None = None,
         variants: list[str] | None = None,
+        trials: int = 1,
         console: Console | None = None,
     ) -> None:
         self.config = config
@@ -43,14 +44,16 @@ class ContextEvalRunner:
         self.cleanup = cleanup
         self.max_tasks = max_tasks
         self.selected_variants = variants or []
+        if trials < 1:
+            raise ValueError("trials must be at least 1")
+        self.trials = trials
         self.console = console or Console()
         self.config_hash = stable_hash(
             config.model_dump(mode="json", exclude={"output_dir"})
         )
 
     def run(self) -> Path:
-        run_id = datetime.now().strftime("%Y%m%d-%H%M%S")
-        run_dir = self.config.output_dir / run_id
+        run_id, run_dir = self._allocate_run_dir(datetime.now().strftime("%Y%m%d-%H%M%S"))
         self._prepare_run_dir(run_dir)
         self._write_metadata(run_id, run_dir)
 
@@ -61,10 +64,20 @@ class ContextEvalRunner:
 
         for task in tasks:
             for variant_name in variant_names:
-                self.console.print(f"Running task={task.id} variant={variant_name}")
-                result = self._run_case(run_id, run_dir, agent, task, variant_name)
-                with results_path.open("a", encoding="utf-8") as handle:
-                    handle.write(result.model_dump_json() + "\n")
+                for trial_index in range(1, self.trials + 1):
+                    self.console.print(
+                        f"Running task={task.id} variant={variant_name} trial={trial_index}"
+                    )
+                    result = self._run_case(
+                        run_id,
+                        run_dir,
+                        agent,
+                        task,
+                        variant_name,
+                        trial_index,
+                    )
+                    with results_path.open("a", encoding="utf-8") as handle:
+                        handle.write(result.model_dump_json() + "\n")
 
         render_markdown_report(run_dir)
         return run_dir
@@ -76,6 +89,17 @@ class ContextEvalRunner:
         if unknown:
             raise ValueError(f"unknown variant(s): {', '.join(unknown)}")
         return self.selected_variants
+
+    def _allocate_run_dir(self, base_run_id: str) -> tuple[str, Path]:
+        suffix = 1
+        while True:
+            run_id = base_run_id if suffix == 1 else f"{base_run_id}-{suffix}"
+            run_dir = self.config.output_dir / run_id
+            try:
+                run_dir.mkdir(parents=True, exist_ok=False)
+                return run_id, run_dir
+            except FileExistsError:
+                suffix += 1
 
     def _prepare_run_dir(self, run_dir: Path) -> None:
         for child in ["logs", "patches", "prompts", "artifacts", "workspaces"]:
@@ -119,10 +143,11 @@ class ContextEvalRunner:
         agent: CommandTemplateAgent,
         task: TaskConfig,
         variant_name: str,
+        trial_index: int,
     ) -> CaseResult:
         started = time.monotonic()
         repo_ref = task.repo_ref or self.config.repo.base_ref
-        case_name = f"{slugify(task.id)}__{slugify(variant_name)}"
+        case_name = self._case_id(task.id, variant_name, trial_index)
         prompt_path = run_dir / "prompts" / f"{case_name}.md"
         patch_path = run_dir / "patches" / f"{case_name}.patch"
         stdout_path = run_dir / "logs" / f"{case_name}.agent.stdout.log"
@@ -138,6 +163,8 @@ class ContextEvalRunner:
             config_hash=self.config_hash,
             task_hash=stable_hash(task.model_dump(mode="json")),
             variant_hash=stable_hash(self.config.variants[variant_name].model_dump(mode="json")),
+            case_id=case_name,
+            trial_index=trial_index,
             task_id=task.id,
             variant=variant_name,
             repo_ref=repo_ref,
@@ -153,8 +180,10 @@ class ContextEvalRunner:
                 run_dir,
                 task.id,
                 variant_name,
+                case_id=case_name,
             )
             result.workspace_path = self._rel(run_dir, workspace)
+            result.workspace_retained = workspace.exists()
 
             try:
                 apply_overlays(workspace, self.config.variants[variant_name].overlays)
@@ -224,13 +253,14 @@ class ContextEvalRunner:
             return self._finish_result(result, run_dir, started, errors)
         except WorkspaceError as exc:
             errors.append(str(exc))
+            result.status = "workspace_failed"
             return self._finish_result(result, run_dir, started, errors)
         except Exception as exc:  # pragma: no cover - protects long batch runs
             errors.append(str(exc))
             return self._finish_result(result, run_dir, started, errors)
         finally:
-            if self.cleanup and workspace is not None:
-                remove_workspace(self.config.repo.path, workspace)
+            if workspace is not None:
+                self._record_cleanup(result, workspace, errors)
 
     def _finish_result(
         self,
@@ -242,14 +272,17 @@ class ContextEvalRunner:
         result.duration_seconds = time.monotonic() - started
         result.errors = errors
         if result.patch_path is None:
-            patch_path = (
-                run_dir
-                / "patches"
-                / f"{slugify(result.task_id)}__{slugify(result.variant)}.patch"
-            )
+            fallback_case_id = f"{slugify(result.task_id)}__{slugify(result.variant)}"
+            patch_path = run_dir / "patches" / f"{result.case_id or fallback_case_id}.patch"
             if patch_path.exists():
                 result.patch_path = self._rel(run_dir, patch_path)
         return result
+
+    def _case_id(self, task_id: str, variant_name: str, trial_index: int) -> str:
+        base = f"{slugify(task_id)}__{slugify(variant_name)}"
+        if self.trials == 1:
+            return base
+        return f"{base}__trial-{trial_index}"
 
     def _write_validation_logs(
         self,
@@ -262,6 +295,34 @@ class ContextEvalRunner:
             stderr_path = run_dir / "logs" / f"{case_name}.validation.{index}.stderr.log"
             stdout_path.write_text(command_result.stdout, encoding="utf-8")
             stderr_path.write_text(command_result.stderr, encoding="utf-8")
+
+    def _record_cleanup(
+        self,
+        result: CaseResult,
+        workspace: Path,
+        errors: list[str],
+    ) -> None:
+        if not self.cleanup:
+            result.cleanup_status = "skipped"
+            result.workspace_retained = workspace.exists()
+            return
+
+        try:
+            remove_workspace(self.config.repo.path, workspace)
+        except Exception as exc:
+            errors.append(f"workspace cleanup failed: {exc}")
+            result.cleanup_status = "failed"
+            result.workspace_retained = workspace.exists()
+            result.errors = errors
+            return
+
+        result.workspace_retained = workspace.exists()
+        if result.workspace_retained:
+            errors.append("workspace cleanup failed: workspace still exists after cleanup")
+            result.cleanup_status = "failed"
+        else:
+            result.cleanup_status = "succeeded"
+        result.errors = errors
 
     @staticmethod
     def _rel(run_dir: Path, path: Path) -> str:

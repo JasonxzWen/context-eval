@@ -3,8 +3,8 @@ from __future__ import annotations
 import os
 import subprocess
 import time
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 from context_eval.models import CommandResult
 
@@ -26,8 +26,7 @@ def run_command(
             cwd=str(cwd),
             shell=use_shell,
             text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             timeout=timeout_seconds,
             check=False,
             env={**os.environ, **env} if env else None,

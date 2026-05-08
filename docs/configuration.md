@@ -34,6 +34,26 @@ directory.
 
 `network` is recorded in results. The MVP does not implement network isolation.
 
+## Validation
+
+Use `context-eval validate-config --config path/to/context-eval.yaml` to parse
+the config and task files, resolve local paths, and confirm referenced overlay
+sources exist. This default validation does not run an agent, run validation
+commands, create workspaces, or require the target repo path to be a Git
+repository.
+
+Use `context-eval validate-config --strict --config path/to/context-eval.yaml`
+for stronger local preflight checks before running an evaluation. Strict
+validation still has no side effects and does not create a workspace. It adds:
+
+- `repo.path` must be a Git repository.
+- `repo.base_ref` must resolve in that repository.
+- every task-level `repo_ref` must resolve in that repository.
+
+Strict validation is intended to catch local setup errors early. It does not
+install dependencies, test target repository commands, check network access, or
+validate remote repository state.
+
 ## Maintainer Tooling
 
 Project-local skills and agent role configs from `skill-hub` are vendored for

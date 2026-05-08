@@ -7,18 +7,19 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from context_eval import __version__
 
-
 RESULT_SCHEMA_VERSION = "1"
 RunStatus = Literal[
     "completed",
     "agent_failed",
     "timeout",
     "overlay_failed",
+    "workspace_failed",
     "validation_failed",
     "internal_error",
 ]
 ValidationStatus = Literal["passed", "failed", "skipped"]
 Confidence = Literal["high", "medium", "low"]
+CleanupStatus = Literal["skipped", "succeeded", "failed"]
 
 
 class RepoConfig(BaseModel):
@@ -140,6 +141,8 @@ class CaseResult(BaseModel):
     config_hash: str | None = None
     task_hash: str | None = None
     variant_hash: str | None = None
+    case_id: str | None = None
+    trial_index: int = 1
     task_id: str
     variant: str
     repo_ref: str
@@ -154,6 +157,8 @@ class CaseResult(BaseModel):
     stdout_path: str | None = None
     stderr_path: str | None = None
     patch_path: str | None = None
+    workspace_retained: bool = False
+    cleanup_status: CleanupStatus = "skipped"
     changed_files: int = 0
     insertions: int = 0
     deletions: int = 0

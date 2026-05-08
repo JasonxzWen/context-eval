@@ -35,16 +35,35 @@ human review.
 
 ## Quickstart
 
-Install in editable mode:
+Install in editable mode with the test dependency used by the bundled fixture
+example:
 
 ```bash
-python -m pip install -e .
+python -m pip install -e ".[dev]"
+```
+
+Initialize the self-contained fixture repository:
+
+```bash
+python examples/fixture-repo/setup_fixture_repo.py
+```
+
+Create a starter evaluation directory for your own repo:
+
+```bash
+context-eval init --directory my-eval --repo-path ../my-repo --agent-command "myAgent -p {prompt_file}"
 ```
 
 Validate the example config:
 
 ```bash
 context-eval validate-config --config examples/basic/context-eval.yaml
+```
+
+Preview the task x variant matrix without creating workspaces or run artifacts:
+
+```bash
+context-eval run --config examples/basic/context-eval.yaml --dry-run
 ```
 
 Run an evaluation:
@@ -57,6 +76,24 @@ Regenerate a report:
 
 ```bash
 context-eval report .context-eval/runs/<run-id>
+```
+
+Inspect an existing run in the terminal:
+
+```bash
+context-eval inspect-run .context-eval/runs/<run-id>
+```
+
+Compare variant metrics for an existing run:
+
+```bash
+context-eval compare .context-eval/runs/<run-id>
+```
+
+Generate a local visual HTML interface for config and run data:
+
+```bash
+context-eval ui --config examples/basic/context-eval.yaml --run-dir .context-eval/runs/<run-id>
 ```
 
 ## Configuration Example

@@ -2,6 +2,7 @@ import io
 import json
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from rich.console import Console
@@ -27,8 +28,7 @@ def _run_git(repo: Path, *args: str) -> None:
         ["git", *args],
         cwd=repo,
         check=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         text=True,
     )
 
@@ -133,6 +133,8 @@ def test_runner_creates_versioned_result_report_and_agent_patch(tmp_path: Path) 
     assert result["confidence"] == "high"
     assert result["changed_files"] == 1
     assert result["touched_paths"] == ["README.md"]
+    assert result["workspace_retained"] is False
+    assert result["cleanup_status"] == "succeeded"
     assert not (run_dir / result["workspace_path"]).exists()
 
     patch = (run_dir / result["patch_path"]).read_text(encoding="utf-8")
@@ -210,3 +212,207 @@ def test_runner_records_overlay_failure(tmp_path: Path) -> None:
     assert result["validation_status"] == "skipped"
     assert result["confidence"] == "low"
     assert result["errors"]
+
+
+def test_runner_guards_unique_run_directories_for_same_second(
+    tmp_path: Path, monkeypatch
+) -> None:
+    repo = _create_repo(tmp_path)
+    overlay_source = tmp_path / "ctx" / "AGENTS.md"
+    overlay_source.parent.mkdir()
+    overlay_source.write_text("# Instructions\n", encoding="utf-8")
+
+    agent_script = tmp_path / "agent.py"
+    agent_script.write_text("print('no changes')\n", encoding="utf-8")
+    task_file = TaskFile(tasks=[TaskConfig(id="same-second", prompt="Do nothing.")])
+    config = _base_config(
+        tmp_path=tmp_path,
+        repo=repo,
+        agent_command=f'"{sys.executable}" "{agent_script}"',
+        overlay_source=overlay_source,
+    )
+
+    class FrozenDateTime:
+        @classmethod
+        def now(cls):
+            return datetime(2026, 1, 2, 3, 4, 5)
+
+    monkeypatch.setattr("context_eval.runner.datetime", FrozenDateTime)
+
+    first_run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        console=_quiet_console(),
+    ).run()
+    second_run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        console=_quiet_console(),
+    ).run()
+
+    assert first_run_dir != second_run_dir
+    assert first_run_dir.name == "20260102-030405"
+    assert second_run_dir.name == "20260102-030405-2"
+
+    for run_dir in [first_run_dir, second_run_dir]:
+        metadata = json.loads((run_dir / "run_metadata.json").read_text(encoding="utf-8"))
+        result = json.loads((run_dir / "results.jsonl").read_text(encoding="utf-8"))
+        assert metadata["run_id"] == run_dir.name
+        assert result["run_id"] == run_dir.name
+
+
+def test_runner_records_cleanup_skipped_when_workspace_is_retained(tmp_path: Path) -> None:
+    repo = _create_repo(tmp_path)
+    overlay_source = tmp_path / "ctx" / "AGENTS.md"
+    overlay_source.parent.mkdir()
+    overlay_source.write_text("# Instructions\n", encoding="utf-8")
+
+    agent_script = tmp_path / "agent.py"
+    agent_script.write_text("print('no changes')\n", encoding="utf-8")
+    task_file = TaskFile(tasks=[TaskConfig(id="retain-workspace", prompt="Do nothing.")])
+    config = _base_config(
+        tmp_path=tmp_path,
+        repo=repo,
+        agent_command=f'"{sys.executable}" "{agent_script}"',
+        overlay_source=overlay_source,
+    )
+
+    run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        cleanup=False,
+        console=_quiet_console(),
+    ).run()
+    result = json.loads((run_dir / "results.jsonl").read_text(encoding="utf-8"))
+
+    assert result["workspace_retained"] is True
+    assert result["cleanup_status"] == "skipped"
+    assert (run_dir / result["workspace_path"]).exists()
+
+
+def test_runner_records_cleanup_failure_without_hiding_result(
+    tmp_path: Path, monkeypatch
+) -> None:
+    repo = _create_repo(tmp_path)
+    overlay_source = tmp_path / "ctx" / "AGENTS.md"
+    overlay_source.parent.mkdir()
+    overlay_source.write_text("# Instructions\n", encoding="utf-8")
+
+    agent_script = tmp_path / "agent.py"
+    agent_script.write_text("print('no changes')\n", encoding="utf-8")
+    task_file = TaskFile(tasks=[TaskConfig(id="cleanup-fails", prompt="Do nothing.")])
+    config = _base_config(
+        tmp_path=tmp_path,
+        repo=repo,
+        agent_command=f'"{sys.executable}" "{agent_script}"',
+        overlay_source=overlay_source,
+    )
+
+    def fail_cleanup(repo_path: Path, workspace: Path) -> None:
+        raise RuntimeError("cannot remove workspace")
+
+    monkeypatch.setattr("context_eval.runner.remove_workspace", fail_cleanup)
+
+    run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        cleanup=True,
+        console=_quiet_console(),
+    ).run()
+    result = json.loads((run_dir / "results.jsonl").read_text(encoding="utf-8"))
+
+    assert result["status"] == "completed"
+    assert result["workspace_retained"] is True
+    assert result["cleanup_status"] == "failed"
+    assert (run_dir / result["workspace_path"]).exists()
+    assert any("workspace cleanup failed" in error for error in result["errors"])
+
+
+def test_runner_records_workspace_failure_without_running_case_steps(tmp_path: Path) -> None:
+    repo = _create_repo(tmp_path)
+    overlay_source = tmp_path / "ctx" / "AGENTS.md"
+    overlay_source.parent.mkdir()
+    overlay_source.write_text("# Instructions\n", encoding="utf-8")
+
+    agent_script = tmp_path / "agent.py"
+    sentinel_path = tmp_path / "agent-ran.txt"
+    agent_script.write_text(
+        f"from pathlib import Path\nPath({str(sentinel_path)!r}).write_text('ran')\n",
+        encoding="utf-8",
+    )
+    task_file = TaskFile(
+        tasks=[
+            TaskConfig(
+                id="missing-ref",
+                prompt="Do nothing.",
+                repo_ref="refs/heads/does-not-exist",
+                validation=ValidationConfig(commands=["python -c \"raise SystemExit(42)\""]),
+            )
+        ]
+    )
+    config = _base_config(
+        tmp_path=tmp_path,
+        repo=repo,
+        agent_command=f'"{sys.executable}" "{agent_script}"',
+        overlay_source=overlay_source,
+    )
+
+    run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        cleanup=True,
+        console=_quiet_console(),
+    ).run()
+    result = json.loads((run_dir / "results.jsonl").read_text(encoding="utf-8"))
+
+    assert result["status"] == "workspace_failed"
+    assert result["workspace_path"] is None
+    assert result["prompt_path"] is None
+    assert result["stdout_path"] is None
+    assert result["stderr_path"] is None
+    assert result["validation_results"] == []
+    assert result["validation_status"] == "skipped"
+    assert result["cleanup_status"] == "skipped"
+    assert result["workspace_retained"] is False
+    assert result["errors"]
+    assert not sentinel_path.exists()
+
+
+def test_runner_repeats_selected_cases_for_trials(tmp_path: Path) -> None:
+    repo = _create_repo(tmp_path)
+    overlay_source = tmp_path / "ctx" / "AGENTS.md"
+    overlay_source.parent.mkdir()
+    overlay_source.write_text("# Instructions\n", encoding="utf-8")
+
+    agent_script = tmp_path / "agent.py"
+    agent_script.write_text("print('trial run')\n", encoding="utf-8")
+    task_file = TaskFile(tasks=[TaskConfig(id="repeat", prompt="Do nothing.")])
+    config = _base_config(
+        tmp_path=tmp_path,
+        repo=repo,
+        agent_command=f'"{sys.executable}" "{agent_script}"',
+        overlay_source=overlay_source,
+    )
+
+    run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        trials=2,
+        cleanup=True,
+        console=_quiet_console(),
+    ).run()
+    results = [
+        json.loads(line)
+        for line in (run_dir / "results.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+
+    assert len(results) == 2
+    assert [result["trial_index"] for result in results] == [1, 2]
+    assert [result["case_id"] for result in results] == [
+        "repeat__baseline__trial-1",
+        "repeat__baseline__trial-2",
+    ]
+    assert len({result["prompt_path"] for result in results}) == 2
+    assert len({result["stdout_path"] for result in results}) == 2
+    assert len({result["patch_path"] for result in results}) == 2
+    assert len({result["workspace_path"] for result in results}) == 2
