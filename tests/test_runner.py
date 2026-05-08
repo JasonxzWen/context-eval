@@ -2,6 +2,7 @@ import io
 import json
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from rich.console import Console
@@ -210,3 +211,50 @@ def test_runner_records_overlay_failure(tmp_path: Path) -> None:
     assert result["validation_status"] == "skipped"
     assert result["confidence"] == "low"
     assert result["errors"]
+
+
+def test_runner_guards_unique_run_directories_for_same_second(
+    tmp_path: Path, monkeypatch
+) -> None:
+    repo = _create_repo(tmp_path)
+    overlay_source = tmp_path / "ctx" / "AGENTS.md"
+    overlay_source.parent.mkdir()
+    overlay_source.write_text("# Instructions\n", encoding="utf-8")
+
+    agent_script = tmp_path / "agent.py"
+    agent_script.write_text("print('no changes')\n", encoding="utf-8")
+    task_file = TaskFile(tasks=[TaskConfig(id="same-second", prompt="Do nothing.")])
+    config = _base_config(
+        tmp_path=tmp_path,
+        repo=repo,
+        agent_command=f'"{sys.executable}" "{agent_script}"',
+        overlay_source=overlay_source,
+    )
+
+    class FrozenDateTime:
+        @classmethod
+        def now(cls):
+            return datetime(2026, 1, 2, 3, 4, 5)
+
+    monkeypatch.setattr("context_eval.runner.datetime", FrozenDateTime)
+
+    first_run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        console=_quiet_console(),
+    ).run()
+    second_run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        console=_quiet_console(),
+    ).run()
+
+    assert first_run_dir != second_run_dir
+    assert first_run_dir.name == "20260102-030405"
+    assert second_run_dir.name == "20260102-030405-2"
+
+    for run_dir in [first_run_dir, second_run_dir]:
+        metadata = json.loads((run_dir / "run_metadata.json").read_text(encoding="utf-8"))
+        result = json.loads((run_dir / "results.jsonl").read_text(encoding="utf-8"))
+        assert metadata["run_id"] == run_dir.name
+        assert result["run_id"] == run_dir.name

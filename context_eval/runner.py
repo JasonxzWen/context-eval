@@ -49,8 +49,7 @@ class ContextEvalRunner:
         )
 
     def run(self) -> Path:
-        run_id = datetime.now().strftime("%Y%m%d-%H%M%S")
-        run_dir = self.config.output_dir / run_id
+        run_id, run_dir = self._allocate_run_dir(datetime.now().strftime("%Y%m%d-%H%M%S"))
         self._prepare_run_dir(run_dir)
         self._write_metadata(run_id, run_dir)
 
@@ -76,6 +75,17 @@ class ContextEvalRunner:
         if unknown:
             raise ValueError(f"unknown variant(s): {', '.join(unknown)}")
         return self.selected_variants
+
+    def _allocate_run_dir(self, base_run_id: str) -> tuple[str, Path]:
+        suffix = 1
+        while True:
+            run_id = base_run_id if suffix == 1 else f"{base_run_id}-{suffix}"
+            run_dir = self.config.output_dir / run_id
+            try:
+                run_dir.mkdir(parents=True, exist_ok=False)
+                return run_id, run_dir
+            except FileExistsError:
+                suffix += 1
 
     def _prepare_run_dir(self, run_dir: Path) -> None:
         for child in ["logs", "patches", "prompts", "artifacts", "workspaces"]:

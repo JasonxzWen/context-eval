@@ -47,5 +47,10 @@ variant records. `config_hash` excludes the run output directory so moving
 artifacts does not change the experiment identity. These hashes are intended for
 grouping and reproducibility checks, not for cryptographic security.
 
+Each run directory is derived from the run start timestamp and is guarded for
+uniqueness. If another run has already created the timestamp directory,
+context-eval appends a numeric suffix and records that selected value as the
+`run_id` in `run_metadata.json` and every `results.jsonl` row.
+
 context-eval evaluates the effect of context variants, not the absolute
 capability of an agent.
