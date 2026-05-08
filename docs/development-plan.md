@@ -326,6 +326,8 @@ Status: planned.
   - example config validation
   - skill validation with `-SkipExternal`
 - Ensure every CI job installs the dependencies needed by the commands it runs.
+- Keep `-SkipExternal` skill validation independent from maintainer-home tools
+  that are not available on hosted CI runners.
 - Add packaging check with `python -m build` once `build` is in dev
   dependencies.
 - Add `CHANGELOG.md`.

@@ -26,6 +26,14 @@ def test_skill_validation_ci_job_installs_script_dependencies() -> None:
     )
 
 
+def test_skill_validation_skip_external_does_not_require_home_tools() -> None:
+    script = Path("scripts/validate-skills.ps1").read_text(encoding="utf-8")
+
+    assert "[string]$QuickValidatePath" in script
+    assert "-not $SkipExternal" in script
+    assert "Skipping quick_validate.py" in script
+
+
 def test_release_checklist_and_changelog_exist() -> None:
     checklist = Path("docs/release-checklist.md")
     changelog = Path("CHANGELOG.md")
