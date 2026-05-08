@@ -35,10 +35,17 @@ human review.
 
 ## Quickstart
 
-Install in editable mode:
+Install in editable mode with the test dependency used by the bundled fixture
+example:
 
 ```bash
-python -m pip install -e .
+python -m pip install -e ".[dev]"
+```
+
+Initialize the self-contained fixture repository:
+
+```bash
+python examples/fixture-repo/setup_fixture_repo.py
 ```
 
 Validate the example config:

@@ -1,10 +1,10 @@
 repo:
-  path: "../.."
-  base_ref: "HEAD"
+  path: "../fixture-repo"
+  base_ref: "main"
 
 agent:
   name: "example-agent"
-  command: "python -c \"from pathlib import Path; print(Path(r'{prompt_file}').read_text(encoding='utf-8')[:120])\""
+  command: "python scripts/example_agent.py \"{prompt_file}\""
   timeout_minutes: 5
   network: "disabled"
 
@@ -26,4 +26,5 @@ variants:
         target: "docs/deepwiki"
 
 evaluation:
-  commands: []
+  commands:
+    - "python -m pytest"
