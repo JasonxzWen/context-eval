@@ -3,8 +3,13 @@ from pathlib import Path
 
 import pytest
 
-from context_eval.config import ConfigError
-from context_eval.config import filter_tasks, load_config, load_tasks, validate_config_files
+from context_eval.config import (
+    ConfigError,
+    filter_tasks,
+    load_config,
+    load_tasks,
+    validate_config_files,
+)
 from context_eval.models import TaskConfig, TaskFile
 
 
@@ -13,8 +18,7 @@ def _run_git(repo: Path, *args: str) -> None:
         ["git", *args],
         cwd=repo,
         check=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         text=True,
     )
 

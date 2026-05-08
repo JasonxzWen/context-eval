@@ -23,7 +23,8 @@ def test_release_checklist_and_changelog_exist() -> None:
 
     checklist_text = checklist.read_text(encoding="utf-8")
     assert "python -m pytest" in checklist_text
-    assert "context-eval validate-config --config examples/basic/context-eval.yaml" in checklist_text
+    expected_validate = "context-eval validate-config --config examples/basic/context-eval.yaml"
+    assert expected_validate in checklist_text
     assert "scripts\\validate-skills.ps1 -SkipExternal" in checklist_text
     assert "context_eval" in checklist_text
     assert ".context-eval" in checklist_text

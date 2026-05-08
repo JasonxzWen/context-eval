@@ -200,7 +200,10 @@ def _html(
 
 def _config_section(config: ContextEvalConfig | None, tasks: TaskFile | None) -> str:
     if config is None or tasks is None:
-        return '<section><h2>Configuration</h2><div class="empty">No config file loaded.</div></section>'
+        return _empty_section("Configuration", "No config file loaded.")
+
+    validation_commands = "\n".join(config.evaluation.commands) or "none"
+    task_ids = "\n".join(task.id for task in tasks.tasks)
 
     return f"""
 <section>
@@ -210,8 +213,8 @@ def _config_section(config: ContextEvalConfig | None, tasks: TaskFile | None) ->
     {_input("Base ref", config.repo.base_ref)}
     {_input("Agent command", config.agent.command)}
     {_input("Agent timeout minutes", str(config.agent.timeout_minutes))}
-    {_textarea("Validation commands", "\\n".join(config.evaluation.commands) or "none")}
-    {_textarea("Tasks", "\\n".join(task.id for task in tasks.tasks))}
+    {_textarea("Validation commands", validation_commands)}
+    {_textarea("Tasks", task_ids)}
   </div>
 </section>
 <section>
@@ -228,7 +231,7 @@ def _config_section(config: ContextEvalConfig | None, tasks: TaskFile | None) ->
 
 def _matrix_section(config: ContextEvalConfig | None, tasks: TaskFile | None) -> str:
     if config is None or tasks is None:
-        return '<section><h2>Task x Variant Matrix</h2><div class="empty">No matrix available.</div></section>'
+        return _empty_section("Task x Variant Matrix", "No matrix available.")
 
     rows = []
     for task in tasks.tasks:
@@ -256,7 +259,7 @@ def _matrix_section(config: ContextEvalConfig | None, tasks: TaskFile | None) ->
 
 def _metrics_section(results: list[CaseResult]) -> str:
     if not results:
-        return '<section><h2>Variant Metrics</h2><div class="empty">No run results loaded.</div></section>'
+        return _empty_section("Variant Metrics", "No run results loaded.")
 
     metrics = []
     for stat in _variant_stats(results):
@@ -282,7 +285,7 @@ def _metrics_section(results: list[CaseResult]) -> str:
 
 def _results_section(results: list[CaseResult]) -> str:
     if not results:
-        return '<section><h2>Run Results</h2><div class="empty">No result rows loaded.</div></section>'
+        return _empty_section("Run Results", "No result rows loaded.")
 
     rows = []
     for result in results:
@@ -328,11 +331,20 @@ def _textarea(label: str, value: str) -> str:
 
 
 def _variant_row(name, variant) -> str:
-    overlays = ", ".join(f"{overlay.source.name} -> {overlay.target}" for overlay in variant.overlays)
+    overlays = ", ".join(
+        f"{overlay.source.name} -> {overlay.target}" for overlay in variant.overlays
+    )
     return (
         "<tr>"
         f"<td><code>{escape(name)}</code></td>"
         f"<td>{escape(variant.description)}</td>"
         f"<td><code>{escape(overlays or 'none')}</code></td>"
         "</tr>"
+    )
+
+
+def _empty_section(title: str, message: str) -> str:
+    return (
+        f"<section><h2>{escape(title)}</h2>"
+        f'<div class="empty">{escape(message)}</div></section>'
     )

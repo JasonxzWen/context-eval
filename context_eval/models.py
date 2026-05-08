@@ -7,7 +7,6 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from context_eval import __version__
 
-
 RESULT_SCHEMA_VERSION = "1"
 RunStatus = Literal[
     "completed",

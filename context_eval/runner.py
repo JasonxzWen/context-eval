@@ -272,11 +272,8 @@ class ContextEvalRunner:
         result.duration_seconds = time.monotonic() - started
         result.errors = errors
         if result.patch_path is None:
-            patch_path = (
-                run_dir
-                / "patches"
-                / f"{result.case_id or f'{slugify(result.task_id)}__{slugify(result.variant)}'}.patch"
-            )
+            fallback_case_id = f"{slugify(result.task_id)}__{slugify(result.variant)}"
+            patch_path = run_dir / "patches" / f"{result.case_id or fallback_case_id}.patch"
             if patch_path.exists():
                 result.patch_path = self._rel(run_dir, patch_path)
         return result

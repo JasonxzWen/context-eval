@@ -3,7 +3,6 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parent
 
 
@@ -12,8 +11,7 @@ def run_git(*args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
         ["git", *args],
         cwd=ROOT,
         check=check,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         text=True,
     )
 

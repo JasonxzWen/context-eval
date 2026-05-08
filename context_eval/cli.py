@@ -159,8 +159,14 @@ def compare_command(
 
 @app.command("ui")
 def ui_command(
-    config: Annotated[Path | None, typer.Option("--config", "-c", exists=True, dir_okay=False)] = None,
-    run_dir: Annotated[Path | None, typer.Option("--run-dir", exists=True, file_okay=False)] = None,
+    config: Annotated[
+        Path | None,
+        typer.Option("--config", "-c", exists=True, dir_okay=False),
+    ] = None,
+    run_dir: Annotated[
+        Path | None,
+        typer.Option("--run-dir", exists=True, file_okay=False),
+    ] = None,
     output: Annotated[
         Path,
         typer.Option("--output", "-o", dir_okay=False, help="HTML file to write."),
