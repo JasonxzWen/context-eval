@@ -8,6 +8,7 @@ from rich.console import Console
 
 from context_eval.inspect_run import _load_metadata, _load_results
 from context_eval.models import CaseResult
+from context_eval.reporting import format_optional_number, telemetry_summary
 
 
 def compare_run(run_dir: Path, console: Console) -> None:
@@ -31,6 +32,11 @@ def compare_run(run_dir: Path, console: Console) -> None:
             f"avg_duration={stat['avg_duration']:.2f} "
             f"avg_changed_files={stat['avg_changed_files']:.2f} "
             f"common_touched_paths={stat['common_touched_paths']}"
+            f" telemetry_statuses={stat['telemetry_statuses']} "
+            f"avg_agent_duration={format_optional_number(stat['avg_agent_duration_seconds'])} "
+            f"avg_total_tokens={format_optional_number(stat['avg_total_tokens'])} "
+            f"avg_tool_calls={format_optional_number(stat['avg_tool_calls'])} "
+            f"common_tool_names={stat['common_tool_names']}"
         )
 
 
@@ -44,6 +50,7 @@ def _variant_stats(results: list[CaseResult]) -> list[dict[str, object]]:
         total = len(items)
         touched_paths = Counter(path for item in items for path in item.touched_paths)
         common_paths = ",".join(path for path, _ in touched_paths.most_common(5)) or "-"
+        telemetry = telemetry_summary(items)
         stats.append(
             {
                 "variant": variant,
@@ -63,6 +70,7 @@ def _variant_stats(results: list[CaseResult]) -> list[dict[str, object]]:
                 "avg_duration": mean(item.duration_seconds for item in items) if items else 0.0,
                 "avg_changed_files": mean(item.changed_files for item in items) if items else 0.0,
                 "common_touched_paths": common_paths,
+                **telemetry,
             }
         )
     return stats

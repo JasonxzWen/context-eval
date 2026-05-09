@@ -7,6 +7,7 @@ from typing import Any
 from rich.console import Console
 
 from context_eval.models import CaseResult
+from context_eval.reporting import format_optional_int, format_optional_number
 
 
 def inspect_run(run_dir: Path, console: Console) -> None:
@@ -38,6 +39,11 @@ def inspect_run(run_dir: Path, console: Console) -> None:
             f"validation={result.validation_status} "
             f"confidence={result.confidence} "
             f"changed_files={result.changed_files}"
+            f" telemetry_status={result.telemetry_status} "
+            f"telemetry_source={result.telemetry_source} "
+            f"agent_duration={format_optional_number(result.agent_duration_seconds)} "
+            f"total_tokens={format_optional_int(result.total_tokens)} "
+            f"tool_calls={format_optional_int(result.tool_call_count)}"
         )
 
 
