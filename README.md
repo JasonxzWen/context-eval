@@ -90,6 +90,13 @@ Compare variant metrics for an existing run:
 context-eval compare .context-eval/runs/<run-id>
 ```
 
+Export deterministic CSV or compact JSON summaries from existing run artifacts:
+
+```bash
+context-eval export .context-eval/runs/<run-id> --format csv --output summary.csv
+context-eval export .context-eval/runs/<run-id> --format json --output summary.json
+```
+
 Generate a local visual HTML interface for config and run data:
 
 ```bash

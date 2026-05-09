@@ -94,6 +94,46 @@ artifacts. It must remain a static, self-contained HTML file. It must not issue
 external network requests, open sockets, call a hosted dashboard, write run
 artifacts, or run agents.
 
+## Local Workflow Examples
+
+A common workflow is to run the same task set with separate local configs, one
+per coding agent. Keep the repo, variants, tasks, trials, and validation
+commands aligned so the exported observations are easier to compare:
+
+```powershell
+context-eval run --config .\evals\codex\context-eval.yaml --trials 3
+context-eval run --config .\evals\claude-code\context-eval.yaml --trials 3
+context-eval run --config .\evals\opencode\context-eval.yaml --trials 3
+```
+
+Each config should set a distinct `agent.name` so every `results.jsonl` row has
+a useful `agent_name` value:
+
+```yaml
+agent:
+  name: "codex-local"
+  command: "codex exec -C {workspace} - < {prompt_file}"
+```
+
+Use terminal inspection and exports against existing run directories:
+
+```powershell
+context-eval inspect-run .context-eval\runs\<run-id>
+context-eval compare .context-eval\runs\<run-id>
+context-eval export .context-eval\runs\<run-id> --format csv --output agent-summary.csv
+context-eval export .context-eval\runs\<run-id> --format json --output agent-summary.json
+context-eval ui --run-dir .context-eval\runs\<run-id> --output agent-summary.html
+```
+
+If you need one combined CSV for separate run directories, export each run and
+join the files with an external script. context-eval still treats each row as a
+local observation from the recorded `agent_name`, task, variant, trial, status,
+duration, token, and tool-call fields.
+
+Do not publish the output as an absolute leaderboard. The observations are only
+valid for the local repository, prompts, context variants, validation commands,
+agent versions, machine state, and telemetry collectors used for those runs.
+
 ## Non-Goals
 
 This feature does not add an LLM judge, hosted dashboard, multi-user web

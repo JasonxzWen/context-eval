@@ -61,3 +61,28 @@ def test_development_plan_links_multi_agent_comparison_spec() -> None:
     assert "docs/multi-agent-comparison.md" in plan
     assert "CSV and compact JSON" in plan
     assert "not an absolute" in plan
+
+
+def test_multi_agent_comparison_spec_documents_local_workflow_examples() -> None:
+    spec = Path("docs/multi-agent-comparison.md").read_text(encoding="utf-8")
+
+    for term in [
+        "## Local Workflow Examples",
+        "context-eval run --config",
+        "agent.name",
+        "context-eval inspect-run",
+        "context-eval compare",
+        "context-eval export",
+        "--format csv",
+        "--format json",
+        "context-eval ui --run-dir",
+        "Do not publish the output as an absolute leaderboard",
+    ]:
+        assert term in spec
+
+
+def test_readme_mentions_export_commands() -> None:
+    readme = Path("README.md").read_text(encoding="utf-8")
+
+    assert "context-eval export .context-eval/runs/<run-id> --format csv" in readme
+    assert "context-eval export .context-eval/runs/<run-id> --format json" in readme
