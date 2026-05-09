@@ -39,18 +39,28 @@ def format_optional_number(value: float | int | None) -> str:
     return "-" if value is None else f"{float(value):.2f}"
 
 
+def format_status_counts(value: dict[str, int]) -> str:
+    return ",".join(f"{status}={count}" for status, count in value.items()) or "-"
+
+
+def status_counts_map(counts: Counter[str]) -> dict[str, int]:
+    ordered: dict[str, int] = {}
+    for status in TELEMETRY_STATUS_ORDER:
+        if counts[status]:
+            ordered[status] = counts[status]
+    for status in sorted(counts):
+        if status not in ordered and counts[status]:
+            ordered[status] = counts[status]
+    return ordered
+
+
 def _mean_available(values) -> float | None:
     available = [value for value in values if value is not None]
     return mean(available) if available else None
 
 
 def _status_summary(counts: Counter[str]) -> str:
-    parts = [
-        f"{status}={counts[status]}"
-        for status in TELEMETRY_STATUS_ORDER
-        if counts[status]
-    ]
-    return ",".join(parts) or "-"
+    return format_status_counts(status_counts_map(counts))
 
 
 def _common_tool_names(items: list[CaseResult]) -> str:

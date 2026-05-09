@@ -8,8 +8,8 @@ from pathlib import Path
 from statistics import mean
 from typing import Any
 
-from context_eval.inspect_run import _load_metadata, _load_results
 from context_eval.models import CaseResult
+from context_eval.reporting import status_counts_map
 
 CASE_COLUMNS = [
     "run_id",
@@ -84,9 +84,7 @@ def agent_summary_rows(results: list[CaseResult]) -> list[dict[str, Any]]:
                 ),
                 "avg_total_tokens": _mean_optional(item.total_tokens for item in items),
                 "avg_tool_call_count": _mean_optional(item.tool_call_count for item in items),
-                "telemetry_statuses": {
-                    status: telemetry_statuses[status] for status in sorted(telemetry_statuses)
-                },
+                "telemetry_statuses": status_counts_map(telemetry_statuses),
                 "common_tool_names": _common_tool_names(tool_counts),
             }
         )
@@ -115,6 +113,29 @@ def _sorted_results(results: list[CaseResult]) -> list[CaseResult]:
             result.case_id or "",
         ),
     )
+
+
+def _load_results(run_dir: Path) -> list[CaseResult]:
+    results_path = run_dir / "results.jsonl"
+    if not results_path.exists():
+        raise FileNotFoundError(f"results file not found: {results_path}")
+
+    results: list[CaseResult] = []
+    for line_number, line in enumerate(results_path.read_text(encoding="utf-8").splitlines(), 1):
+        if not line.strip():
+            continue
+        try:
+            results.append(CaseResult.model_validate_json(line))
+        except Exception as exc:
+            raise ValueError(f"malformed results.jsonl line {line_number}: {exc}") from exc
+    return results
+
+
+def _load_metadata(run_dir: Path) -> dict[str, Any]:
+    metadata_path = run_dir / "run_metadata.json"
+    if not metadata_path.exists():
+        return {}
+    return json.loads(metadata_path.read_text(encoding="utf-8"))
 
 
 def _case_csv_row(result: CaseResult) -> dict[str, str | int]:
