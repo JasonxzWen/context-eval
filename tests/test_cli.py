@@ -874,6 +874,73 @@ evaluation:
     assert "showSaveFilePicker" not in html
 
 
+def test_ui_shows_agent_summary_from_run_artifacts(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    results = [
+        CaseResult(
+            run_id="run-1",
+            case_id="task-1__baseline__agent-a",
+            task_id="task-1",
+            variant="baseline",
+            repo_ref="main",
+            agent_name="agent-a",
+            network="disabled",
+            status="completed",
+            validation_status="passed",
+            confidence="high",
+            duration_seconds=2.0,
+            agent_duration_seconds=1.5,
+            total_tokens=40,
+            tool_call_count=2,
+            telemetry_status="collected",
+            telemetry_source="json-file",
+            tool_calls_by_name={"read": 2},
+        ),
+        CaseResult(
+            run_id="run-1",
+            case_id="task-1__baseline__agent-b",
+            task_id="task-1",
+            variant="baseline",
+            repo_ref="main",
+            agent_name="agent-b",
+            network="disabled",
+            status="timeout",
+            timeout=True,
+            validation_status="failed",
+            confidence="medium",
+            duration_seconds=6.0,
+        ),
+    ]
+    (run_dir / "results.jsonl").write_text(
+        "\n".join(result.model_dump_json() for result in results) + "\n",
+        encoding="utf-8",
+    )
+    output_path = tmp_path / "context-eval-ui.html"
+
+    output = CliRunner().invoke(
+        app,
+        ["ui", "--run-dir", str(run_dir), "--output", str(output_path)],
+    )
+
+    assert output.exit_code == 0
+    html = output_path.read_text(encoding="utf-8")
+    assert "Agent Metrics" in html
+    assert "agent-a" in html
+    assert "agent-b" in html
+    assert "avg_agent_duration=1.50" in html
+    assert "avg_total_tokens=40.00" in html
+    assert "avg_tool_calls=2.00" in html
+    assert "telemetry_statuses=collected=1" in html
+    assert "telemetry_statuses=unavailable=1" in html
+    assert "common_tool_names=read" in html
+    assert "http://" not in html
+    assert "https://" not in html
+    assert "fetch(" not in html
+    assert "XMLHttpRequest" not in html
+    assert "WebSocket" not in html
+
+
 def test_ui_requires_config_or_run_dir(tmp_path: Path) -> None:
     output = CliRunner().invoke(app, ["ui", "--output", str(tmp_path / "ui.html")])
 

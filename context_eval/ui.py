@@ -8,8 +8,10 @@ from typing import Any
 from context_eval.compare import _variant_stats
 from context_eval.config import ConfigError, validate_config_files
 from context_eval.config_editor import EditableConfigModel, build_editable_model
+from context_eval.export import agent_summary_rows, has_multiple_agents
 from context_eval.inspect_run import _load_metadata, _load_results
 from context_eval.models import CaseResult, ContextEvalConfig, TaskFile
+from context_eval.reporting import format_optional_number, format_status_counts
 from context_eval.workspace import slugify
 
 
@@ -280,6 +282,7 @@ def _html(
   {_matrix_section(editor)}
   {_export_section(config, editor)}
   {_metrics_section(results)}
+  {_agent_metrics_section(results)}
   {_results_section(results)}
 </main>
 {_editor_script(editor)}
@@ -471,6 +474,36 @@ def _metrics_section(results: list[CaseResult]) -> str:
     return f"""
 <section>
   <h2>Variant Metrics</h2>
+  <div class="metrics">{''.join(metrics)}</div>
+</section>
+"""
+
+
+def _agent_metrics_section(results: list[CaseResult]) -> str:
+    if not results or not has_multiple_agents(results):
+        return ""
+
+    metrics = []
+    for stat in agent_summary_rows(results):
+        metrics.append(
+            '<div class="metric">'
+            f"<strong>{escape(str(stat['agent_name']))}</strong>"
+            f"<code>cases={int(stat['cases'])}</code><br>"
+            f"<code>pass_rate={float(stat['pass_rate']):.1%}</code><br>"
+            f"<code>avg_duration={format_optional_number(stat['avg_duration_seconds'])}</code><br>"
+            f"<code>avg_agent_duration="
+            f"{format_optional_number(stat['avg_agent_duration_seconds'])}</code><br>"
+            f"<code>avg_total_tokens={format_optional_number(stat['avg_total_tokens'])}</code><br>"
+            f"<code>avg_tool_calls={format_optional_number(stat['avg_tool_call_count'])}</code><br>"
+            f"<code>telemetry_statuses="
+            f"{escape(format_status_counts(stat['telemetry_statuses']))}</code><br>"
+            f"<code>common_tool_names="
+            f"{escape(','.join(stat['common_tool_names']) or '-')}</code>"
+            "</div>"
+        )
+    return f"""
+<section>
+  <h2>Agent Metrics</h2>
   <div class="metrics">{''.join(metrics)}</div>
 </section>
 """
