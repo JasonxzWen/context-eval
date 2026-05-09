@@ -84,25 +84,39 @@ for ($i = 1; $i -le $MaxIterations; $i++) {
   Write-Host "  Ralph Iteration $i of $MaxIterations (codex)"
   Write-Host "==============================================================="
 
+  $lastMessageFile = [System.IO.Path]::GetTempFileName()
   $codexArgs = @(
+    "-a", $Approval,
     "exec",
     "-C", $WorkDir,
-    "--sandbox", $Sandbox,
-    "--ask-for-approval", $Approval
+    "--sandbox", $Sandbox
   )
 
   if ($Model) {
     $codexArgs += @("--model", $Model)
   }
 
+  $codexArgs += @("-o", $lastMessageFile)
   $codexArgs += "-"
 
-  $output = $prompt | & codex @codexArgs 2>&1
-  $exitCode = $LASTEXITCODE
+  $previousErrorActionPreference = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  try {
+    $output = $prompt | & codex @codexArgs 2>&1
+    $exitCode = $LASTEXITCODE
+  } finally {
+    $ErrorActionPreference = $previousErrorActionPreference
+  }
   $text = ($output | Out-String)
   Write-Host $text
 
-  if ($text -match "<promise>COMPLETE</promise>") {
+  $lastMessageText = ""
+  if (Test-Path $lastMessageFile) {
+    $lastMessageText = Get-Content -LiteralPath $lastMessageFile -Raw
+    Remove-Item -LiteralPath $lastMessageFile -Force
+  }
+
+  if ($lastMessageText -match "<promise>COMPLETE</promise>") {
     Write-Host ""
     Write-Host "Ralph completed all tasks at iteration $i of $MaxIterations."
     exit 0
