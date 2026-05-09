@@ -7,11 +7,16 @@ from context_eval.adapters.base import (
     TelemetryCollectionResult,
     TelemetryCollector,
 )
-from context_eval.adapters.command import CommandTemplateAgent, render_command_template
+from context_eval.adapters.command import (
+    CommandTemplateAgent,
+    JsonFileTelemetryCollector,
+    render_command_template,
+)
 
 __all__ = [
     "AgentAdapter",
     "CommandTemplateAgent",
+    "JsonFileTelemetryCollector",
     "NoOpTelemetryCollector",
     "TelemetryCollectionPreparation",
     "TelemetryCollectionResult",

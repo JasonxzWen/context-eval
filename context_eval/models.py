@@ -21,6 +21,7 @@ ValidationStatus = Literal["passed", "failed", "skipped"]
 Confidence = Literal["high", "medium", "low"]
 CleanupStatus = Literal["skipped", "succeeded", "failed"]
 TelemetryStatus = Literal["unavailable", "collected", "partial", "error"]
+TelemetryCollectorKind = Literal["none", "json-file"]
 
 
 class RepoConfig(BaseModel):
@@ -28,11 +29,39 @@ class RepoConfig(BaseModel):
     base_ref: str = "HEAD"
 
 
+class AgentTelemetryConfig(BaseModel):
+    collector: TelemetryCollectorKind = "none"
+    file: str = "telemetry.json"
+    environment_variable: str | None = "CONTEXT_EVAL_TELEMETRY_FILE"
+
+    @field_validator("file")
+    @classmethod
+    def validate_file(cls, value: str) -> str:
+        normalized = value.replace("\\", "/").strip()
+        if not normalized:
+            raise ValueError("telemetry file must not be empty")
+        path = PurePosixPath(normalized)
+        if path.is_absolute() or ".." in path.parts:
+            raise ValueError("telemetry file must be a safe relative path")
+        return path.as_posix()
+
+    @field_validator("environment_variable")
+    @classmethod
+    def validate_environment_variable(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("telemetry environment variable must not be empty")
+        return stripped
+
+
 class AgentConfig(BaseModel):
     name: str
     command: str
     timeout_minutes: int = Field(default=60, ge=1)
     network: str = "disabled"
+    telemetry: AgentTelemetryConfig = Field(default_factory=AgentTelemetryConfig)
 
 
 class OverlayConfig(BaseModel):

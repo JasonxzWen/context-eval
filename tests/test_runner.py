@@ -11,6 +11,7 @@ from context_eval import __version__
 from context_eval.models import (
     RESULT_SCHEMA_VERSION,
     AgentConfig,
+    AgentTelemetryConfig,
     ContextEvalConfig,
     EvaluationConfig,
     OverlayConfig,
@@ -154,6 +155,98 @@ def test_runner_creates_versioned_result_report_and_agent_patch(tmp_path: Path) 
     report = (run_dir / "report.md").read_text(encoding="utf-8")
     assert "context-eval evaluates the effect of context variants" in report
     assert result["config_hash"] in report
+
+
+def test_runner_records_json_file_agent_telemetry(tmp_path: Path) -> None:
+    repo = _create_repo(tmp_path)
+    overlay_source = tmp_path / "ctx" / "AGENTS.md"
+    overlay_source.parent.mkdir()
+    overlay_source.write_text("# Instructions\n", encoding="utf-8")
+
+    agent_script = tmp_path / "agent.py"
+    agent_script.write_text(
+        "import json\n"
+        "import sys\n"
+        "from pathlib import Path\n"
+        "telemetry = Path(sys.argv[1])\n"
+        "telemetry.parent.mkdir(parents=True, exist_ok=True)\n"
+        "telemetry.write_text(json.dumps({\n"
+        "    'prompt_tokens': 11,\n"
+        "    'completion_tokens': 13,\n"
+        "    'total_tokens': 24,\n"
+        "    'reasoning_tokens': 3,\n"
+        "    'tool_calls_by_name': {'read': 1, 'edit': 2},\n"
+        "}), encoding='utf-8')\n"
+        "p = Path('README.md')\n"
+        "p.write_text(p.read_text(encoding='utf-8') + 'telemetry run\\n', encoding='utf-8')\n",
+        encoding="utf-8",
+    )
+    task_file = TaskFile(tasks=[TaskConfig(id="telemetry", prompt="Append a line.")])
+    config = _base_config(
+        tmp_path=tmp_path,
+        repo=repo,
+        agent_command=f'"{sys.executable}" "{agent_script}" "{{telemetry_file}}"',
+        overlay_source=overlay_source,
+    )
+    config.agent.telemetry = AgentTelemetryConfig(collector="json-file")
+
+    run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        cleanup=True,
+        console=_quiet_console(),
+    ).run()
+    result = json.loads((run_dir / "results.jsonl").read_text(encoding="utf-8"))
+
+    assert result["status"] == "completed"
+    assert result["telemetry_status"] == "collected"
+    assert result["telemetry_source"] == "json-file"
+    assert result["telemetry_error"] is None
+    assert result["prompt_tokens"] == 11
+    assert result["completion_tokens"] == 13
+    assert result["total_tokens"] == 24
+    assert result["reasoning_tokens"] == 3
+    assert result["tool_call_count"] == 3
+    assert result["tool_calls_by_name"] == {"read": 1, "edit": 2}
+
+
+def test_runner_does_not_fail_case_when_json_telemetry_file_is_missing(
+    tmp_path: Path,
+) -> None:
+    repo = _create_repo(tmp_path)
+    overlay_source = tmp_path / "ctx" / "AGENTS.md"
+    overlay_source.parent.mkdir()
+    overlay_source.write_text("# Instructions\n", encoding="utf-8")
+
+    agent_script = tmp_path / "agent.py"
+    agent_script.write_text(
+        "from pathlib import Path\n"
+        "p = Path('README.md')\n"
+        "p.write_text(p.read_text(encoding='utf-8') + 'no telemetry\\n', encoding='utf-8')\n",
+        encoding="utf-8",
+    )
+    task_file = TaskFile(tasks=[TaskConfig(id="missing-telemetry", prompt="Append a line.")])
+    config = _base_config(
+        tmp_path=tmp_path,
+        repo=repo,
+        agent_command=f'"{sys.executable}" "{agent_script}"',
+        overlay_source=overlay_source,
+    )
+    config.agent.telemetry = AgentTelemetryConfig(collector="json-file")
+
+    run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        cleanup=True,
+        console=_quiet_console(),
+    ).run()
+    result = json.loads((run_dir / "results.jsonl").read_text(encoding="utf-8"))
+
+    assert result["status"] == "completed"
+    assert result["telemetry_status"] == "unavailable"
+    assert result["telemetry_source"] == "json-file"
+    assert "telemetry file not found" in result["telemetry_error"]
+    assert not any("telemetry collection failed" in error for error in result["errors"])
 
 
 def test_runner_marks_validation_failure(tmp_path: Path) -> None:

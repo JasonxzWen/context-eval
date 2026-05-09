@@ -9,7 +9,7 @@ from context_eval.adapters.base import (
     TelemetryCollectionResult,
     TelemetryCollector,
 )
-from context_eval.adapters.command import CommandTemplateAgent
+from context_eval.adapters.command import CommandTemplateAgent, JsonFileTelemetryCollector
 from context_eval.models import AgentConfig, CommandResult, TaskConfig
 
 
@@ -249,3 +249,137 @@ def test_command_template_agent_allows_collector_preparation(
     assert telemetry.source == "test"
     assert telemetry.prompt_tokens == 4
     assert telemetry.tool_calls_by_name == {"read": 1}
+
+
+def test_json_file_telemetry_collector_prepares_case_local_file(tmp_path: Path) -> None:
+    collector = JsonFileTelemetryCollector(file="telemetry/usage.json")
+    task = TaskConfig(id="task-1", prompt="Fix it.")
+    output_dir = tmp_path / "artifacts"
+
+    preparation = collector.prepare(
+        workspace=tmp_path / "workspace",
+        prompt_file=tmp_path / "prompt.md",
+        task=task,
+        variant="baseline",
+        output_dir=output_dir,
+    )
+
+    telemetry_file = output_dir / "telemetry" / "usage.json"
+    assert preparation.template_variables == {"telemetry_file": str(telemetry_file)}
+    assert preparation.environment == {"CONTEXT_EVAL_TELEMETRY_FILE": str(telemetry_file)}
+    assert telemetry_file.parent.exists()
+
+
+def test_json_file_telemetry_collector_normalizes_metrics(tmp_path: Path) -> None:
+    collector = JsonFileTelemetryCollector()
+    task = TaskConfig(id="task-1", prompt="Fix it.")
+    output_dir = tmp_path / "artifacts"
+    telemetry_file = output_dir / "telemetry.json"
+    telemetry_file.parent.mkdir()
+    telemetry_file.write_text(
+        """
+{
+  "prompt_tokens": 10,
+  "completion_tokens": 5,
+  "total_tokens": 15,
+  "reasoning_tokens": 2,
+  "tool_calls_by_name": {
+    "read": 2,
+    "shell": 1
+  }
+}
+""",
+        encoding="utf-8",
+    )
+
+    result = collector.collect(
+        workspace=tmp_path / "workspace",
+        prompt_file=tmp_path / "prompt.md",
+        task=task,
+        variant="baseline",
+        output_dir=output_dir,
+        command_result=_command_result(),
+    )
+
+    assert result.status == "collected"
+    assert result.source == "json-file"
+    assert result.error is None
+    assert result.prompt_tokens == 10
+    assert result.completion_tokens == 5
+    assert result.total_tokens == 15
+    assert result.reasoning_tokens == 2
+    assert result.tool_call_count == 3
+    assert result.tool_calls_by_name == {"read": 2, "shell": 1}
+
+
+def test_json_file_telemetry_collector_reports_missing_file_as_unavailable(
+    tmp_path: Path,
+) -> None:
+    collector = JsonFileTelemetryCollector()
+    task = TaskConfig(id="task-1", prompt="Fix it.")
+
+    result = collector.collect(
+        workspace=tmp_path / "workspace",
+        prompt_file=tmp_path / "prompt.md",
+        task=task,
+        variant="baseline",
+        output_dir=tmp_path / "artifacts",
+        command_result=_command_result(),
+    )
+
+    assert result.status == "unavailable"
+    assert result.source == "json-file"
+    assert "telemetry file not found" in (result.error or "")
+
+
+def test_json_file_telemetry_collector_reports_invalid_json_as_error(
+    tmp_path: Path,
+) -> None:
+    collector = JsonFileTelemetryCollector()
+    task = TaskConfig(id="task-1", prompt="Fix it.")
+    output_dir = tmp_path / "artifacts"
+    output_dir.mkdir()
+    (output_dir / "telemetry.json").write_text("{not json", encoding="utf-8")
+
+    result = collector.collect(
+        workspace=tmp_path / "workspace",
+        prompt_file=tmp_path / "prompt.md",
+        task=task,
+        variant="baseline",
+        output_dir=output_dir,
+        command_result=_command_result(),
+    )
+
+    assert result.status == "error"
+    assert result.source == "json-file"
+    assert "invalid telemetry JSON" in (result.error or "")
+
+
+def test_json_file_telemetry_collector_preserves_valid_partial_metrics(
+    tmp_path: Path,
+) -> None:
+    collector = JsonFileTelemetryCollector()
+    task = TaskConfig(id="task-1", prompt="Fix it.")
+    output_dir = tmp_path / "artifacts"
+    output_dir.mkdir()
+    (output_dir / "telemetry.json").write_text(
+        '{"prompt_tokens": 7, "completion_tokens": -1, "tool_calls_by_name": {"read": 1}}',
+        encoding="utf-8",
+    )
+
+    result = collector.collect(
+        workspace=tmp_path / "workspace",
+        prompt_file=tmp_path / "prompt.md",
+        task=task,
+        variant="baseline",
+        output_dir=output_dir,
+        command_result=_command_result(),
+    )
+
+    assert result.status == "partial"
+    assert result.source == "json-file"
+    assert "completion_tokens" in (result.error or "")
+    assert result.prompt_tokens == 7
+    assert result.completion_tokens is None
+    assert result.tool_call_count == 1
+    assert result.tool_calls_by_name == {"read": 1}

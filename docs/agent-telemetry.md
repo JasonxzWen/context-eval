@@ -33,8 +33,8 @@ metrics may be absent, partial, or unavailable depending on the coding agent.
 
 ## Hook And Collector Model
 
-The command-template adapter remains the default. It should gain a no-op
-collector so existing configs continue to behave unchanged.
+The command-template adapter remains the default. It uses a no-op collector so
+existing configs continue to behave unchanged.
 
 Future collector support should have two phases:
 
@@ -42,11 +42,11 @@ Future collector support should have two phases:
    command starts;
 2. collect and normalize telemetry after the agent command exits.
 
-The first concrete collector should be a generic JSON telemetry collector. It
-should read a local file written by the agent command and normalize known fields
-into the result schema. Agent-specific collectors for Codex, Claude Code,
-OpenCode, Cursor, or other tools can be added later only when their local
-transcript or hook formats are stable enough to test with fixtures.
+The first concrete collector is a generic JSON telemetry collector. It reads a
+local file written by the agent command and normalizes known fields into the
+result schema. Agent-specific collectors for Codex, Claude Code, OpenCode,
+Cursor, or other tools can be added later only when their local transcript or
+hook formats are stable enough to test with fixtures.
 
 Collectors must be local-only. They must not call a hosted API, upload logs,
 perform cost estimation through a remote service, or execute agent commands on

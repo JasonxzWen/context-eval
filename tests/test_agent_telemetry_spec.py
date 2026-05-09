@@ -76,6 +76,8 @@ def test_adapter_api_documents_telemetry_collector_lifecycle() -> None:
     required_terms = [
         "## Telemetry Collector Lifecycle",
         "NoOpTelemetryCollector",
+        "JsonFileTelemetryCollector",
+        "{telemetry_file}",
         "prepare(...)",
         "collect(...)",
         "TelemetryCollectionResult",
