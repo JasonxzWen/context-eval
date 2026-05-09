@@ -430,6 +430,138 @@ def test_compare_prints_variant_metrics_from_jsonl(tmp_path: Path) -> None:
     assert "avg_total_tokens=-" in output.output
 
 
+def test_inspect_run_prints_agent_summary_for_multiple_agents(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    results = [
+        CaseResult(
+            run_id="run-1",
+            case_id="task-1__baseline__agent-a",
+            task_id="task-1",
+            variant="baseline",
+            repo_ref="main",
+            agent_name="agent-a",
+            network="disabled",
+            status="completed",
+            validation_status="passed",
+            confidence="high",
+            duration_seconds=2.0,
+            agent_duration_seconds=1.5,
+            total_tokens=50,
+            tool_call_count=2,
+            telemetry_status="collected",
+            telemetry_source="json-file",
+        ),
+        CaseResult(
+            run_id="run-1",
+            case_id="task-1__baseline__agent-b",
+            task_id="task-1",
+            variant="baseline",
+            repo_ref="main",
+            agent_name="agent-b",
+            network="disabled",
+            status="agent_failed",
+            validation_status="skipped",
+            confidence="low",
+            duration_seconds=4.0,
+        ),
+    ]
+    (run_dir / "results.jsonl").write_text(
+        "\n".join(result.model_dump_json() for result in results) + "\n",
+        encoding="utf-8",
+    )
+
+    output = CliRunner().invoke(app, ["inspect-run", str(run_dir)])
+
+    assert output.exit_code == 0
+    assert "Agents:" in output.output
+    assert "agent=agent-a cases=1 pass_rate=100.0%" in output.output
+    assert "avg_agent_duration=1.50" in output.output
+    assert "avg_total_tokens=50.00" in output.output
+    assert "telemetry_statuses=collected=1" in output.output
+    assert "agent=agent-b cases=1 pass_rate=0.0%" in output.output
+    assert "avg_agent_duration=-" in output.output
+    assert "telemetry_statuses=unavailable=1" in output.output
+
+
+def test_inspect_run_suppresses_agent_summary_for_single_agent(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    result = CaseResult(
+        run_id="run-1",
+        case_id="task-1__baseline",
+        task_id="task-1",
+        variant="baseline",
+        repo_ref="main",
+        agent_name="agent-a",
+        network="disabled",
+        status="completed",
+        validation_status="passed",
+        confidence="high",
+    )
+    (run_dir / "results.jsonl").write_text(result.model_dump_json() + "\n", encoding="utf-8")
+
+    output = CliRunner().invoke(app, ["inspect-run", str(run_dir)])
+
+    assert output.exit_code == 0
+    assert "Agents:" not in output.output
+
+
+def test_compare_prints_agent_summary_for_multiple_agents(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    results = [
+        CaseResult(
+            run_id="run-1",
+            case_id="task-1__baseline__agent-a",
+            task_id="task-1",
+            variant="baseline",
+            repo_ref="main",
+            agent_name="agent-a",
+            network="disabled",
+            status="completed",
+            validation_status="passed",
+            confidence="high",
+            duration_seconds=2.0,
+            agent_duration_seconds=1.5,
+            total_tokens=50,
+            tool_call_count=2,
+            telemetry_status="collected",
+            telemetry_source="json-file",
+            tool_calls_by_name={"read": 2},
+        ),
+        CaseResult(
+            run_id="run-1",
+            case_id="task-1__baseline__agent-b",
+            task_id="task-1",
+            variant="baseline",
+            repo_ref="main",
+            agent_name="agent-b",
+            network="disabled",
+            status="timeout",
+            timeout=True,
+            validation_status="failed",
+            confidence="medium",
+            duration_seconds=4.0,
+        ),
+    ]
+    (run_dir / "results.jsonl").write_text(
+        "\n".join(result.model_dump_json() for result in results) + "\n",
+        encoding="utf-8",
+    )
+
+    output = CliRunner().invoke(app, ["compare", str(run_dir)])
+
+    assert output.exit_code == 0
+    assert "Agents:" in output.output
+    assert "agent=agent-a cases=1 pass_rate=100.0%" in output.output
+    assert "avg_duration=2.00" in output.output
+    assert "avg_agent_duration=1.50" in output.output
+    assert "avg_tool_calls=2.00" in output.output
+    assert "common_tool_names=read" in output.output
+    assert "agent=agent-b cases=1 pass_rate=0.0%" in output.output
+
+
 def test_report_writes_telemetry_summary_from_jsonl(tmp_path: Path) -> None:
     run_dir = tmp_path / "run"
     run_dir.mkdir()
@@ -503,6 +635,83 @@ def test_compare_fails_for_malformed_results(tmp_path: Path) -> None:
 
     assert output.exit_code == 1
     assert "malformed results.jsonl line 1" in output.output
+
+
+def test_export_writes_csv_from_run_artifacts(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    result = CaseResult(
+        run_id="run-1",
+        case_id="task-1__baseline",
+        task_id="task-1",
+        variant="baseline",
+        repo_ref="main",
+        agent_name="agent-a",
+        network="disabled",
+        status="completed",
+        validation_status="passed",
+        confidence="high",
+        total_tokens=10,
+    )
+    (run_dir / "results.jsonl").write_text(result.model_dump_json() + "\n", encoding="utf-8")
+    output_path = tmp_path / "summary.csv"
+
+    output = CliRunner().invoke(
+        app,
+        ["export", str(run_dir), "--format", "csv", "--output", str(output_path)],
+    )
+
+    assert output.exit_code == 0
+    assert "Export written" in output.output
+    csv_text = output_path.read_text(encoding="utf-8")
+    assert "run_id,case_id,agent_name,task_id" in csv_text
+    assert "run-1,task-1__baseline,agent-a,task-1" in csv_text
+
+
+def test_export_writes_compact_json_from_run_artifacts(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    (run_dir / "run_metadata.json").write_text('{"run_id": "run-1"}', encoding="utf-8")
+    result = CaseResult(
+        run_id="run-1",
+        case_id="task-1__baseline",
+        task_id="task-1",
+        variant="baseline",
+        repo_ref="main",
+        agent_name="agent-a",
+        network="disabled",
+        status="completed",
+        validation_status="passed",
+        confidence="high",
+        total_tokens=10,
+    )
+    (run_dir / "results.jsonl").write_text(result.model_dump_json() + "\n", encoding="utf-8")
+    output_path = tmp_path / "summary.json"
+
+    output = CliRunner().invoke(
+        app,
+        ["export", str(run_dir), "--format", "json", "--output", str(output_path)],
+    )
+
+    assert output.exit_code == 0
+    json_text = output_path.read_text(encoding="utf-8")
+    assert '"agent_summaries"' in json_text
+    assert '"agent_name": "agent-a"' in json_text
+    assert '"total_tokens": 10' in json_text
+
+
+def test_export_rejects_unsupported_format(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    (run_dir / "results.jsonl").write_text("", encoding="utf-8")
+
+    output = CliRunner().invoke(
+        app,
+        ["export", str(run_dir), "--format", "xml", "--output", str(tmp_path / "out.xml")],
+    )
+
+    assert output.exit_code == 1
+    assert "unsupported export format" in output.output
 
 
 def test_ui_generates_self_contained_config_and_run_html(tmp_path: Path) -> None:
@@ -663,6 +872,73 @@ evaluation:
     assert "sendBeacon" not in html
     assert "localStorage" not in html
     assert "showSaveFilePicker" not in html
+
+
+def test_ui_shows_agent_summary_from_run_artifacts(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    results = [
+        CaseResult(
+            run_id="run-1",
+            case_id="task-1__baseline__agent-a",
+            task_id="task-1",
+            variant="baseline",
+            repo_ref="main",
+            agent_name="agent-a",
+            network="disabled",
+            status="completed",
+            validation_status="passed",
+            confidence="high",
+            duration_seconds=2.0,
+            agent_duration_seconds=1.5,
+            total_tokens=40,
+            tool_call_count=2,
+            telemetry_status="collected",
+            telemetry_source="json-file",
+            tool_calls_by_name={"read": 2},
+        ),
+        CaseResult(
+            run_id="run-1",
+            case_id="task-1__baseline__agent-b",
+            task_id="task-1",
+            variant="baseline",
+            repo_ref="main",
+            agent_name="agent-b",
+            network="disabled",
+            status="timeout",
+            timeout=True,
+            validation_status="failed",
+            confidence="medium",
+            duration_seconds=6.0,
+        ),
+    ]
+    (run_dir / "results.jsonl").write_text(
+        "\n".join(result.model_dump_json() for result in results) + "\n",
+        encoding="utf-8",
+    )
+    output_path = tmp_path / "context-eval-ui.html"
+
+    output = CliRunner().invoke(
+        app,
+        ["ui", "--run-dir", str(run_dir), "--output", str(output_path)],
+    )
+
+    assert output.exit_code == 0
+    html = output_path.read_text(encoding="utf-8")
+    assert "Agent Metrics" in html
+    assert "agent-a" in html
+    assert "agent-b" in html
+    assert "avg_agent_duration=1.50" in html
+    assert "avg_total_tokens=40.00" in html
+    assert "avg_tool_calls=2.00" in html
+    assert "telemetry_statuses=collected=1" in html
+    assert "telemetry_statuses=unavailable=1" in html
+    assert "common_tool_names=read" in html
+    assert "http://" not in html
+    assert "https://" not in html
+    assert "fetch(" not in html
+    assert "XMLHttpRequest" not in html
+    assert "WebSocket" not in html
 
 
 def test_ui_requires_config_or_run_dir(tmp_path: Path) -> None:

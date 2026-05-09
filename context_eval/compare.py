@@ -6,9 +6,10 @@ from statistics import mean
 
 from rich.console import Console
 
+from context_eval.export import agent_summary_rows, has_multiple_agents
 from context_eval.inspect_run import _load_metadata, _load_results
 from context_eval.models import CaseResult
-from context_eval.reporting import format_optional_number, telemetry_summary
+from context_eval.reporting import format_optional_number, format_status_counts, telemetry_summary
 
 
 def compare_run(run_dir: Path, console: Console) -> None:
@@ -38,6 +39,22 @@ def compare_run(run_dir: Path, console: Console) -> None:
             f"avg_tool_calls={format_optional_number(stat['avg_tool_calls'])} "
             f"common_tool_names={stat['common_tool_names']}"
         )
+
+    if has_multiple_agents(results):
+        console.print("Agents:")
+        for stat in agent_summary_rows(results):
+            console.print(
+                "- "
+                f"agent={stat['agent_name']} "
+                f"cases={stat['cases']} "
+                f"pass_rate={float(stat['pass_rate']):.1%} "
+                f"avg_duration={format_optional_number(stat['avg_duration_seconds'])} "
+                f"avg_agent_duration={format_optional_number(stat['avg_agent_duration_seconds'])} "
+                f"avg_total_tokens={format_optional_number(stat['avg_total_tokens'])} "
+                f"avg_tool_calls={format_optional_number(stat['avg_tool_call_count'])} "
+                f"telemetry_statuses={format_status_counts(stat['telemetry_statuses'])} "
+                f"common_tool_names={','.join(stat['common_tool_names']) or '-'}"
+            )
 
 
 def _variant_stats(results: list[CaseResult]) -> list[dict[str, object]]:
