@@ -595,8 +595,74 @@ evaluation:
     assert "run-1" in html
     assert "completed" in html
     assert "pass_rate=100.0%" in html
+    assert 'data-role="config-editor"' in html
+    for field in [
+        "repo.path",
+        "repo.base_ref",
+        "agent.name",
+        "agent.command",
+        "agent.timeout_minutes",
+        "agent.network",
+        "tasks_path",
+        "evaluation_commands",
+        "variant.name",
+        "variant.description",
+        "overlay.source",
+        "overlay.target",
+        "task.id",
+        "task.title",
+        "task.prompt",
+        "task.repo_ref",
+        "task.category",
+        "task.difficulty",
+        "task.validation_commands",
+    ]:
+        assert f'data-field="{field}"' in html
+    assert 'id="matrix-body"' in html
+    assert 'data-role="validation-preflight"' in html
+    assert 'id="preflight-status"' in html
+    assert 'id="preflight-issues"' in html
+    assert 'id="validate-config-command"' in html
+    assert 'data-role="yaml-export"' in html
+    assert 'id="config-yaml-export"' in html
+    assert 'id="tasks-yaml-export"' in html
+    assert 'data-copy-target="config-yaml-export"' in html
+    assert 'data-download-target="config-yaml-export"' in html
+    assert 'data-copy-target="tasks-yaml-export"' in html
+    assert 'data-download-target="tasks-yaml-export"' in html
+    assert "Static mode cannot save directly to disk" in html
+    assert (
+        "Static mode does not run agents, validation commands, workspaces, or network actions."
+        in html
+    )
+    assert "context-eval validate-config --config" in html
+    assert "No schema-level issues detected in edited YAML." in html
+    assert "Schema preflight found" in html
+    assert "repo.path" in html
+    assert " is required" in html
+    assert '" prompt"' in html
+    assert "agent.network must be disabled or enabled" in html
+    assert "target must be a safe relative path" in html
+    assert "function renderMatrix" in html
+    assert "function validateEditedConfiguration" in html
+    assert "function validateExportModel" in html
+    assert "function validateGeneratedYaml" in html
+    assert "function refreshValidationPreflight" in html
+    assert "function renderConfigYaml" in html
+    assert "function renderTasksYaml" in html
+    assert "function downloadYaml" in html
+    assert "function copyYaml" in html
+    assert 'addEventListener("input"' in html
     assert "http://" not in html
     assert "https://" not in html
+    assert "<script src=" not in html
+    assert "fetch(" not in html
+    assert "XMLHttpRequest" not in html
+    assert "WebSocket" not in html
+    assert "EventSource" not in html
+    assert "sendBeacon" not in html
+    assert "localStorage" not in html
+    assert "showSaveFilePicker" not in html
 
 
 def test_ui_requires_config_or_run_dir(tmp_path: Path) -> None:
