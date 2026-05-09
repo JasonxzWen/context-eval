@@ -301,6 +301,8 @@ Status: planned.
   pass rate, timeout rate, agent failure rate, validation failure rate, average
   duration, average changed files, and common touched paths.
 - Add result export helpers for CSV and compact JSON summary.
+- Add local-only multi-agent comparison summaries and exports based on
+  `docs/multi-agent-comparison.md`.
 - Improve report template readability for multiple tasks and variants.
 - Add a local visualization entrypoint, such as `context-eval ui`, a generated
   static HTML report, or a terminal UI, that can:
@@ -316,6 +318,8 @@ Status: planned.
 ### Test Plan
 
 - Report tests using synthetic JSONL fixtures.
+- Export tests for deterministic CSV and compact JSON summaries from local
+  artifacts.
 - Snapshot-style assertions for Markdown sections and key table rows.
 - CLI tests for missing or malformed run directories.
 - Interface tests for config editing, validation feedback, and result loading
@@ -326,6 +330,8 @@ Status: planned.
 - Report generation works from JSONL and metadata alone.
 - Low-confidence results are clearly called out.
 - Aggregations are deterministic and documented.
+- Multi-agent comparison is framed as local run observation, not an absolute
+  coding-agent benchmark.
 - A user can configure an evaluation environment through the local visual
   interface, validate it, and inspect current test data without opening YAML or
   JSONL files directly.

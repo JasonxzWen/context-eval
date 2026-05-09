@@ -1,0 +1,115 @@
+# Multi-Agent Comparison
+
+This spec defines how context-eval summarizes locally observed results across
+different coding agents without claiming an absolute benchmark ranking.
+
+## User Contract
+
+A user can compare completed local run artifacts by `agent_name`, task,
+variant, and trial. The comparison is derived only from `results.jsonl` and
+`run_metadata.json`; context-eval must not rerun agents, install agents, scrape
+logs, call hosted services, or infer missing telemetry.
+
+The output frames every metric as an observation for a recorded local run:
+agent command, task set, context variants, validation commands, machine state,
+and telemetry collector configuration all affect the result. Reports and
+exports must not describe the result as an absolute coding-agent capability
+ranking.
+
+## Source Artifacts
+
+The source of truth is the existing run directory:
+
+- `results.jsonl` for one row per observed case.
+- `run_metadata.json` for run-level labels and configuration summaries when it
+  exists.
+
+All aggregation, terminal reporting, CSV export, compact JSON export, and
+static UI display must be reproducible from these files alone.
+
+## Comparison Dimensions
+
+The normalized comparison contract includes these dimensions and fields:
+
+- `agent_name`
+- `task_id`
+- `variant`
+- `trial_index`
+- `status`
+- `validation_status`
+- `confidence`
+- `duration_seconds`
+- `agent_duration_seconds`
+- `prompt_tokens`
+- `completion_tokens`
+- `total_tokens`
+- `reasoning_tokens`
+- `tool_call_count`
+- `tool_calls_by_name`
+
+Missing telemetry fields remain missing. CSV exports use empty fields for
+missing scalar telemetry; compact JSON exports use `null`. `tool_calls_by_name`
+uses an empty object only when no tool-call map was recorded.
+
+## Export Formats
+
+CSV export is row oriented and deterministic:
+
+- one row per `results.jsonl` case;
+- stable column order matching the documented dimensions;
+- rows sorted by `agent_name`, `task_id`, `variant`, `trial_index`, and
+  `case_id`;
+- `tool_calls_by_name` serialized as compact JSON with sorted tool names.
+
+Compact JSON export is deterministic and script-friendly:
+
+- run metadata is included under `run`;
+- case rows are sorted with the same order as CSV;
+- agent summaries are sorted by `agent_name`;
+- scalar missing telemetry values are `null`;
+- dictionaries use sorted keys.
+
+## Reporting Behavior
+
+`inspect-run`, `compare`, Markdown reports, and static local UI views should
+show agent-level summaries when a run contains more than one `agent_name`.
+Useful agent summaries include:
+
+- case count;
+- pass rate;
+- average `duration_seconds`;
+- average `agent_duration_seconds`;
+- average `total_tokens`;
+- average `tool_call_count`;
+- telemetry status counts;
+- common tool names from `tool_calls_by_name`.
+
+Single-agent runs may keep the current variant-oriented display and suppress
+the agent summary to avoid redundant output.
+
+## Static UI Behavior
+
+The generated local UI may display agent summary cards or tables from run
+artifacts. It must remain a static, self-contained HTML file. It must not issue
+external network requests, open sockets, call a hosted dashboard, write run
+artifacts, or run agents.
+
+## Non-Goals
+
+This feature does not add an LLM judge, hosted dashboard, multi-user web
+service, automatic coding-agent installation, provider billing reconciliation,
+issue miner, real network isolation, automatic reruns, or absolute agent
+capability ranking, and must not present an absolute agent capability ranking.
+
+## Test Plan
+
+- Spec tests assert this document and the development plan define the local
+  artifact contract, required dimensions, deterministic exports, and non-goals.
+- Export tests cover CSV and compact JSON generation from synthetic
+  `results.jsonl` and `run_metadata.json` fixtures.
+- CLI tests cover export commands and malformed run directories.
+- Inspect and compare tests cover multi-agent summaries and single-agent
+  suppression.
+- UI tests cover static HTML contents and local-only constraints; browser
+  verification checks a generated page for visible agent telemetry summary and
+  absence of external requests.
