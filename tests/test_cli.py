@@ -619,7 +619,22 @@ evaluation:
     ]:
         assert f'data-field="{field}"' in html
     assert 'id="matrix-body"' in html
+    assert 'data-role="yaml-export"' in html
+    assert 'id="config-yaml-export"' in html
+    assert 'id="tasks-yaml-export"' in html
+    assert 'data-copy-target="config-yaml-export"' in html
+    assert 'data-download-target="config-yaml-export"' in html
+    assert 'data-copy-target="tasks-yaml-export"' in html
+    assert 'data-download-target="tasks-yaml-export"' in html
+    assert "Static mode cannot save directly to disk" in html
+    assert "context-eval validate-config --config" in html
     assert "function renderMatrix" in html
+    assert "function validateExportModel" in html
+    assert "function validateGeneratedYaml" in html
+    assert "function renderConfigYaml" in html
+    assert "function renderTasksYaml" in html
+    assert "function downloadYaml" in html
+    assert "function copyYaml" in html
     assert 'addEventListener("input"' in html
     assert "http://" not in html
     assert "https://" not in html
@@ -627,6 +642,7 @@ evaluation:
     assert "fetch(" not in html
     assert "XMLHttpRequest" not in html
     assert "localStorage" not in html
+    assert "showSaveFilePicker" not in html
 
 
 def test_ui_requires_config_or_run_dir(tmp_path: Path) -> None:

@@ -203,6 +203,54 @@ def _html(
       color: var(--muted);
       background: rgba(255, 255, 255, 0.55);
     }}
+    .export-panel {{
+      display: grid;
+      gap: 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 14px;
+      background: rgba(255, 255, 255, 0.55);
+    }}
+    .export-panel h3 {{
+      margin: 0;
+      font-size: 16px;
+    }}
+    .export-output {{
+      min-height: 260px;
+      white-space: pre;
+    }}
+    .button-row {{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }}
+    button {{
+      border: 1px solid var(--accent);
+      border-radius: 4px;
+      padding: 8px 10px;
+      background: var(--accent);
+      color: #ffffff;
+      font: 700 12px/1.2 Consolas, "Courier New", monospace;
+      text-transform: uppercase;
+      cursor: pointer;
+    }}
+    button.secondary {{
+      background: #ffffff;
+      color: var(--accent);
+    }}
+    button:disabled {{
+      border-color: var(--line);
+      background: #e4e7e1;
+      color: var(--muted);
+      cursor: not-allowed;
+    }}
+    .status {{
+      margin: 10px 0;
+      color: var(--muted);
+      font: 13px/1.45 Consolas, "Courier New", monospace;
+    }}
+    .status.error {{ color: var(--warn); }}
     @media (max-width: 760px) {{
       header, .grid, .subgrid {{ grid-template-columns: 1fr; }}
       h1 {{ font-size: 28px; }}
@@ -220,6 +268,7 @@ def _html(
   </header>
   {_config_section(config, tasks, editor)}
   {_matrix_section(editor)}
+  {_export_section(config, editor)}
   {_metrics_section(results)}
   {_results_section(results)}
 </main>
@@ -283,6 +332,65 @@ def _matrix_section(editor: EditableConfigModel | None) -> str:
     <thead><tr><th>Task</th><th>Variant</th><th>Repo ref</th><th>Prompt path</th></tr></thead>
     <tbody id="matrix-body">{_matrix_rows(editor)}</tbody>
   </table>
+</section>
+"""
+
+
+def _export_section(
+    config: ContextEvalConfig | None,
+    editor: EditableConfigModel | None,
+) -> str:
+    if config is None or editor is None:
+        return _empty_section("Export YAML", "No editable config loaded.")
+
+    config_path = str(config.config_path) if config.config_path is not None else "context-eval.yaml"
+    validate_command = f"context-eval validate-config --config {config_path}"
+
+    return f"""
+<section data-role="yaml-export">
+  <h2>Export YAML</h2>
+  <div id="export-status" class="status" aria-live="polite"></div>
+  <div class="grid">
+    <div class="export-panel">
+      <h3>context-eval.yaml</h3>
+      <textarea
+        id="config-yaml-export"
+        class="export-output"
+        readonly
+        spellcheck="false"
+      ></textarea>
+      <div class="button-row">
+        <button type="button" class="secondary" data-copy-target="config-yaml-export">
+          Copy
+        </button>
+        <button
+          type="button"
+          data-download-target="config-yaml-export"
+          data-filename="context-eval.yaml"
+        >
+          Download
+        </button>
+      </div>
+      <div id="config-yaml-message" class="status" aria-live="polite"></div>
+    </div>
+    <div class="export-panel">
+      <h3>tasks.yaml</h3>
+      <textarea id="tasks-yaml-export" class="export-output" readonly spellcheck="false"></textarea>
+      <div class="button-row">
+        <button type="button" class="secondary" data-copy-target="tasks-yaml-export">
+          Copy
+        </button>
+        <button type="button" data-download-target="tasks-yaml-export" data-filename="tasks.yaml">
+          Download
+        </button>
+      </div>
+      <div id="tasks-yaml-message" class="status" aria-live="polite"></div>
+    </div>
+  </div>
+  <div class="resolved">
+    Static mode cannot save directly to disk. Copy or download both files, then run
+    <code>{escape(validate_command)}</code>.
+  </div>
 </section>
 """
 
@@ -511,6 +619,286 @@ def _editor_script(editor: EditableConfigModel | None) -> str:
     return slug || "case";
   }}
 
+  function yamlInlineString(value) {{
+    return JSON.stringify(String(value ?? ""));
+  }}
+
+  function yamlValue(value, indent) {{
+    const text = String(value ?? "");
+    if (!text.includes("\\n")) {{
+      return yamlInlineString(text);
+    }}
+
+    const spaces = " ".repeat(indent + 2);
+    const lines = text.replace(/\\r\\n/g, "\\n").split("\\n");
+    return "|\\n" + lines.map((line) => spaces + line).join("\\n");
+  }}
+
+  function yamlKey(value) {{
+    return yamlInlineString(value);
+  }}
+
+  function appendYamlField(lines, indent, key, value) {{
+    if (value === null || value === undefined) {{
+      return;
+    }}
+    lines.push(" ".repeat(indent) + key + ": " + yamlValue(value, indent));
+  }}
+
+  function appendYamlList(lines, indent, key, values) {{
+    const spaces = " ".repeat(indent);
+    if (!Array.isArray(values) || values.length === 0) {{
+      lines.push(spaces + key + ": []");
+      return;
+    }}
+
+    lines.push(spaces + key + ":");
+    values.forEach((value) => {{
+      lines.push(spaces + "  - " + yamlInlineString(value));
+    }});
+  }}
+
+  function renderConfigYaml() {{
+    const lines = [];
+    lines.push("repo:");
+    appendYamlField(lines, 2, "path", editableModel.repo.path);
+    appendYamlField(lines, 2, "base_ref", editableModel.repo.base_ref);
+    lines.push("agent:");
+    appendYamlField(lines, 2, "name", editableModel.agent.name);
+    appendYamlField(lines, 2, "command", editableModel.agent.command);
+    lines.push(
+      "  timeout_minutes: " + String(Number.parseInt(editableModel.agent.timeout_minutes, 10) || 1)
+    );
+    appendYamlField(lines, 2, "network", editableModel.agent.network);
+    appendYamlField(lines, 0, "tasks", editableModel.tasks_path);
+    if (editableModel.output_dir !== null && editableModel.output_dir !== undefined) {{
+      appendYamlField(lines, 0, "output_dir", editableModel.output_dir);
+    }}
+    lines.push("variants:");
+    editableModel.variants.forEach((variant) => {{
+      lines.push("  " + yamlKey(variant.name) + ":");
+      appendYamlField(lines, 4, "description", variant.description);
+      if (!Array.isArray(variant.overlays) || variant.overlays.length === 0) {{
+        lines.push("    overlays: []");
+      }} else {{
+        lines.push("    overlays:");
+        variant.overlays.forEach((overlay) => {{
+          lines.push("      - source: " + yamlValue(overlay.source, 8));
+          appendYamlField(lines, 8, "target", overlay.target);
+        }});
+      }}
+    }});
+    lines.push("evaluation:");
+    appendYamlList(lines, 2, "commands", editableModel.evaluation_commands);
+    return lines.join("\\n") + "\\n";
+  }}
+
+  function renderTasksYaml() {{
+    const lines = ["tasks:"];
+    editableModel.tasks.forEach((task) => {{
+      lines.push("  - id: " + yamlValue(task.id, 4));
+      appendYamlField(lines, 4, "title", task.title);
+      appendYamlField(lines, 4, "prompt", task.prompt);
+      appendYamlField(lines, 4, "repo_ref", task.repo_ref);
+      appendYamlField(lines, 4, "category", task.category);
+      appendYamlField(lines, 4, "difficulty", task.difficulty);
+      if (Array.isArray(task.validation_commands) && task.validation_commands.length > 0) {{
+        lines.push("    validation:");
+        appendYamlList(lines, 6, "commands", task.validation_commands);
+      }}
+    }});
+    return lines.join("\\n") + "\\n";
+  }}
+
+  function validateExportModel() {{
+    const issues = [];
+
+    function requireText(value, label) {{
+      if (String(value ?? "").trim().length === 0) {{
+        issues.push(label + " is required");
+      }}
+    }}
+
+    requireText(editableModel.repo.path, "repo.path");
+    requireText(editableModel.repo.base_ref, "repo.base_ref");
+    requireText(editableModel.agent.name, "agent.name");
+    requireText(editableModel.agent.command, "agent.command");
+    requireText(editableModel.tasks_path, "tasks path");
+
+    const timeout = Number.parseInt(editableModel.agent.timeout_minutes, 10);
+    if (!Number.isFinite(timeout) || timeout < 1) {{
+      issues.push("agent.timeout_minutes must be a positive integer");
+    }}
+
+    if (!Array.isArray(editableModel.variants) || editableModel.variants.length === 0) {{
+      issues.push("at least one variant is required");
+    }}
+    const variantNames = new Set();
+    editableModel.variants.forEach((variant, index) => {{
+      const name = String(variant.name ?? "").trim();
+      if (name.length === 0) {{
+        issues.push("variant " + String(index + 1) + " name is required");
+      }} else if (variantNames.has(name)) {{
+        issues.push("duplicate variant name: " + name);
+      }}
+      variantNames.add(name);
+
+      (variant.overlays || []).forEach((overlay, overlayIndex) => {{
+        requireText(
+          overlay.source,
+          "variant " + String(index + 1) + " overlay " + String(overlayIndex + 1) + " source"
+        );
+        requireText(
+          overlay.target,
+          "variant " + String(index + 1) + " overlay " + String(overlayIndex + 1) + " target"
+        );
+      }});
+    }});
+
+    if (!Array.isArray(editableModel.tasks) || editableModel.tasks.length === 0) {{
+      issues.push("at least one task is required");
+    }}
+    const taskIds = new Set();
+    editableModel.tasks.forEach((task, index) => {{
+      const id = String(task.id ?? "").trim();
+      if (id.length === 0) {{
+        issues.push("task " + String(index + 1) + " id is required");
+      }} else if (taskIds.has(id)) {{
+        issues.push("duplicate task id: " + id);
+      }}
+      taskIds.add(id);
+      requireText(task.prompt, "task " + String(index + 1) + " prompt");
+    }});
+
+    return issues;
+  }}
+
+  function validateGeneratedYaml(configYaml, tasksYaml) {{
+    const issues = [];
+    [
+      [configYaml, "config export", ["repo:", "agent:", "tasks:", "variants:"]],
+      [tasksYaml, "tasks export", ["tasks:"]],
+    ].forEach(([content, label, requiredMarkers]) => {{
+      requiredMarkers.forEach((marker) => {{
+        if (!content.includes(marker)) {{
+          issues.push(label + " is missing " + marker);
+        }}
+      }});
+      if (content.includes("undefined")) {{
+        issues.push(label + " contains undefined values");
+      }}
+    }});
+    return issues;
+  }}
+
+  function setExportButtonsDisabled(disabled) {{
+    document
+      .querySelectorAll("[data-copy-target], [data-download-target]")
+      .forEach((button) => {{
+        button.disabled = disabled;
+      }});
+  }}
+
+  function refreshExport() {{
+    const status = document.getElementById("export-status");
+    const configOutput = document.getElementById("config-yaml-export");
+    const tasksOutput = document.getElementById("tasks-yaml-export");
+    if (!status || !configOutput || !tasksOutput) {{
+      return;
+    }}
+
+    const modelIssues = validateExportModel();
+    if (modelIssues.length > 0) {{
+      configOutput.value = "";
+      tasksOutput.value = "";
+      status.textContent = "Export blocked: " + modelIssues.join("; ");
+      status.classList.add("error");
+      setExportButtonsDisabled(true);
+      return;
+    }}
+
+    const configYaml = renderConfigYaml();
+    const tasksYaml = renderTasksYaml();
+    const yamlIssues = validateGeneratedYaml(configYaml, tasksYaml);
+    if (yamlIssues.length > 0) {{
+      configOutput.value = "";
+      tasksOutput.value = "";
+      status.textContent = "Export blocked: " + yamlIssues.join("; ");
+      status.classList.add("error");
+      setExportButtonsDisabled(true);
+      return;
+    }}
+
+    configOutput.value = configYaml;
+    tasksOutput.value = tasksYaml;
+    status.textContent = "Export ready. Review both YAML documents before copying or downloading.";
+    status.classList.remove("error");
+    setExportButtonsDisabled(false);
+  }}
+
+  function setExportMessage(targetId, message, isError = false) {{
+    const messageId = targetId === "config-yaml-export"
+      ? "config-yaml-message"
+      : "tasks-yaml-message";
+    const node = document.getElementById(messageId);
+    if (!node) {{
+      return;
+    }}
+    node.textContent = message;
+    node.classList.toggle("error", isError);
+  }}
+
+  function fallbackCopy(output, targetId) {{
+    output.focus();
+    output.select();
+    try {{
+      const copied = document.execCommand("copy");
+      setExportMessage(
+        targetId,
+        copied ? "Copied to clipboard." : "Clipboard copy is unavailable.",
+        !copied
+      );
+    }} catch (error) {{
+      setExportMessage(targetId, "Clipboard copy is unavailable.", true);
+    }}
+    window.getSelection()?.removeAllRanges();
+  }}
+
+  function copyYaml(targetId) {{
+    const output = document.getElementById(targetId);
+    if (!output || output.value.length === 0) {{
+      return;
+    }}
+
+    if (navigator.clipboard && window.isSecureContext) {{
+      navigator.clipboard
+        .writeText(output.value)
+        .then(() => setExportMessage(targetId, "Copied to clipboard."))
+        .catch(() => fallbackCopy(output, targetId));
+      return;
+    }}
+
+    fallbackCopy(output, targetId);
+  }}
+
+  function downloadYaml(targetId, filename) {{
+    const output = document.getElementById(targetId);
+    if (!output || output.value.length === 0) {{
+      return;
+    }}
+
+    const blob = new Blob([output.value], {{ type: "text/yaml;charset=utf-8" }});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    setExportMessage(targetId, "Download prepared by the browser.");
+  }}
+
   function syncModelFromInputs() {{
     document
       .querySelectorAll('[data-role="config-editor"] [data-field]')
@@ -558,6 +946,7 @@ def _editor_script(editor: EditableConfigModel | None) -> str:
       }});
 
     renderMatrix();
+    refreshExport();
   }}
 
   function appendCell(row, value) {{
@@ -597,6 +986,16 @@ def _editor_script(editor: EditableConfigModel | None) -> str:
       control.addEventListener("input", syncModelFromInputs);
       control.addEventListener("change", syncModelFromInputs);
     }});
+
+  document.querySelectorAll("[data-copy-target]").forEach((button) => {{
+    button.addEventListener("click", () => copyYaml(button.dataset.copyTarget));
+  }});
+
+  document.querySelectorAll("[data-download-target]").forEach((button) => {{
+    button.addEventListener("click", () => {{
+      downloadYaml(button.dataset.downloadTarget, button.dataset.filename || "context-eval.yaml");
+    }});
+  }});
 
   syncModelFromInputs();
 }})();
