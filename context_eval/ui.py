@@ -69,6 +69,7 @@ def _html(
       --accent: #146c5c;
       --accent-2: #a45322;
       --warn: #9f6b00;
+      --ok: #196b38;
     }}
     * {{ box-sizing: border-box; }}
     body {{
@@ -251,6 +252,14 @@ def _html(
       font: 13px/1.45 Consolas, "Courier New", monospace;
     }}
     .status.error {{ color: var(--warn); }}
+    .status.ok {{ color: var(--ok); }}
+    .validation-list {{
+      margin: 10px 0 0;
+      padding-left: 22px;
+      color: var(--warn);
+      font: 13px/1.45 Consolas, "Courier New", monospace;
+    }}
+    .validation-list:empty {{ display: none; }}
     @media (max-width: 760px) {{
       header, .grid, .subgrid {{ grid-template-columns: 1fr; }}
       h1 {{ font-size: 28px; }}
@@ -267,6 +276,7 @@ def _html(
     <div class="stamp">run {escape(str(run_id))}</div>
   </header>
   {_config_section(config, tasks, editor)}
+  {_preflight_section(config, editor)}
   {_matrix_section(editor)}
   {_export_section(config, editor)}
   {_metrics_section(results)}
@@ -343,8 +353,7 @@ def _export_section(
     if config is None or editor is None:
         return _empty_section("Export YAML", "No editable config loaded.")
 
-    config_path = str(config.config_path) if config.config_path is not None else "context-eval.yaml"
-    validate_command = f"context-eval validate-config --config {config_path}"
+    validate_command = _validate_config_command(config)
 
     return f"""
 <section data-role="yaml-export">
@@ -393,6 +402,35 @@ def _export_section(
   </div>
 </section>
 """
+
+
+def _preflight_section(
+    config: ContextEvalConfig | None,
+    editor: EditableConfigModel | None,
+) -> str:
+    if config is None or editor is None:
+        return _empty_section("Validation Preflight", "No editable config loaded.")
+
+    validate_command = _validate_config_command(config)
+
+    return f"""
+<section data-role="validation-preflight">
+  <h2>Validation Preflight</h2>
+  <div id="preflight-status" class="status" aria-live="polite"></div>
+  <ul id="preflight-issues" class="validation-list" aria-live="polite"></ul>
+  <div class="resolved">
+    Full local validation: <code id="validate-config-command">{escape(validate_command)}</code>
+  </div>
+  <div class="resolved">
+    Static mode does not run agents, validation commands, workspaces, or network actions.
+  </div>
+</section>
+"""
+
+
+def _validate_config_command(config: ContextEvalConfig) -> str:
+    config_path = str(config.config_path) if config.config_path is not None else "context-eval.yaml"
+    return f"context-eval validate-config --config {config_path}"
 
 
 def _matrix_rows(editor: EditableConfigModel) -> str:
@@ -710,7 +748,18 @@ def _editor_script(editor: EditableConfigModel | None) -> str:
     return lines.join("\\n") + "\\n";
   }}
 
-  function validateExportModel() {{
+  function isSafeRelativePath(value) {{
+    const text = String(value ?? "").trim().replace(/\\\\/g, "/");
+    if (text.length === 0) {{
+      return false;
+    }}
+    if (text.startsWith("/") || /^[A-Za-z]:/.test(text)) {{
+      return false;
+    }}
+    return !text.split("/").includes("..");
+  }}
+
+  function validateEditedConfiguration() {{
     const issues = [];
 
     function requireText(value, label) {{
@@ -729,6 +778,9 @@ def _editor_script(editor: EditableConfigModel | None) -> str:
     if (!Number.isFinite(timeout) || timeout < 1) {{
       issues.push("agent.timeout_minutes must be a positive integer");
     }}
+    if (!["disabled", "enabled"].includes(String(editableModel.agent.network))) {{
+      issues.push("agent.network must be disabled or enabled");
+    }}
 
     if (!Array.isArray(editableModel.variants) || editableModel.variants.length === 0) {{
       issues.push("at least one variant is required");
@@ -740,8 +792,9 @@ def _editor_script(editor: EditableConfigModel | None) -> str:
         issues.push("variant " + String(index + 1) + " name is required");
       }} else if (variantNames.has(name)) {{
         issues.push("duplicate variant name: " + name);
+      }} else {{
+        variantNames.add(name);
       }}
-      variantNames.add(name);
 
       (variant.overlays || []).forEach((overlay, overlayIndex) => {{
         requireText(
@@ -752,6 +805,15 @@ def _editor_script(editor: EditableConfigModel | None) -> str:
           overlay.target,
           "variant " + String(index + 1) + " overlay " + String(overlayIndex + 1) + " target"
         );
+        if (!isSafeRelativePath(overlay.target)) {{
+          issues.push(
+            "variant " +
+              String(index + 1) +
+              " overlay " +
+              String(overlayIndex + 1) +
+              " target must be a safe relative path"
+          );
+        }}
       }});
     }});
 
@@ -765,12 +827,17 @@ def _editor_script(editor: EditableConfigModel | None) -> str:
         issues.push("task " + String(index + 1) + " id is required");
       }} else if (taskIds.has(id)) {{
         issues.push("duplicate task id: " + id);
+      }} else {{
+        taskIds.add(id);
       }}
-      taskIds.add(id);
       requireText(task.prompt, "task " + String(index + 1) + " prompt");
     }});
 
     return issues;
+  }}
+
+  function validateExportModel() {{
+    return validateEditedConfiguration();
   }}
 
   function validateGeneratedYaml(configYaml, tasksYaml) {{
@@ -797,6 +864,32 @@ def _editor_script(editor: EditableConfigModel | None) -> str:
       .forEach((button) => {{
         button.disabled = disabled;
       }});
+  }}
+
+  function refreshValidationPreflight() {{
+    const status = document.getElementById("preflight-status");
+    const list = document.getElementById("preflight-issues");
+    if (!status || !list) {{
+      return;
+    }}
+
+    const issues = validateEditedConfiguration();
+    list.textContent = "";
+    if (issues.length === 0) {{
+      status.textContent = "No schema-level issues detected in edited YAML.";
+      status.classList.remove("error");
+      status.classList.add("ok");
+      return;
+    }}
+
+    status.textContent = "Schema preflight found " + String(issues.length) + " issue(s).";
+    status.classList.remove("ok");
+    status.classList.add("error");
+    issues.forEach((issue) => {{
+      const item = document.createElement("li");
+      item.textContent = issue;
+      list.appendChild(item);
+    }});
   }}
 
   function refreshExport() {{
@@ -946,6 +1039,7 @@ def _editor_script(editor: EditableConfigModel | None) -> str:
       }});
 
     renderMatrix();
+    refreshValidationPreflight();
     refreshExport();
   }}
 
