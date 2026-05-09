@@ -224,6 +224,59 @@ Status: planned.
   agents.
 - Cleanup behavior matches the selected policy.
 
+## Phase 4.5: Agent Telemetry And Usage Accounting
+
+Status: planned.
+
+### Requirements
+
+- Users should be able to compare task completion behavior across coding agents
+  without treating context-eval as an absolute agent benchmark.
+- runner-guaranteed metrics must be recorded for every case, even when the
+  agent exposes no structured usage data.
+- hook-provided metrics such as token usage and tool calling counts must be
+  collected through optional adapter-level collectors.
+- Existing command-template agent configs must keep working through a no-op
+  collector.
+- Telemetry collection must remain local-only and must not call hosted services
+  or require a networked dashboard.
+
+### Changes
+
+- Add `docs/agent-telemetry.md` as the contract for telemetry fields,
+  collector behavior, reporting, and non-goals.
+- Extend `CaseResult` with a backwards-compatible normalized telemetry schema:
+  `agent_duration_seconds`, `telemetry_status`, `telemetry_source`,
+  `prompt_tokens`, `completion_tokens`, `total_tokens`, `reasoning_tokens`,
+  `tool_call_count`, and `tool_calls_by_name`.
+- Add an adapter telemetry hook interface that can prepare a per-case telemetry
+  target and collect data after the command-template agent exits.
+- Add a default no-op collector and a generic JSON telemetry collector for
+  agents that can write local usage metadata.
+- Add report, compare, inspect, and local UI aggregations for collected,
+  partial, and unavailable telemetry.
+
+### Test Plan
+
+- Spec tests for `docs/agent-telemetry.md` and this development plan phase.
+- Model tests for backwards-compatible result parsing and telemetry defaults.
+- Adapter tests for the no-op collector and generic JSON telemetry collector.
+- Runner integration tests for agent duration, telemetry status, token counts,
+  and tool calling counts in `results.jsonl`.
+- Report and CLI tests for aggregation behavior across collected, partial, and
+  unavailable telemetry.
+
+### Acceptance Criteria
+
+- Agent telemetry contract and normalized result schema are documented and
+  tested before implementation.
+- `results.jsonl` remains parseable for old and new runs.
+- Missing token/tool telemetry is represented explicitly, not guessed from logs.
+- Do not claim absolute coding-agent capability; reports frame metrics as local
+  observations for a recorded agent, task, variant, and trial configuration.
+- The first implementation supports a no-op collector and a generic JSON
+  telemetry collector without adding agent-specific brittle parsers.
+
 ## Phase 5: Reporting And Analysis
 
 Status: planned.
@@ -369,6 +422,8 @@ Before a phase is considered complete:
 4. `context-eval run --dry-run`.
 5. `context-eval init`.
 6. Trial support.
-7. Report/inspect commands.
-8. Local visual interface for config and run data.
-9. CI workflow and release checklist.
+7. Agent telemetry contract and normalized result schema.
+8. Adapter telemetry hook interface with no-op and generic JSON collectors.
+9. Report/inspect commands.
+10. Local visual interface for config and run data.
+11. CI workflow and release checklist.
