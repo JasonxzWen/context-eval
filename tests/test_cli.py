@@ -281,6 +281,11 @@ def test_inspect_run_prints_results_from_jsonl(tmp_path: Path) -> None:
         validation_status="passed",
         confidence="high",
         changed_files=2,
+        telemetry_status="collected",
+        telemetry_source="json-file",
+        agent_duration_seconds=1.25,
+        total_tokens=24,
+        tool_call_count=3,
     )
     (run_dir / "results.jsonl").write_text(result.model_dump_json() + "\n", encoding="utf-8")
 
@@ -295,6 +300,36 @@ def test_inspect_run_prints_results_from_jsonl(tmp_path: Path) -> None:
     assert "passed" in output.output
     assert "high" in output.output
     assert "2" in output.output
+    assert "telemetry_status=collected" in output.output
+    assert "agent_duration=1.25" in output.output
+    assert "total_tokens=24" in output.output
+    assert "tool_calls=3" in output.output
+
+
+def test_inspect_run_prints_unavailable_telemetry_from_jsonl(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    result = CaseResult(
+        run_id="run-1",
+        case_id="task-1__baseline",
+        task_id="task-1",
+        variant="baseline",
+        repo_ref="main",
+        agent_name="agent",
+        network="disabled",
+        status="completed",
+        validation_status="passed",
+        confidence="high",
+    )
+    (run_dir / "results.jsonl").write_text(result.model_dump_json() + "\n", encoding="utf-8")
+
+    output = CliRunner().invoke(app, ["inspect-run", str(run_dir)])
+
+    assert output.exit_code == 0
+    assert "telemetry_status=unavailable" in output.output
+    assert "agent_duration=-" in output.output
+    assert "total_tokens=-" in output.output
+    assert "tool_calls=-" in output.output
 
 
 def test_inspect_run_fails_for_missing_results(tmp_path: Path) -> None:
@@ -327,6 +362,12 @@ def test_compare_prints_variant_metrics_from_jsonl(tmp_path: Path) -> None:
             validation_status="passed",
             confidence="high",
             duration_seconds=2.0,
+            agent_duration_seconds=1.5,
+            telemetry_status="collected",
+            telemetry_source="json-file",
+            total_tokens=100,
+            tool_call_count=4,
+            tool_calls_by_name={"read": 1, "edit": 3},
             changed_files=1,
             touched_paths=["a.py"],
         ),
@@ -380,6 +421,67 @@ def test_compare_prints_variant_metrics_from_jsonl(tmp_path: Path) -> None:
     assert "avg_duration=3.00" in output.output
     assert "avg_changed_files=2.00" in output.output
     assert "common_touched_paths=a.py" in output.output
+    assert "telemetry_statuses=collected=1,unavailable=1" in output.output
+    assert "avg_agent_duration=1.50" in output.output
+    assert "avg_total_tokens=100.00" in output.output
+    assert "avg_tool_calls=4.00" in output.output
+    assert "common_tool_names=edit,read" in output.output
+    assert "telemetry_statuses=unavailable=1" in output.output
+    assert "avg_total_tokens=-" in output.output
+
+
+def test_report_writes_telemetry_summary_from_jsonl(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    (run_dir / "run_metadata.json").write_text(
+        '{"run_id": "run-1", "agent": {"name": "agent"}, "repo": {"base_ref": "main"}}',
+        encoding="utf-8",
+    )
+    results = [
+        CaseResult(
+            run_id="run-1",
+            case_id="task-1__baseline",
+            task_id="task-1",
+            variant="baseline",
+            repo_ref="main",
+            agent_name="agent",
+            network="disabled",
+            status="completed",
+            validation_status="passed",
+            confidence="high",
+            agent_duration_seconds=2.0,
+            telemetry_status="collected",
+            telemetry_source="json-file",
+            total_tokens=80,
+            tool_call_count=2,
+            tool_calls_by_name={"read": 2},
+        ),
+        CaseResult(
+            run_id="run-1",
+            case_id="task-1__experiment",
+            task_id="task-1",
+            variant="experiment",
+            repo_ref="main",
+            agent_name="agent",
+            network="disabled",
+            status="completed",
+            validation_status="passed",
+            confidence="high",
+        ),
+    ]
+    (run_dir / "results.jsonl").write_text(
+        "\n".join(result.model_dump_json() for result in results) + "\n",
+        encoding="utf-8",
+    )
+
+    output = CliRunner().invoke(app, ["report", str(run_dir)])
+
+    assert output.exit_code == 0
+    report = (run_dir / "report.md").read_text(encoding="utf-8")
+    assert "context-eval evaluates the effect of context variants" in report
+    assert "## Telemetry Summary" in report
+    assert "| `baseline` | collected=1 | 2.00 | 80.00 | 2.00 | read |" in report
+    assert "| `experiment` | unavailable=1 | - | - | - | - |" in report
 
 
 def test_compare_fails_for_missing_results(tmp_path: Path) -> None:

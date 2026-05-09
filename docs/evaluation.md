@@ -75,6 +75,33 @@ uniqueness. If another run has already created the timestamp directory,
 context-eval appends a numeric suffix and records that selected value as the
 `run_id` in `run_metadata.json` and every `results.jsonl` row.
 
+## Normalized Telemetry Fields
+
+Every result row includes a local-only telemetry envelope so newer reports can
+compare agent usage signals without breaking older result files. Old `results.jsonl` rows
+that do not contain these fields still parse as
+`telemetry_status="unavailable"` with `telemetry_source="none"`.
+
+The telemetry envelope fields are:
+
+- `telemetry_status`: `unavailable`, `collected`, `partial`, or `error`.
+- `telemetry_source`: the collector source label, such as `none` or a future
+  `json-file` collector.
+- `telemetry_error`: a concise local collection error when telemetry collection
+  fails.
+- `agent_duration_seconds`: the agent command duration, excluding runner setup,
+  overlay, diff, validation, and cleanup work when the adapter can report it.
+- `prompt_tokens`, `completion_tokens`, `total_tokens`, and
+  `reasoning_tokens`: nullable token counts supplied by adapter telemetry.
+- `tool_call_count`: nullable total tool-call count supplied by adapter
+  telemetry.
+- `tool_calls_by_name`: a map of tool name to non-negative local call count.
+
+Token and tool counts remain `null` when context-eval cannot distinguish a real
+zero from unavailable data. Existing command-template runs therefore record an
+explicit unavailable telemetry state while preserving the older validation and
+diff fields.
+
 Each JSONL result row also records workspace cleanup state:
 
 - `workspace_retained`: whether a case workspace still exists after the runner

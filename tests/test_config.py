@@ -72,6 +72,70 @@ variants:
     assert tasks.tasks[0].validation.commands == ["python -m pytest"]
     assert validated_config.agent.name == "test-agent"
     assert validated_tasks.tasks[0].prompt == "Fix the bug."
+    assert config.agent.telemetry.collector == "none"
+
+
+def test_yaml_config_parses_optional_json_file_telemetry(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    context_dir = tmp_path / "contexts" / "baseline"
+    context_dir.mkdir(parents=True)
+    (context_dir / "AGENTS.md").write_text("# Instructions\n", encoding="utf-8")
+    tasks_path = tmp_path / "tasks.yaml"
+    tasks_path.write_text(
+        """
+tasks:
+  - id: "task-1"
+    prompt: "Fix the bug."
+""",
+        encoding="utf-8",
+    )
+    config_path = tmp_path / "context-eval.yaml"
+    config_path.write_text(
+        """
+repo:
+  path: "./repo"
+agent:
+  name: "test-agent"
+  command: "agent --telemetry {telemetry_file}"
+  telemetry:
+    collector: "json-file"
+    file: "metrics/usage.json"
+tasks: "./tasks.yaml"
+variants:
+  baseline:
+    description: "Baseline"
+    overlays:
+      - source: "./contexts/baseline/AGENTS.md"
+        target: "AGENTS.md"
+""",
+        encoding="utf-8",
+    )
+
+    config = load_config(config_path)
+
+    assert config.agent.telemetry.collector == "json-file"
+    assert config.agent.telemetry.file == "metrics/usage.json"
+
+
+def test_yaml_config_rejects_unsafe_telemetry_file(tmp_path: Path) -> None:
+    config_path = _write_config_fixture(tmp_path)
+    text = config_path.read_text(encoding="utf-8")
+    config_path.write_text(
+        text.replace(
+            'command: "agent -p {prompt_file}"',
+            (
+                'command: "agent --telemetry {telemetry_file}"\n'
+                "  telemetry:\n"
+                '    collector: "json-file"\n'
+                '    file: "../usage.json"'
+            ),
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigError, match="telemetry file must be a safe relative path"):
+        load_config(config_path)
 
 
 def _write_config_fixture(

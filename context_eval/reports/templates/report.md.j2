@@ -38,6 +38,14 @@ context-eval evaluates the effect of context variants, not the absolute capabili
 | `{{ stat.variant }}` | {{ stat.passed }}/{{ stat.total }} | {{ "%.1f%%"|format(stat.pass_rate * 100) }} | {{ "%.2f"|format(stat.avg_duration) }} | {{ "%.2f"|format(stat.avg_changed_files) }} |
 {% endfor %}
 
+## Telemetry Summary
+
+| Variant | Telemetry statuses | Avg agent duration seconds | Avg total tokens | Avg tool calls | Common tool names |
+| --- | --- | ---: | ---: | ---: | --- |
+{% for stat in telemetry_stats -%}
+| `{{ stat.variant }}` | {{ stat.telemetry_statuses }} | {% if stat.avg_agent_duration_seconds is not none %}{{ "%.2f"|format(stat.avg_agent_duration_seconds) }}{% else %}-{% endif %} | {% if stat.avg_total_tokens is not none %}{{ "%.2f"|format(stat.avg_total_tokens) }}{% else %}-{% endif %} | {% if stat.avg_tool_calls is not none %}{{ "%.2f"|format(stat.avg_tool_calls) }}{% else %}-{% endif %} | {{ stat.common_tool_names }} |
+{% endfor %}
+
 ## Failed Cases
 
 {% if failed_cases -%}

@@ -18,7 +18,51 @@ Supported template variables:
 - `{task_id}`
 - `{variant}`
 - `{output_dir}`
+- `{telemetry_file}` when the JSON file telemetry collector is enabled
 
 The command runs with the prepared workspace as the current working directory.
 The agent may modify files and run commands, but context-eval never commits
 changes automatically.
+
+## Telemetry Collector Lifecycle
+
+Every adapter owns a telemetry collector at the adapter boundary. The
+command-template adapter uses `NoOpTelemetryCollector` by default, so existing
+configs keep recording `telemetry_status="unavailable"` and
+`telemetry_source="none"` unless another collector is configured.
+
+The command-template adapter also supports `JsonFileTelemetryCollector`. When
+enabled, it prepares a case-local telemetry file under the case artifact
+directory, exposes that absolute path as `{telemetry_file}`, and sets
+`CONTEXT_EVAL_TELEMETRY_FILE` to the same path by default. Agent commands can
+write JSON like:
+
+```json
+{
+  "prompt_tokens": 100,
+  "completion_tokens": 25,
+  "total_tokens": 125,
+  "reasoning_tokens": 10,
+  "tool_calls_by_name": {
+    "read": 2,
+    "shell": 1
+  }
+}
+```
+
+`tool_call_count` may be supplied directly. If it is omitted and
+`tool_calls_by_name` is present, context-eval derives the total from the
+per-tool counts.
+
+Collectors have two local-only hooks:
+
+1. `prepare(...)` runs before the command starts and may return additional
+   command template variables or environment variables for the current case.
+2. `collect(...)` runs after the command exits and returns a
+   `TelemetryCollectionResult` with normalized status, source, error, token
+   counts, and tool-call counts.
+
+Collectors must observe local artifacts only. They must not call hosted APIs,
+upload logs, estimate billing through a remote service, or execute an agent
+command themselves. A collector failure is reported as telemetry error state; it
+must not reinterpret the agent's exit code or validation result.

@@ -8,6 +8,7 @@ from pathlib import Path
 from rich.console import Console
 
 from context_eval import __version__
+from context_eval.adapters.base import TelemetryCollectionResult
 from context_eval.adapters.command import CommandTemplateAgent
 from context_eval.config import load_tasks
 from context_eval.contexts.overlay import OverlayError, apply_overlays
@@ -211,6 +212,22 @@ class ContextEvalRunner:
                 output_dir=output_dir,
                 timeout_seconds=self.config.agent.timeout_minutes * 60,
             )
+            result.agent_duration_seconds = agent_result.duration_seconds
+            try:
+                telemetry = agent.collect_telemetry(
+                    workspace=workspace,
+                    prompt_file=prompt_path,
+                    task=task,
+                    variant=variant_name,
+                    output_dir=output_dir,
+                    command_result=agent_result,
+                )
+                self._record_telemetry(result, telemetry)
+            except Exception as exc:
+                result.telemetry_status = "error"
+                result.telemetry_source = "adapter"
+                result.telemetry_error = str(exc)
+                errors.append(f"telemetry collection failed: {exc}")
             stdout_path.write_text(agent_result.stdout, encoding="utf-8")
             stderr_path.write_text(agent_result.stderr, encoding="utf-8")
             result.stdout_path = self._rel(run_dir, stdout_path)
@@ -283,6 +300,23 @@ class ContextEvalRunner:
         if self.trials == 1:
             return base
         return f"{base}__trial-{trial_index}"
+
+    @staticmethod
+    def _record_telemetry(
+        result: CaseResult,
+        telemetry: TelemetryCollectionResult,
+    ) -> None:
+        result.telemetry_status = telemetry.status
+        result.telemetry_source = telemetry.source
+        result.telemetry_error = telemetry.error
+        if telemetry.agent_duration_seconds is not None:
+            result.agent_duration_seconds = telemetry.agent_duration_seconds
+        result.prompt_tokens = telemetry.prompt_tokens
+        result.completion_tokens = telemetry.completion_tokens
+        result.total_tokens = telemetry.total_tokens
+        result.reasoning_tokens = telemetry.reasoning_tokens
+        result.tool_call_count = telemetry.tool_call_count
+        result.tool_calls_by_name = telemetry.tool_calls_by_name
 
     def _write_validation_logs(
         self,

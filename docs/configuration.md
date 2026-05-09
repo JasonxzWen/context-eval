@@ -34,6 +34,31 @@ directory.
 
 `network` is recorded in results. The MVP does not implement network isolation.
 
+## Agent Telemetry
+
+Agent telemetry is optional. Existing configs use the no-op collector by
+default and record `telemetry_status="unavailable"` with
+`telemetry_source="none"`.
+
+To collect metrics from a local JSON file written by the agent command, enable
+the JSON file collector:
+
+```yaml
+agent:
+  name: "myAgent"
+  command: "myAgent -p {prompt_file} --telemetry {telemetry_file}"
+  telemetry:
+    collector: "json-file"
+    file: "telemetry.json"
+```
+
+The `{telemetry_file}` variable is an absolute path for the current case under
+the run artifact directory. context-eval also sets
+`CONTEXT_EVAL_TELEMETRY_FILE` to that path unless
+`environment_variable: null` is configured. The JSON file may include
+`prompt_tokens`, `completion_tokens`, `total_tokens`, `reasoning_tokens`,
+`tool_call_count`, and `tool_calls_by_name`.
+
 ## Validation
 
 Use `context-eval validate-config --config path/to/context-eval.yaml` to parse

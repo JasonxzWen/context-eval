@@ -9,6 +9,7 @@ from typing import Any
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from context_eval.models import CaseResult
+from context_eval.reporting import telemetry_stats_by_variant
 
 
 def _load_results(run_dir: Path) -> list[CaseResult]:
@@ -83,6 +84,7 @@ def render_markdown_report(run_dir: Path) -> Path:
         matrix=_matrix(results),
         variants=sorted({result.variant for result in results}),
         variant_stats=_variant_stats(results),
+        telemetry_stats=telemetry_stats_by_variant(results),
         failed_cases=failed_cases,
         low_confidence=low_confidence,
     )
