@@ -68,3 +68,19 @@ def test_evaluation_docs_describe_normalized_telemetry_fields() -> None:
     ]
     for term in required_terms:
         assert term in text
+
+
+def test_adapter_api_documents_telemetry_collector_lifecycle() -> None:
+    text = Path("docs/adapter-api.md").read_text(encoding="utf-8")
+
+    required_terms = [
+        "## Telemetry Collector Lifecycle",
+        "NoOpTelemetryCollector",
+        "prepare(...)",
+        "collect(...)",
+        "TelemetryCollectionResult",
+        "local-only",
+        "must not call hosted APIs",
+    ]
+    for term in required_terms:
+        assert term in text
