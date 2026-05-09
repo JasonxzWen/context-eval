@@ -505,6 +505,83 @@ def test_compare_fails_for_malformed_results(tmp_path: Path) -> None:
     assert "malformed results.jsonl line 1" in output.output
 
 
+def test_export_writes_csv_from_run_artifacts(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    result = CaseResult(
+        run_id="run-1",
+        case_id="task-1__baseline",
+        task_id="task-1",
+        variant="baseline",
+        repo_ref="main",
+        agent_name="agent-a",
+        network="disabled",
+        status="completed",
+        validation_status="passed",
+        confidence="high",
+        total_tokens=10,
+    )
+    (run_dir / "results.jsonl").write_text(result.model_dump_json() + "\n", encoding="utf-8")
+    output_path = tmp_path / "summary.csv"
+
+    output = CliRunner().invoke(
+        app,
+        ["export", str(run_dir), "--format", "csv", "--output", str(output_path)],
+    )
+
+    assert output.exit_code == 0
+    assert "Export written" in output.output
+    csv_text = output_path.read_text(encoding="utf-8")
+    assert "run_id,case_id,agent_name,task_id" in csv_text
+    assert "run-1,task-1__baseline,agent-a,task-1" in csv_text
+
+
+def test_export_writes_compact_json_from_run_artifacts(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    (run_dir / "run_metadata.json").write_text('{"run_id": "run-1"}', encoding="utf-8")
+    result = CaseResult(
+        run_id="run-1",
+        case_id="task-1__baseline",
+        task_id="task-1",
+        variant="baseline",
+        repo_ref="main",
+        agent_name="agent-a",
+        network="disabled",
+        status="completed",
+        validation_status="passed",
+        confidence="high",
+        total_tokens=10,
+    )
+    (run_dir / "results.jsonl").write_text(result.model_dump_json() + "\n", encoding="utf-8")
+    output_path = tmp_path / "summary.json"
+
+    output = CliRunner().invoke(
+        app,
+        ["export", str(run_dir), "--format", "json", "--output", str(output_path)],
+    )
+
+    assert output.exit_code == 0
+    json_text = output_path.read_text(encoding="utf-8")
+    assert '"agent_summaries"' in json_text
+    assert '"agent_name": "agent-a"' in json_text
+    assert '"total_tokens": 10' in json_text
+
+
+def test_export_rejects_unsupported_format(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    (run_dir / "results.jsonl").write_text("", encoding="utf-8")
+
+    output = CliRunner().invoke(
+        app,
+        ["export", str(run_dir), "--format", "xml", "--output", str(tmp_path / "out.xml")],
+    )
+
+    assert output.exit_code == 1
+    assert "unsupported export format" in output.output
+
+
 def test_ui_generates_self_contained_config_and_run_html(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

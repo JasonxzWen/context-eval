@@ -9,6 +9,7 @@ from rich.console import Console
 from context_eval.compare import compare_run
 from context_eval.config import ConfigError, filter_tasks, validate_config_files
 from context_eval.dry_run import render_dry_run
+from context_eval.export import export_run_csv, export_run_json
 from context_eval.init import create_starter_files
 from context_eval.inspect_run import inspect_run
 from context_eval.reports.markdown import render_markdown_report
@@ -155,6 +156,34 @@ def compare_command(
     except Exception as exc:
         console.print(f"[red]Error:[/red] {exc}")
         raise typer.Exit(code=1) from exc
+
+
+@app.command("export")
+def export_command(
+    run_dir: Annotated[Path, typer.Argument(exists=True, file_okay=False)],
+    export_format: Annotated[
+        str,
+        typer.Option("--format", help="Export format: csv or json."),
+    ] = "csv",
+    output: Annotated[
+        Path,
+        typer.Option("--output", "-o", dir_okay=False, help="Output file to write."),
+    ] = Path("context-eval-summary.csv"),
+) -> None:
+    """Export deterministic run summaries from an existing run directory."""
+    try:
+        if export_format == "csv":
+            content = export_run_csv(run_dir)
+        elif export_format == "json":
+            content = export_run_json(run_dir)
+        else:
+            raise ValueError(f"unsupported export format: {export_format}")
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(content, encoding="utf-8")
+    except Exception as exc:
+        console.print(f"[red]Error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+    console.print(f"[green]Export written:[/green] {output}")
 
 
 @app.command("ui")
