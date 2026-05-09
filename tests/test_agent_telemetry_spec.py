@@ -47,3 +47,24 @@ def test_development_plan_includes_agent_telemetry_phase() -> None:
     assert "generic JSON telemetry collector" in plan
     assert "Do not claim absolute coding-agent capability" in plan
     assert "Agent telemetry contract and normalized result schema" in plan
+
+
+def test_evaluation_docs_describe_normalized_telemetry_fields() -> None:
+    text = Path("docs/evaluation.md").read_text(encoding="utf-8")
+
+    required_terms = [
+        "## Normalized Telemetry Fields",
+        "telemetry_status",
+        "telemetry_source",
+        "telemetry_error",
+        "agent_duration_seconds",
+        "prompt_tokens",
+        "completion_tokens",
+        "total_tokens",
+        "reasoning_tokens",
+        "tool_call_count",
+        "tool_calls_by_name",
+        "Old `results.jsonl` rows",
+    ]
+    for term in required_terms:
+        assert term in text

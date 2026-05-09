@@ -131,6 +131,16 @@ def test_runner_creates_versioned_result_report_and_agent_patch(tmp_path: Path) 
     assert result["status"] == "completed"
     assert result["validation_status"] == "passed"
     assert result["confidence"] == "high"
+    assert result["telemetry_status"] == "unavailable"
+    assert result["telemetry_source"] == "none"
+    assert result["telemetry_error"] is None
+    assert result["agent_duration_seconds"] >= 0
+    assert result["prompt_tokens"] is None
+    assert result["completion_tokens"] is None
+    assert result["total_tokens"] is None
+    assert result["reasoning_tokens"] is None
+    assert result["tool_call_count"] is None
+    assert result["tool_calls_by_name"] == {}
     assert result["changed_files"] == 1
     assert result["touched_paths"] == ["README.md"]
     assert result["workspace_retained"] is False

@@ -20,6 +20,7 @@ RunStatus = Literal[
 ValidationStatus = Literal["passed", "failed", "skipped"]
 Confidence = Literal["high", "medium", "low"]
 CleanupStatus = Literal["skipped", "succeeded", "failed"]
+TelemetryStatus = Literal["unavailable", "collected", "partial", "error"]
 
 
 class RepoConfig(BaseModel):
@@ -152,6 +153,16 @@ class CaseResult(BaseModel):
     timeout: bool = False
     agent_exit_code: int | None = None
     duration_seconds: float = 0.0
+    telemetry_status: TelemetryStatus = "unavailable"
+    telemetry_source: str = "none"
+    telemetry_error: str | None = None
+    agent_duration_seconds: float | None = Field(default=None, ge=0)
+    prompt_tokens: int | None = Field(default=None, ge=0)
+    completion_tokens: int | None = Field(default=None, ge=0)
+    total_tokens: int | None = Field(default=None, ge=0)
+    reasoning_tokens: int | None = Field(default=None, ge=0)
+    tool_call_count: int | None = Field(default=None, ge=0)
+    tool_calls_by_name: dict[str, int] = Field(default_factory=dict)
     workspace_path: str | None = None
     prompt_path: str | None = None
     stdout_path: str | None = None
@@ -167,3 +178,13 @@ class CaseResult(BaseModel):
     confidence: Confidence = "low"
     validation_results: list[CommandResult] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
+
+    @field_validator("tool_calls_by_name")
+    @classmethod
+    def validate_tool_calls_by_name(cls, value: dict[str, int]) -> dict[str, int]:
+        for name, count in value.items():
+            if not name.strip():
+                raise ValueError("tool call names must not be empty")
+            if count < 0:
+                raise ValueError("tool call counts must be non-negative")
+        return value

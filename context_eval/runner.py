@@ -211,6 +211,7 @@ class ContextEvalRunner:
                 output_dir=output_dir,
                 timeout_seconds=self.config.agent.timeout_minutes * 60,
             )
+            result.agent_duration_seconds = agent_result.duration_seconds
             stdout_path.write_text(agent_result.stdout, encoding="utf-8")
             stderr_path.write_text(agent_result.stderr, encoding="utf-8")
             result.stdout_path = self._rel(run_dir, stdout_path)
