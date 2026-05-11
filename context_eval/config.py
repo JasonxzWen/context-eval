@@ -44,6 +44,8 @@ def load_config(path: Path) -> ContextEvalConfig:
     config.config_path = config_path
     config.repo.path = _resolve_path(config.repo.path, base_dir)
     config.tasks = _resolve_path(config.tasks, base_dir)
+    if config.agent.prompt_template:
+        config.agent.prompt_template = _resolve_path(config.agent.prompt_template, base_dir)
 
     if "output_dir" in data:
         config.output_dir = _resolve_path(config.output_dir, base_dir)
@@ -110,6 +112,8 @@ def validate_config_files(
 
     if not config.repo.path.exists():
         raise ConfigError(f"repo.path does not exist: {config.repo.path}")
+    if config.agent.prompt_template and not config.agent.prompt_template.exists():
+        raise ConfigError(f"agent.prompt_template does not exist: {config.agent.prompt_template}")
     for name, variant in config.variants.items():
         for overlay in variant.overlays:
             if not overlay.source.exists():

@@ -307,8 +307,19 @@ class ContextEvalRunner:
             except Exception as exc:
                 errors.append(f"diff baseline creation failed: {exc}")
 
-            prompt = render_prompt(task, variant_name)
-            write_prompt_file(prompt_path, task, variant_name)
+            prompt = render_prompt(
+                task,
+                variant_name,
+                prompt_template=self.config.agent.prompt_template,
+                repo_ref=repo_ref,
+            )
+            write_prompt_file(
+                prompt_path,
+                task,
+                variant_name,
+                prompt_template=self.config.agent.prompt_template,
+                repo_ref=repo_ref,
+            )
             result.prompt_path = self._rel(run_dir, prompt_path)
 
             agent_result = agent.run(

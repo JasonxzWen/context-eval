@@ -118,6 +118,38 @@ variants:
     assert config.agent.telemetry.file == "metrics/usage.json"
 
 
+def test_yaml_config_resolves_prompt_template_relative_to_config(tmp_path: Path) -> None:
+    config_path = _write_config_fixture(tmp_path)
+    prompt_template = tmp_path / "prompts" / "agent-task.md"
+    prompt_template.parent.mkdir()
+    prompt_template.write_text("Task={task_id}", encoding="utf-8")
+    config_path.write_text(
+        config_path.read_text(encoding="utf-8").replace(
+            'command: "agent -p {prompt_file}"',
+            'command: "agent -p {prompt_file}"\n  prompt_template: "./prompts/agent-task.md"',
+        ),
+        encoding="utf-8",
+    )
+
+    config = load_config(config_path)
+
+    assert config.agent.prompt_template == prompt_template.resolve()
+
+
+def test_validate_config_rejects_missing_prompt_template(tmp_path: Path) -> None:
+    config_path = _write_config_fixture(tmp_path)
+    config_path.write_text(
+        config_path.read_text(encoding="utf-8").replace(
+            'command: "agent -p {prompt_file}"',
+            'command: "agent -p {prompt_file}"\n  prompt_template: "./missing-prompt.md"',
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigError, match="agent.prompt_template does not exist"):
+        validate_config_files(config_path)
+
+
 def test_yaml_config_rejects_unsafe_telemetry_file(tmp_path: Path) -> None:
     config_path = _write_config_fixture(tmp_path)
     text = config_path.read_text(encoding="utf-8")

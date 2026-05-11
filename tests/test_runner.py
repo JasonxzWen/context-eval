@@ -214,6 +214,99 @@ def test_runner_records_json_file_agent_telemetry(tmp_path: Path) -> None:
     assert result["tool_calls_by_name"] == {"read": 1, "edit": 2}
 
 
+def test_runner_writes_custom_prompt_template(tmp_path: Path) -> None:
+    repo = _create_repo(tmp_path)
+    overlay_source = tmp_path / "ctx" / "AGENTS.md"
+    overlay_source.parent.mkdir()
+    overlay_source.write_text("# Instructions\n", encoding="utf-8")
+
+    prompt_template = tmp_path / "prompts" / "agent-task.md"
+    prompt_template.parent.mkdir()
+    prompt_template.write_text(
+        "CUSTOM {task_id} {task_title} {variant} {repo_ref} {category} {difficulty}\n"
+        "{task_prompt}",
+        encoding="utf-8",
+    )
+    agent_script = tmp_path / "agent.py"
+    agent_script.write_text("print('custom prompt run')\n", encoding="utf-8")
+    task_file = TaskFile(
+        tasks=[
+            TaskConfig(
+                id="custom-prompt",
+                title="Custom Prompt",
+                prompt="Use the custom prompt.",
+                category="docs",
+                difficulty="easy",
+            )
+        ]
+    )
+    config = _base_config(
+        tmp_path=tmp_path,
+        repo=repo,
+        agent_command=f'"{sys.executable}" "{agent_script}"',
+        overlay_source=overlay_source,
+    )
+    config.agent.prompt_template = prompt_template
+
+    run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        cleanup=True,
+        console=_quiet_console(),
+    ).run()
+    result = json.loads((run_dir / "results.jsonl").read_text(encoding="utf-8"))
+    prompt = (run_dir / result["prompt_path"]).read_text(encoding="utf-8")
+
+    assert result["status"] == "completed"
+    assert prompt == (
+        "CUSTOM custom-prompt Custom Prompt baseline HEAD docs easy\n"
+        "Use the custom prompt."
+    )
+
+
+def test_runner_rejects_unknown_prompt_template_variable_before_agent_runs(
+    tmp_path: Path,
+) -> None:
+    repo = _create_repo(tmp_path)
+    overlay_source = tmp_path / "ctx" / "AGENTS.md"
+    overlay_source.parent.mkdir()
+    overlay_source.write_text("# Instructions\n", encoding="utf-8")
+
+    prompt_template = tmp_path / "prompts" / "agent-task.md"
+    prompt_template.parent.mkdir()
+    prompt_template.write_text("Unknown {missing}", encoding="utf-8")
+    sentinel_path = tmp_path / "agent-ran.txt"
+    agent_script = tmp_path / "agent.py"
+    agent_script.write_text(
+        f"from pathlib import Path\nPath({str(sentinel_path)!r}).write_text('ran')\n",
+        encoding="utf-8",
+    )
+    task_file = TaskFile(tasks=[TaskConfig(id="bad-template", prompt="Do nothing.")])
+    config = _base_config(
+        tmp_path=tmp_path,
+        repo=repo,
+        agent_command=f'"{sys.executable}" "{agent_script}"',
+        overlay_source=overlay_source,
+    )
+    config.agent.prompt_template = prompt_template
+
+    run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        cleanup=True,
+        console=_quiet_console(),
+    ).run()
+    result = json.loads((run_dir / "results.jsonl").read_text(encoding="utf-8"))
+
+    assert result["status"] == "internal_error"
+    assert result["prompt_path"] is None
+    assert any(
+        "prompt template references unknown variable: missing" in error
+        for error in result["errors"]
+    )
+    assert not sentinel_path.exists()
+
+
 def test_runner_does_not_fail_case_when_json_telemetry_file_is_missing(
     tmp_path: Path,
 ) -> None:
