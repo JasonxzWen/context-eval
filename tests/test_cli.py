@@ -614,6 +614,85 @@ def test_report_writes_telemetry_summary_from_jsonl(tmp_path: Path) -> None:
     assert "## Telemetry Summary" in report
     assert "| `baseline` | collected=1 | 2.00 | 80.00 | 2.00 | read |" in report
     assert "| `experiment` | unavailable=1 | - | - | - | - |" in report
+    assert "## Agent Summary" not in report
+
+
+def test_report_writes_agent_summary_for_multiple_agents(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    (run_dir / "run_metadata.json").write_text(
+        '{"run_id": "run-1", "agent": {"name": "mixed"}, "repo": {"base_ref": "main"}}',
+        encoding="utf-8",
+    )
+    results = [
+        CaseResult(
+            run_id="run-1",
+            case_id="task-1__baseline__agent-a",
+            task_id="task-1",
+            variant="baseline",
+            repo_ref="main",
+            agent_name="agent-a",
+            network="disabled",
+            status="completed",
+            validation_status="passed",
+            confidence="high",
+            duration_seconds=2.0,
+            agent_duration_seconds=1.5,
+            telemetry_status="collected",
+            telemetry_source="json-file",
+            total_tokens=80,
+            tool_call_count=2,
+            tool_calls_by_name={"read": 2},
+        ),
+        CaseResult(
+            run_id="run-1",
+            case_id="task-2__baseline__agent-a",
+            task_id="task-2",
+            variant="baseline",
+            repo_ref="main",
+            agent_name="agent-a",
+            network="disabled",
+            status="validation_failed",
+            validation_status="failed",
+            confidence="medium",
+            duration_seconds=4.0,
+            telemetry_status="partial",
+            telemetry_source="json-file",
+            total_tokens=40,
+            tool_call_count=4,
+            tool_calls_by_name={"edit": 4},
+        ),
+        CaseResult(
+            run_id="run-1",
+            case_id="task-1__baseline__agent-b",
+            task_id="task-1",
+            variant="baseline",
+            repo_ref="main",
+            agent_name="agent-b",
+            network="disabled",
+            status="completed",
+            validation_status="passed",
+            confidence="high",
+            duration_seconds=8.0,
+        ),
+    ]
+    (run_dir / "results.jsonl").write_text(
+        "\n".join(result.model_dump_json() for result in results) + "\n",
+        encoding="utf-8",
+    )
+
+    output = CliRunner().invoke(app, ["report", str(run_dir)])
+
+    assert output.exit_code == 0
+    report = (run_dir / "report.md").read_text(encoding="utf-8")
+    assert "context-eval evaluates the effect of context variants" in report
+    assert "not the absolute capability of an agent" in report
+    assert "## Agent Summary" in report
+    assert (
+        "| `agent-a` | 2 | 50.0% | 3.00 | 1.50 | 60.00 | 3.00 | "
+        "collected=1,partial=1 | edit,read |"
+    ) in report
+    assert "| `agent-b` | 1 | 100.0% | 8.00 | - | - | - | unavailable=1 | - |" in report
 
 
 def test_compare_fails_for_missing_results(tmp_path: Path) -> None:

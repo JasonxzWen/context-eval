@@ -8,8 +8,9 @@ from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+from context_eval.export import agent_summary_rows, has_multiple_agents
 from context_eval.models import CaseResult
-from context_eval.reporting import telemetry_stats_by_variant
+from context_eval.reporting import format_status_counts, telemetry_stats_by_variant
 
 
 def _load_results(run_dir: Path) -> list[CaseResult]:
@@ -58,6 +59,22 @@ def _matrix(results: list[CaseResult]) -> dict[str, dict[str, CaseResult]]:
     return dict(sorted(rows.items()))
 
 
+def _agent_stats(results: list[CaseResult]) -> list[dict[str, Any]]:
+    if not has_multiple_agents(results):
+        return []
+
+    stats = []
+    for item in agent_summary_rows(results):
+        stats.append(
+            {
+                **item,
+                "telemetry_statuses": format_status_counts(item["telemetry_statuses"]),
+                "common_tool_names": ",".join(item["common_tool_names"]) or "-",
+            }
+        )
+    return stats
+
+
 def render_markdown_report(run_dir: Path) -> Path:
     run_dir = run_dir.resolve()
     results = _load_results(run_dir)
@@ -85,6 +102,7 @@ def render_markdown_report(run_dir: Path) -> Path:
         variants=sorted({result.variant for result in results}),
         variant_stats=_variant_stats(results),
         telemetry_stats=telemetry_stats_by_variant(results),
+        agent_stats=_agent_stats(results),
         failed_cases=failed_cases,
         low_confidence=low_confidence,
     )
