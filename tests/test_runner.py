@@ -661,6 +661,100 @@ def test_runner_repeats_selected_cases_for_trials(tmp_path: Path) -> None:
     assert len({result["workspace_path"] for result in results}) == 2
 
 
+def test_runner_writes_run_manifest_for_selected_case_matrix(tmp_path: Path) -> None:
+    repo = _create_repo(tmp_path)
+    baseline_overlay = tmp_path / "ctx" / "baseline" / "AGENTS.md"
+    experiment_overlay = tmp_path / "ctx" / "experiment" / "AGENTS.md"
+    baseline_overlay.parent.mkdir(parents=True)
+    experiment_overlay.parent.mkdir(parents=True)
+    baseline_overlay.write_text("# Baseline\n", encoding="utf-8")
+    experiment_overlay.write_text("# Experiment\n", encoding="utf-8")
+
+    agent_script = tmp_path / "agent.py"
+    agent_script.write_text("print('manifest run')\n", encoding="utf-8")
+    task_file = TaskFile(
+        tasks=[
+            TaskConfig(id="task-1", prompt="First."),
+            TaskConfig(id="task-2", prompt="Second."),
+            TaskConfig(id="task-3", prompt="Excluded."),
+        ]
+    )
+    config = _base_config(
+        tmp_path=tmp_path,
+        repo=repo,
+        agent_command=f'"{sys.executable}" "{agent_script}"',
+        overlay_source=baseline_overlay,
+    )
+    config.variants["experiment"] = VariantConfig(
+        description="Experiment",
+        overlays=[OverlayConfig(source=experiment_overlay, target="AGENTS.md")],
+    )
+
+    run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        max_tasks=2,
+        variants=["experiment", "baseline"],
+        trials=2,
+        jobs=2,
+        cleanup=True,
+        console=_quiet_console(),
+    ).run()
+
+    manifest_text = (run_dir / "run_manifest.json").read_text(encoding="utf-8")
+    manifest = json.loads(manifest_text)
+    metadata = json.loads((run_dir / "run_metadata.json").read_text(encoding="utf-8"))
+    results = [
+        json.loads(line)
+        for line in (run_dir / "results.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+
+    assert manifest_text.endswith("\n")
+    assert manifest_text.splitlines()[1] == '  "case_count": 8,'
+    assert manifest["manifest_schema_version"] == "1"
+    assert manifest["run_id"] == run_dir.name
+    assert manifest["config_hash"] == metadata["config_hash"]
+    assert manifest["config_path"] is None
+    assert manifest["trials"] == 2
+    assert manifest["jobs"] == 2
+    assert manifest["cleanup_policy"] == "always"
+    assert manifest["case_count"] == 8
+    assert [task["id"] for task in manifest["tasks"]] == ["task-1", "task-2"]
+    assert [variant["name"] for variant in manifest["variants"]] == [
+        "experiment",
+        "baseline",
+    ]
+    assert [case["case_id"] for case in manifest["case_matrix"]] == [
+        "task-1__experiment__trial-1",
+        "task-1__experiment__trial-2",
+        "task-1__baseline__trial-1",
+        "task-1__baseline__trial-2",
+        "task-2__experiment__trial-1",
+        "task-2__experiment__trial-2",
+        "task-2__baseline__trial-1",
+        "task-2__baseline__trial-2",
+    ]
+
+    for task in manifest["tasks"]:
+        assert len(task["task_hash"]) == 16
+        assert task["repo_ref"] == "HEAD"
+    for variant in manifest["variants"]:
+        assert len(variant["variant_hash"]) == 16
+    assert "task-3" not in {task["id"] for task in manifest["tasks"]}
+
+    results_by_case = {result["case_id"]: result for result in results}
+    assert set(results_by_case) == {
+        case["case_id"] for case in manifest["case_matrix"]
+    }
+    for case in manifest["case_matrix"]:
+        result = results_by_case[case["case_id"]]
+        assert case["task_hash"] == result["task_hash"]
+        assert case["variant_hash"] == result["variant_hash"]
+        assert case["task_id"] == result["task_id"]
+        assert case["variant"] == result["variant"]
+        assert case["trial_index"] == result["trial_index"]
+
+
 def test_runner_rejects_jobs_less_than_one(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
