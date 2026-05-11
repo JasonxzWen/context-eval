@@ -82,6 +82,15 @@ context-eval run --config examples/basic/context-eval.yaml --jobs 2
 limit while writing deterministic local run artifacts. This speeds up a local
 matrix; it is not an agent leaderboard.
 
+Choose when workspaces are retained:
+
+```bash
+context-eval run --config examples/basic/context-eval.yaml --cleanup-policy successful
+```
+
+`--cleanup-policy` accepts `never`, `always`, `successful`, and `failed`.
+`never` is the default and keeps workspaces for debugging. `--cleanup` is shorthand for `--cleanup-policy always`.
+
 Regenerate a report:
 
 ```bash
@@ -245,7 +254,8 @@ Each JSONL row includes a `schema_version`, `context_eval_version`,
 `config_hash`, `task_hash`, and `variant_hash` so downstream analysis can detect
 schema changes and group results by the exact evaluated inputs.
 
-Use `--cleanup` to remove workspaces after each case.
+Use `--cleanup-policy` to control whether case workspaces are retained in local
+run artifacts.
 
 ## Development Capability Library
 

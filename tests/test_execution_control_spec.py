@@ -56,3 +56,19 @@ def test_evaluation_docs_describe_cleanup_policy_contract() -> None:
         "workspace_retained",
     ]:
         assert term in text
+
+
+def test_readme_documents_cleanup_policy_usage() -> None:
+    text = Path("README.md").read_text(encoding="utf-8")
+
+    for term in [
+        "context-eval run --config examples/basic/context-eval.yaml --cleanup-policy successful",
+        "`--cleanup-policy`",
+        "`never`",
+        "`always`",
+        "`successful`",
+        "`failed`",
+        "`--cleanup` is shorthand for `--cleanup-policy always`",
+        "local run artifacts",
+    ]:
+        assert term in text
