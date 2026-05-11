@@ -132,3 +132,20 @@ def test_compact_json_export_metadata_contract_is_documented() -> None:
     assert "derived only from parsed `results.jsonl` rows" in spec
     assert "compact JSON metadata" in plan
     assert "controlled export timestamp" in plan
+
+
+def test_reporting_polish_spec_defines_large_matrix_contract() -> None:
+    spec = Path("docs/multi-agent-comparison.md").read_text(encoding="utf-8")
+
+    for term in [
+        "## Large Matrix Reporting Polish",
+        "run matrix overview",
+        "aggregate cells by `task_id` and `variant`",
+        "case count, pass rate, status counts, validation counts, confidence counts",
+        "agent names and trial indexes",
+        "risk signals",
+        "failed, timeout, low-confidence, and telemetry-gap cases",
+        "must not infer missing telemetry values",
+        "local observations from recorded artifacts",
+    ]:
+        assert term in spec

@@ -115,6 +115,33 @@ Useful agent summaries include:
 Single-agent runs may keep the current variant-oriented display and suppress
 the agent summary to avoid redundant output.
 
+## Large Matrix Reporting Polish
+
+Larger local runs need a run matrix overview before detailed rows. The overview
+should report task count, variant count, agent count, trial count, case count,
+failed count, timeout count, low-confidence count, and telemetry-gap count from
+the parsed `results.jsonl` rows. These are local observations from recorded artifacts, not benchmark claims.
+
+Markdown reports, terminal summaries, and the static UI should aggregate cells
+by `task_id` and `variant` instead of selecting a single result row. In other
+words, these surfaces should aggregate cells by `task_id` and `variant` for
+every task/variant intersection. Each aggregate cell should make large matrices
+readable by showing case count, pass rate, status counts, validation counts,
+confidence counts, agent names and trial indexes. The aggregate contract is:
+case count, pass rate, status counts, validation counts, confidence counts,
+agent names and trial indexes. The exact formatting may vary by surface, but
+the values must be derived only from local result rows.
+
+Reporting surfaces should make risk signals easy to find. Failed, timeout,
+low-confidence, and telemetry-gap cases should be listed or summarized
+separately from the raw artifact links. The risk signal set covers failed,
+timeout, low-confidence, and telemetry-gap cases.
+In short: failed, timeout, low-confidence, and telemetry-gap cases are
+first-class reporting signals.
+Telemetry-gap cases include rows whose `telemetry_status` is not `collected`;
+reports must not infer missing telemetry values from logs, command output, or
+neighboring rows.
+
 ## Static UI Behavior
 
 The generated local UI may display agent summary cards or tables from run
