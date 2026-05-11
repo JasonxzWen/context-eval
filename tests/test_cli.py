@@ -152,6 +152,7 @@ variants:
       - source: "./contexts/experiment/AGENTS.md"
         target: "AGENTS.md"
 evaluation:
+  timeout_seconds: 30
   commands:
     - "python -m pytest"
 """,
@@ -182,6 +183,7 @@ evaluation:
     assert "AGENTS.md -> AGENTS.md" in result.output
     assert "prompts/docs-easy__experiment.md" in result.output
     assert "python -m pytest" in result.output
+    assert "timeout_seconds=30" in result.output
     assert not output_dir.exists()
 
     max_tasks_result = CliRunner().invoke(
@@ -899,6 +901,7 @@ evaluation:
         "agent.network",
         "tasks_path",
         "evaluation_commands",
+        "evaluation_timeout_seconds",
         "variant.name",
         "variant.description",
         "overlay.source",
@@ -910,6 +913,7 @@ evaluation:
         "task.category",
         "task.difficulty",
         "task.validation_commands",
+        "task.validation_timeout_seconds",
     ]:
         assert f'data-field="{field}"' in html
     assert 'id="matrix-body"' in html

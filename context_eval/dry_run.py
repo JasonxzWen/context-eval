@@ -37,6 +37,11 @@ def render_dry_run(
                 repo_ref = task.repo_ref or config.repo.base_ref
                 case_name = _case_id(task.id, variant_name, trial_index, trials)
                 commands = task.validation.commands or config.evaluation.commands
+                timeout_seconds = (
+                    task.validation.timeout_seconds
+                    if task.validation.timeout_seconds is not None
+                    else config.evaluation.timeout_seconds
+                )
                 console.print(
                     f"- task={task.id} variant={variant_name} "
                     f"trial={trial_index} repo_ref={repo_ref}"
@@ -52,6 +57,8 @@ def render_dry_run(
                     console.print("    - none")
                 console.print("  validation:")
                 if commands:
+                    if timeout_seconds is not None:
+                        console.print(f"    timeout_seconds={timeout_seconds}")
                     for command in commands:
                         console.print(f"    - {command}")
                 else:

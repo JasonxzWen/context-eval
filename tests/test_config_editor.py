@@ -21,6 +21,7 @@ def test_editable_model_includes_supported_fields_from_basic_example() -> None:
     assert model.agent.timeout_minutes == 5
     assert model.agent.network == "disabled"
     assert model.tasks_path == "./tasks.yaml"
+    assert model.evaluation_timeout_seconds is None
     assert model.evaluation_commands == ["python -m pytest"]
     assert [variant.name for variant in model.variants] == ["baseline", "experiment"]
     assert model.variants[0].description == "Original AGENTS.md"
@@ -35,6 +36,7 @@ def test_editable_model_includes_supported_fields_from_basic_example() -> None:
     assert task.prompt.startswith("Fix the fixture greeting")
     assert task.category == "runtime"
     assert task.difficulty == "easy"
+    assert task.validation_timeout_seconds is None
     assert task.validation_commands == []
 
 
@@ -127,6 +129,60 @@ tasks:
     assert task_data["tasks"][0]["validation"]["commands"] == [
         "python -m pytest tests/test_bug.py"
     ]
+
+
+def test_editable_model_exports_validation_timeout_defaults(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    context_dir = tmp_path / "contexts" / "baseline"
+    context_dir.mkdir(parents=True)
+    (context_dir / "AGENTS.md").write_text("# Instructions\n", encoding="utf-8")
+    config_path = tmp_path / "context-eval.yaml"
+    config_path.write_text(
+        """
+repo:
+  path: "./repo"
+agent:
+  name: "test-agent"
+  command: "agent -p {prompt_file}"
+tasks: "./tasks.yaml"
+variants:
+  baseline:
+    description: "Baseline"
+    overlays:
+      - source: "./contexts/baseline/AGENTS.md"
+        target: "AGENTS.md"
+evaluation:
+  timeout_seconds: 45
+  commands:
+    - "python -m pytest"
+""",
+        encoding="utf-8",
+    )
+    tasks_path = tmp_path / "tasks.yaml"
+    tasks_path.write_text(
+        """
+tasks:
+  - id: "task-1"
+    prompt: "Fix the bug."
+    validation:
+      timeout_seconds: 15
+      commands:
+        - "python -m pytest tests/test_bug.py"
+""",
+        encoding="utf-8",
+    )
+    config, tasks = validate_config_files(config_path)
+    model = build_editable_model(config, tasks)
+
+    exported = export_editable_yaml(model)
+    config_data = yaml.safe_load(exported.config_yaml)
+    task_data = yaml.safe_load(exported.tasks_yaml)
+
+    assert model.evaluation_timeout_seconds == 45
+    assert model.tasks[0].validation_timeout_seconds == 15
+    assert config_data["evaluation"]["timeout_seconds"] == 45
+    assert task_data["tasks"][0]["validation"]["timeout_seconds"] == 15
 
 
 def test_editable_yaml_export_rejects_duplicate_variant_names() -> None:

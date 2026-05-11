@@ -89,6 +89,7 @@ class VariantConfig(BaseModel):
 
 class EvaluationConfig(BaseModel):
     commands: list[str] = Field(default_factory=list)
+    timeout_seconds: int | None = Field(default=None, ge=1)
 
 
 class ContextEvalConfig(BaseModel):
@@ -109,6 +110,7 @@ class ContextEvalConfig(BaseModel):
 
 class ValidationConfig(BaseModel):
     commands: list[str] = Field(default_factory=list)
+    timeout_seconds: int | None = Field(default=None, ge=1)
 
 
 class TaskConfig(BaseModel):

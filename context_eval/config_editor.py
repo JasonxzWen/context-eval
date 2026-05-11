@@ -40,6 +40,7 @@ class EditableTask(BaseModel):
     title: str | None = None
     category: str | None = None
     difficulty: str | None = None
+    validation_timeout_seconds: int | None = None
     validation_commands: list[str] = Field(default_factory=list)
 
 
@@ -49,6 +50,7 @@ class EditableConfigModel(BaseModel):
     tasks_path: str
     variants: list[EditableVariant]
     tasks: list[EditableTask]
+    evaluation_timeout_seconds: int | None = None
     evaluation_commands: list[str] = Field(default_factory=list)
     output_dir: str | None = None
 
@@ -102,10 +104,12 @@ def build_editable_model(
                 repo_ref=task.repo_ref,
                 category=task.category,
                 difficulty=task.difficulty,
+                validation_timeout_seconds=task.validation.timeout_seconds,
                 validation_commands=list(task.validation.commands),
             )
             for task in tasks.tasks
         ],
+        evaluation_timeout_seconds=config.evaluation.timeout_seconds,
         evaluation_commands=list(config.evaluation.commands),
     )
 
@@ -141,9 +145,7 @@ def export_editable_yaml(model: EditableConfigModel) -> EditableYamlExport:
             }
             for variant in model.variants
         },
-        "evaluation": {
-            "commands": list(model.evaluation_commands),
-        },
+        "evaluation": _evaluation_to_yaml_data(model),
     }
     if model.output_dir is not None:
         config_data["output_dir"] = model.output_dir
@@ -171,10 +173,20 @@ def _task_to_yaml_data(task: EditableTask) -> dict[str, Any]:
         data["category"] = task.category
     if task.difficulty is not None:
         data["difficulty"] = task.difficulty
-    if task.validation_commands:
-        data["validation"] = {
-            "commands": list(task.validation_commands),
-        }
+    if task.validation_commands or task.validation_timeout_seconds is not None:
+        validation: dict[str, Any] = {}
+        if task.validation_timeout_seconds is not None:
+            validation["timeout_seconds"] = task.validation_timeout_seconds
+        validation["commands"] = list(task.validation_commands)
+        data["validation"] = validation
+    return data
+
+
+def _evaluation_to_yaml_data(model: EditableConfigModel) -> dict[str, Any]:
+    data: dict[str, Any] = {}
+    if model.evaluation_timeout_seconds is not None:
+        data["timeout_seconds"] = model.evaluation_timeout_seconds
+    data["commands"] = list(model.evaluation_commands)
     return data
 
 
