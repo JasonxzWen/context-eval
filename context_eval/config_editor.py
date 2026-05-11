@@ -117,6 +117,10 @@ def build_editable_model(
 def export_editable_yaml(model: EditableConfigModel) -> EditableYamlExport:
     """Serialize an editable model into separate config and task YAML documents."""
 
+    issues = validate_editable_model(model)
+    if issues:
+        raise ValueError(f"export blocked: {'; '.join(issues)}")
+
     _require_unique("variant names", [variant.name for variant in model.variants])
     _require_unique("task ids", [task.id for task in model.tasks])
 
@@ -158,6 +162,53 @@ def export_editable_yaml(model: EditableConfigModel) -> EditableYamlExport:
         config_yaml=_dump_yaml(config_data),
         tasks_yaml=_dump_yaml(tasks_data),
     )
+
+
+def validate_editable_model(model: EditableConfigModel) -> list[str]:
+    """Return persistence blockers for an edited local UI model."""
+
+    issues: list[str] = []
+    _require_text(model.repo.path, "repo.path", issues)
+    _require_text(model.repo.base_ref, "repo.base_ref", issues)
+    _require_text(model.agent.name, "agent.name", issues)
+    _require_text(model.agent.command, "agent.command", issues)
+    _require_text(model.tasks_path, "tasks path", issues)
+
+    if model.agent.timeout_minutes < 1:
+        issues.append("agent.timeout_minutes must be a positive integer")
+    if model.agent.network not in {"disabled", "enabled"}:
+        issues.append("agent.network must be disabled or enabled")
+    if (
+        model.evaluation_timeout_seconds is not None
+        and model.evaluation_timeout_seconds < 1
+    ):
+        issues.append("evaluation.timeout_seconds must be a positive integer")
+
+    if not model.variants:
+        issues.append("at least one variant is required")
+    for variant_index, variant in enumerate(model.variants, start=1):
+        _require_text(variant.name, f"variant {variant_index} name", issues)
+        for overlay_index, overlay in enumerate(variant.overlays, start=1):
+            label = f"variant {variant_index} overlay {overlay_index}"
+            _require_text(overlay.source, f"{label} source", issues)
+            _require_text(overlay.target, f"{label} target", issues)
+            if not _is_safe_relative_path(overlay.target):
+                issues.append(f"{label} target must be a safe relative path")
+
+    if not model.tasks:
+        issues.append("at least one task is required")
+    for task_index, task in enumerate(model.tasks, start=1):
+        _require_text(task.id, f"task {task_index} id", issues)
+        _require_text(task.prompt, f"task {task_index} prompt", issues)
+        if (
+            task.validation_timeout_seconds is not None
+            and task.validation_timeout_seconds < 1
+        ):
+            issues.append(
+                f"task {task_index} validation.timeout_seconds must be a positive integer"
+            )
+
+    return issues
 
 
 def _task_to_yaml_data(task: EditableTask) -> dict[str, Any]:
@@ -263,6 +314,22 @@ def _format_path(path: Path, base_dir: Path | None) -> str:
             return normalized
         return f"./{normalized}"
     return path.as_posix()
+
+
+def _require_text(value: str | None, label: str, issues: list[str]) -> None:
+    if value is None or value.strip() == "":
+        issues.append(f"{label} is required")
+
+
+def _is_safe_relative_path(value: str) -> bool:
+    text = value.strip().replace("\\", "/")
+    if text == "":
+        return False
+    if text.startswith("/"):
+        return False
+    if len(text) >= 2 and text[1] == ":" and text[0].isalpha():
+        return False
+    return ".." not in text.split("/")
 
 
 def _require_unique(label: str, values: list[str]) -> None:
