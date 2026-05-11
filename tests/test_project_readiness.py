@@ -1,3 +1,4 @@
+import tomllib
 from pathlib import Path
 
 
@@ -83,6 +84,34 @@ def test_release_checklist_documents_package_build_scope() -> None:
         "do not include `scripts/`",
     ]:
         assert term in text
+
+
+def test_release_checklist_documents_spdx_license_metadata_contract() -> None:
+    text = Path("docs/release-checklist.md").read_text(encoding="utf-8")
+
+    for term in [
+        "Package metadata must use `project.license` as an SPDX string",
+        "`license = \"MIT\"`",
+        "must not use table-form license metadata",
+        "`license = { text = \"MIT\" }`",
+        "does not change the runtime package scope",
+    ]:
+        assert term in text
+
+
+def test_pyproject_uses_spdx_license_string_metadata() -> None:
+    pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+    license_metadata = pyproject["project"]["license"]
+
+    assert license_metadata == "MIT"
+    assert not isinstance(license_metadata, dict)
+
+
+def test_changelog_mentions_spdx_license_metadata_cleanup() -> None:
+    text = Path("CHANGELOG.md").read_text(encoding="utf-8")
+
+    assert "SPDX license metadata" in text
+    assert "table-form license metadata" in text
 
 
 def test_readme_documents_local_package_build_verification() -> None:
