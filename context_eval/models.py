@@ -60,6 +60,7 @@ class AgentTelemetryConfig(BaseModel):
 class AgentConfig(BaseModel):
     name: str
     command: str
+    prompt_template: Path | None = None
     timeout_minutes: int = Field(default=60, ge=1)
     network: str = "disabled"
     telemetry: AgentTelemetryConfig = Field(default_factory=AgentTelemetryConfig)
