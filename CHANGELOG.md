@@ -13,3 +13,5 @@
 - Add a release-state check for hidden local release blockers.
 - Add development plan status reconciliation and an active backlog handoff that
   names validation command timeout defaults as the next planned work.
+- Add validation command timeout defaults with `evaluation.timeout_seconds` and
+  `task.validation.timeout_seconds`.

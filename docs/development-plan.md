@@ -123,11 +123,12 @@ Status: complete for current scope.
 
 ## Phase 2: Configuration And Task Spec Maturity
 
-Status: mostly complete; validation command timeout defaults remain.
+Status: mostly complete; config diagnostics and strict validation edge cases
+remain.
 
-Validation command timeout defaults are now the active Phase 2 story. The story
-must document timeout resolution before runtime changes and keep the scope to
-config-level and task-level validation command timeout defaults.
+Validation command timeout defaults are complete for current scope. The
+config-level and task-level validation command timeout defaults are shipped, so
+Config diagnostics and strict validation edge cases are the next Phase 2 work.
 
 ### Requirements
 
@@ -149,8 +150,8 @@ config-level and task-level validation command timeout defaults.
   - `--task-id`
   - `--category`
   - `--difficulty`
-- Planned next: add config-level and task-level validation command timeout
-  defaults.
+- Keep config-level and task-level validation command timeout defaults.
+- Planned next: improve config diagnostics and strict validation edge cases.
 
 ### Test Plan
 
@@ -462,19 +463,17 @@ Before a phase is considered complete:
 
 ## Active Backlog Order
 
-1. Validation command timeout defaults for config-level and task-level
-   validation commands.
-2. Config diagnostics and strict validation edge cases, especially safe overlay
+1. Config diagnostics and strict validation edge cases, especially safe overlay
    paths, duplicate task context, and field-specific error messages.
-3. Local UI explicit save or server mode, if a spec defines destination paths
+2. Local UI explicit save or server mode, if a spec defines destination paths
    and keeps static mode offline and non-executing.
-4. Agent-specific telemetry collectors for local artifacts with stable,
+3. Agent-specific telemetry collectors for local artifacts with stable,
    documented formats.
-5. Thin Python entrypoint adapter, only if command-template usage shows repeated
+4. Thin Python entrypoint adapter, only if command-template usage shows repeated
    friction that a small adapter can remove.
-6. Report template readability for multi-task, multi-variant, and multi-agent
+5. Report template readability for multi-task, multi-variant, and multi-agent
    runs.
-7. Release automation for tags, artifact upload, and changelog checks after the
+6. Release automation for tags, artifact upload, and changelog checks after the
    manual release path remains stable.
-8. Optional macOS release gate if the project decides macOS should become
+7. Optional macOS release gate if the project decides macOS should become
    release-blocking.
