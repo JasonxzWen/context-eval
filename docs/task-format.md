@@ -32,6 +32,18 @@ Optional fields:
 
 Task-level validation commands override config-level `evaluation.commands`.
 
+## Task IDs And Repo Refs
+
+Task IDs may be any non-empty string during default validation so existing local
+task files keep loading. Strict validation requires filename-safe task IDs
+because task IDs are used in local run artifact names. Use letters, numbers,
+`.`, `_`, or `-`, start with a letter or number, and avoid reserved platform
+filenames.
+
+`task.repo_ref` is optional. When it is omitted, the task uses
+`repo.base_ref`. In strict validation, each task-level `task.repo_ref` must
+resolve to a local commit in `repo.path`.
+
 ## Filtering Tasks
 
 `context-eval run` can select a subset of tasks without editing `tasks.yaml`:

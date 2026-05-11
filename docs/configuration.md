@@ -64,9 +64,14 @@ the run artifact directory. context-eval also sets
 
 Use `context-eval validate-config --config path/to/context-eval.yaml` to parse
 the config and task files, resolve local paths, and confirm referenced overlay
-sources exist. This default validation does not run an agent, run validation
-commands, create workspaces, or require the target repo path to be a Git
+sources exist. This default validation does not run agents, validation commands,
+or workspace setup, and it does not require the target repo path to be a Git
 repository.
+
+Validation errors use field-specific diagnostics when context is available. For
+example, a missing repo path is reported as `context-eval.yaml: repo.path`, and
+an invalid task timeout is reported as
+`tasks.yaml: tasks[task-1].validation.timeout_seconds`.
 
 Use `context-eval validate-config --strict --config path/to/context-eval.yaml`
 for stronger local preflight checks before running an evaluation. Strict
@@ -75,6 +80,7 @@ validation still has no side effects and does not create a workspace. It adds:
 - `repo.path` must be a Git repository.
 - `repo.base_ref` must resolve in that repository.
 - every task-level `repo_ref` must resolve in that repository.
+- task IDs must be filename-safe task IDs for local run artifacts.
 
 Strict validation is intended to catch local setup errors early. It does not
 install dependencies, test target repository commands, check network access, or

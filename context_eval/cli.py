@@ -234,7 +234,10 @@ def validate_config(
     tasks: Annotated[Path | None, typer.Option("--tasks", dir_okay=False)] = None,
     strict: Annotated[
         bool,
-        typer.Option("--strict", help="Verify local Git repo and refs without side effects."),
+        typer.Option(
+            "--strict",
+            help="Verify local Git refs and filename-safe task IDs without side effects.",
+        ),
     ] = False,
 ) -> None:
     """Validate configuration and task YAML files."""

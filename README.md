@@ -60,6 +60,19 @@ Validate the example config:
 context-eval validate-config --config examples/basic/context-eval.yaml
 ```
 
+Run strict local preflight checks when you want Git refs and artifact-safe task
+IDs checked before a run:
+
+```bash
+context-eval validate-config --strict --config examples/basic/context-eval.yaml
+```
+
+Validation uses field-specific diagnostics such as
+`context-eval.yaml: repo.path` and
+`tasks.yaml: tasks[task-1].validation.timeout_seconds`. Default validation stays
+lightweight. The strict mode also checks local Git refs and filename-safe task IDs
+without running agents, validation commands, or workspace setup.
+
 Preview the task x variant matrix without creating workspaces or run artifacts:
 
 ```bash
