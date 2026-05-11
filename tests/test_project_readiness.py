@@ -1,3 +1,4 @@
+import tomllib
 from pathlib import Path
 
 
@@ -96,6 +97,14 @@ def test_release_checklist_documents_spdx_license_metadata_contract() -> None:
         "does not change the runtime package scope",
     ]:
         assert term in text
+
+
+def test_pyproject_uses_spdx_license_string_metadata() -> None:
+    pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+    license_metadata = pyproject["project"]["license"]
+
+    assert license_metadata == "MIT"
+    assert not isinstance(license_metadata, dict)
 
 
 def test_readme_documents_local_package_build_verification() -> None:
