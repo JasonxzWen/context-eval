@@ -44,6 +44,16 @@ def test_ci_runs_package_build_with_dev_dependency() -> None:
     )
 
 
+def test_ci_inspects_package_artifacts_after_build() -> None:
+    workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
+    package_job = workflow.split("  package-build:", maxsplit=1)[1]
+
+    assert "python scripts/inspect-package-artifacts.py dist" in package_job
+    assert package_job.index("python -m build") < package_job.index(
+        "python scripts/inspect-package-artifacts.py dist"
+    )
+
+
 def test_skill_validation_skip_external_does_not_require_home_tools() -> None:
     script = Path("scripts/validate-skills.ps1").read_text(encoding="utf-8")
 
