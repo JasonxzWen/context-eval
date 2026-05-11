@@ -125,6 +125,23 @@ def test_release_checklist_documents_artifact_inspection_command() -> None:
         assert term in text
 
 
+def test_release_checklist_documents_prepare_release_boundaries() -> None:
+    text = Path("docs/release-checklist.md").read_text(encoding="utf-8")
+
+    for term in [
+        "## Automated Preparation Command",
+        "python scripts/prepare-release.py --dist-dir C:\\tmp\\context-eval-dist",
+        "checks CHANGELOG.md",
+        "runs the release-state check before package builds",
+        "builds wheel and sdist artifacts",
+        "inspects artifacts before publish",
+        "does not create Git tags",
+        "does not upload or publish packages",
+        "manual publish checkpoint",
+    ]:
+        assert term in text
+
+
 def test_release_checklist_documents_hidden_release_state_check() -> None:
     text = Path("docs/release-checklist.md").read_text(encoding="utf-8")
 
