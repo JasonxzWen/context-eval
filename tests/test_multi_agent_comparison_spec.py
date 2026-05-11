@@ -132,3 +132,37 @@ def test_compact_json_export_metadata_contract_is_documented() -> None:
     assert "derived only from parsed `results.jsonl` rows" in spec
     assert "compact JSON metadata" in plan
     assert "controlled export timestamp" in plan
+
+
+def test_reporting_polish_spec_defines_large_matrix_contract() -> None:
+    spec = Path("docs/multi-agent-comparison.md").read_text(encoding="utf-8")
+
+    for term in [
+        "## Large Matrix Reporting Polish",
+        "run matrix overview",
+        "aggregate cells by `task_id` and `variant`",
+        "case count, pass rate, status counts, validation counts, confidence counts",
+        "agent names and trial indexes",
+        "risk signals",
+        "failed, timeout, low-confidence, and telemetry-gap cases",
+        "must not infer missing telemetry values",
+        "local observations from recorded artifacts",
+    ]:
+        assert term in spec
+
+
+def test_docs_describe_large_run_analysis_workflow() -> None:
+    readme = Path("README.md").read_text(encoding="utf-8")
+    workflow = Path("docs/multi-agent-comparison.md").read_text(encoding="utf-8")
+
+    for text in [readme, workflow]:
+        for term in [
+            "larger local run matrices",
+            "run matrix overview",
+            "task/variant cells aggregate",
+            "risk signals",
+            "telemetry-gap cases",
+            "agent-level summaries appear only when more than one `agent_name` exists",
+            "local observations, not an absolute leaderboard",
+        ]:
+            assert term in text

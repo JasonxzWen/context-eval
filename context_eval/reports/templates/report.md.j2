@@ -14,6 +14,22 @@ context-eval evaluates the effect of context variants, not the absolute capabili
 - Repo: `{{ metadata.get("repo", {}).get("path", "unknown") }}`
 - Base ref: `{{ metadata.get("repo", {}).get("base_ref", "unknown") }}`
 
+## Run Matrix Overview
+
+These counts are local observations from recorded artifacts, not benchmark claims.
+
+| Metric | Value |
+| --- | ---: |
+| Task count | {{ overview.task_count }} |
+| Variant count | {{ overview.variant_count }} |
+| Agent count | {{ overview.agent_count }} |
+| Trial count | {{ overview.trial_count }} |
+| Case count | {{ overview.case_count }} |
+| Failed cases | {{ overview.failed_count }} |
+| Timeout cases | {{ overview.timeout_count }} |
+| Low-confidence cases | {{ overview.low_confidence_count }} |
+| Telemetry-gap cases | {{ overview.telemetry_gap_count }} |
+
 ## Config Summary
 
 | Variant | Description |
@@ -27,7 +43,7 @@ context-eval evaluates the effect of context variants, not the absolute capabili
 | Task |{% for variant in variants %} {{ variant }} |{% endfor %}
 | --- |{% for variant in variants %} --- |{% endfor %}
 {% for task_id, row in matrix.items() -%}
-| `{{ task_id }}` |{% for variant in variants %}{% set item = row.get(variant) %} {% if item %}`{{ item.status }}` / `{{ item.validation_status }}` / `{{ item.confidence }}`{% else %}-{% endif %} |{% endfor %}
+| `{{ task_id }}` |{% for variant in variants %}{% set item = row.get(variant) %} {% if item %}{{ item.summary }}{% else %}-{% endif %} |{% endfor %}
 {% endfor %}
 
 ## Variant Metrics
@@ -59,24 +75,47 @@ These rows are local observations from recorded run artifacts, not an absolute a
 
 {% endif -%}
 
-## Failed Cases
+## Risk Signals
 
+### Failed And Timeout Cases
 {% if failed_cases -%}
-| Task | Variant | Status | Validation | Errors |
-| --- | --- | --- | --- | --- |
+| Task | Variant | Agent | Trial | Status | Validation | Confidence | Errors |
+| --- | --- | --- | ---: | --- | --- | --- | --- |
 {% for item in failed_cases -%}
-| `{{ item.task_id }}` | `{{ item.variant }}` | `{{ item.status }}` | `{{ item.validation_status }}` | {{ item.errors | join("; ") }} |
+| `{{ item.task_id }}` | `{{ item.variant }}` | `{{ item.agent_name }}` | {{ item.trial_index }} | `{{ item.status }}` | `{{ item.validation_status }}` | `{{ item.confidence }}` | {{ item.errors | join("; ") or "-" }} |
 {% endfor %}
 {% else -%}
 No failed cases recorded.
 {% endif %}
 
+### Low Confidence Cases
+{% if low_confidence -%}
+| Task | Variant | Agent | Trial | Status | Validation |
+| --- | --- | --- | ---: | --- | --- |
+{% for item in low_confidence -%}
+| `{{ item.task_id }}` | `{{ item.variant }}` | `{{ item.agent_name }}` | {{ item.trial_index }} | `{{ item.status }}` | `{{ item.validation_status }}` |
+{% endfor %}
+{% else -%}
+No low-confidence cases recorded.
+{% endif %}
+
+### Telemetry Gap Cases
+{% if telemetry_gaps -%}
+| Task | Variant | Agent | Trial | Telemetry status | Telemetry source |
+| --- | --- | --- | ---: | --- | --- |
+{% for item in telemetry_gaps -%}
+| `{{ item.task_id }}` | `{{ item.variant }}` | `{{ item.agent_name }}` | {{ item.trial_index }} | `{{ item.telemetry_status }}` | `{{ item.telemetry_source }}` |
+{% endfor %}
+{% else -%}
+No telemetry-gap cases recorded.
+{% endif %}
+
 ## Artifacts
 
-| Task | Variant | Prompt | Patch | Agent stdout | Agent stderr |
-| --- | --- | --- | --- | --- | --- |
+| Task | Variant | Agent | Trial | Prompt | Patch | Agent stdout | Agent stderr |
+| --- | --- | --- | ---: | --- | --- | --- | --- |
 {% for item in results -%}
-| `{{ item.task_id }}` | `{{ item.variant }}` | {% if item.prompt_path %}[prompt]({{ item.prompt_path }}){% else %}-{% endif %} | {% if item.patch_path %}[patch]({{ item.patch_path }}){% else %}-{% endif %} | {% if item.stdout_path %}[stdout]({{ item.stdout_path }}){% else %}-{% endif %} | {% if item.stderr_path %}[stderr]({{ item.stderr_path }}){% else %}-{% endif %} |
+| `{{ item.task_id }}` | `{{ item.variant }}` | `{{ item.agent_name }}` | {{ item.trial_index }} | {% if item.prompt_path %}[prompt]({{ item.prompt_path }}){% else %}-{% endif %} | {% if item.patch_path %}[patch]({{ item.patch_path }}){% else %}-{% endif %} | {% if item.stdout_path %}[stdout]({{ item.stdout_path }}){% else %}-{% endif %} | {% if item.stderr_path %}[stderr]({{ item.stderr_path }}){% else %}-{% endif %} |
 {% endfor %}
 
 ## Confidence Warning

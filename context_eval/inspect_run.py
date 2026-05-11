@@ -9,9 +9,12 @@ from rich.console import Console
 from context_eval.export import agent_summary_rows, has_multiple_agents
 from context_eval.models import CaseResult
 from context_eval.reporting import (
+    format_matrix_overview_inline,
     format_optional_int,
     format_optional_number,
     format_status_counts,
+    matrix_cell_rows,
+    run_matrix_overview,
 )
 
 
@@ -23,6 +26,14 @@ def inspect_run(run_dir: Path, console: Console) -> None:
 
     console.print(f"[bold]Run:[/bold] {run_id}")
     console.print(f"Results: {len(results)}")
+    console.print(
+        "Local observations only; sourced from results.jsonl and optional run_metadata.json",
+        soft_wrap=True,
+    )
+    console.print(
+        f"Matrix: {format_matrix_overview_inline(run_matrix_overview(results))}",
+        soft_wrap=True,
+    )
     if metadata:
         agent = metadata.get("agent", {}).get("name")
         base_ref = metadata.get("repo", {}).get("base_ref")
@@ -50,6 +61,23 @@ def inspect_run(run_dir: Path, console: Console) -> None:
             f"total_tokens={format_optional_int(result.total_tokens)} "
             f"tool_calls={format_optional_int(result.tool_call_count)}"
         )
+
+    if results:
+        console.print("Matrix cells:")
+        for cell in matrix_cell_rows(results):
+            console.print(
+                "cell "
+                f"task={cell['task_id']} "
+                f"variant={cell['variant']} "
+                f"cases={cell['cases']} "
+                f"pass_rate={float(cell['pass_rate']):.1%} "
+                f"statuses={cell['status_counts']} "
+                f"validation={cell['validation_counts']} "
+                f"confidence={cell['confidence_counts']} "
+                f"agents={cell['agents']} "
+                f"trials={cell['trials']}",
+                soft_wrap=True,
+            )
 
     if has_multiple_agents(results):
         console.print("Agents:")

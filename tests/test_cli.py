@@ -7,6 +7,123 @@ from context_eval.config import validate_config_files
 from context_eval.models import CaseResult
 
 
+def _write_results_jsonl(run_dir: Path, results: list[CaseResult]) -> None:
+    (run_dir / "results.jsonl").write_text(
+        "\n".join(result.model_dump_json() for result in results) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _large_local_matrix_results() -> list[CaseResult]:
+    return [
+        CaseResult(
+            run_id="run-1",
+            case_id="task-a__baseline__agent-a__trial-1",
+            task_id="task-a",
+            variant="baseline",
+            trial_index=1,
+            repo_ref="main",
+            agent_name="agent-a",
+            network="disabled",
+            status="completed",
+            validation_status="passed",
+            confidence="high",
+            duration_seconds=2.0,
+            agent_duration_seconds=1.25,
+            telemetry_status="collected",
+            telemetry_source="json-file",
+            total_tokens=100,
+            tool_call_count=2,
+            tool_calls_by_name={"read": 1, "edit": 1},
+        ),
+        CaseResult(
+            run_id="run-1",
+            case_id="task-a__baseline__agent-a__trial-2",
+            task_id="task-a",
+            variant="baseline",
+            trial_index=2,
+            repo_ref="main",
+            agent_name="agent-a",
+            network="disabled",
+            status="completed",
+            validation_status="passed",
+            confidence="high",
+            duration_seconds=3.0,
+            telemetry_status="partial",
+            telemetry_source="json-file",
+            total_tokens=120,
+        ),
+        CaseResult(
+            run_id="run-1",
+            case_id="task-a__baseline__agent-b__trial-1",
+            task_id="task-a",
+            variant="baseline",
+            trial_index=1,
+            repo_ref="main",
+            agent_name="agent-b",
+            network="disabled",
+            status="timeout",
+            timeout=True,
+            validation_status="failed",
+            confidence="medium",
+            duration_seconds=6.0,
+        ),
+        CaseResult(
+            run_id="run-1",
+            case_id="task-a__experiment__agent-a__trial-1",
+            task_id="task-a",
+            variant="experiment",
+            trial_index=1,
+            repo_ref="main",
+            agent_name="agent-a",
+            network="disabled",
+            status="validation_failed",
+            validation_status="failed",
+            confidence="low",
+            duration_seconds=4.0,
+            errors=["pytest failed"],
+        ),
+        CaseResult(
+            run_id="run-1",
+            case_id="task-b__baseline__agent-b__trial-1",
+            task_id="task-b",
+            variant="baseline",
+            trial_index=1,
+            repo_ref="main",
+            agent_name="agent-b",
+            network="disabled",
+            status="completed",
+            validation_status="passed",
+            confidence="high",
+            duration_seconds=5.0,
+            telemetry_status="collected",
+            telemetry_source="json-file",
+            tool_call_count=1,
+            tool_calls_by_name={"test": 1},
+        ),
+        CaseResult(
+            run_id="run-1",
+            case_id="task-b__experiment__agent-b__trial-2",
+            task_id="task-b",
+            variant="experiment",
+            trial_index=2,
+            repo_ref="main",
+            agent_name="agent-b",
+            network="disabled",
+            status="completed",
+            validation_status="passed",
+            confidence="high",
+            duration_seconds=7.0,
+            telemetry_status="collected",
+            telemetry_source="json-file",
+            agent_duration_seconds=6.5,
+            total_tokens=200,
+            tool_call_count=5,
+            tool_calls_by_name={"edit": 5},
+        ),
+    ]
+
+
 def test_validate_config_exposes_strict_option(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -608,6 +725,29 @@ def test_compare_prints_agent_summary_for_multiple_agents(tmp_path: Path) -> Non
     assert "agent=agent-b cases=1 pass_rate=0.0%" in output.output
 
 
+def test_compare_prints_large_matrix_overview_from_local_artifacts(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    _write_results_jsonl(run_dir, _large_local_matrix_results())
+
+    output = CliRunner().invoke(app, ["compare", str(run_dir)])
+
+    assert output.exit_code == 0
+    assert (
+        "Local observations only; sourced from results.jsonl and optional run_metadata.json"
+        in output.output
+    )
+    assert (
+        "Matrix: tasks=2 variants=2 agents=2 trials=2 cases=6 failed=2 "
+        "timeouts=1 low_confidence=1 telemetry_gaps=3"
+    ) in output.output
+    assert (
+        "cell task=task-a variant=baseline cases=3 pass_rate=66.7% "
+        "statuses=completed=2,timeout=1 validation=passed=2,failed=1 "
+        "confidence=high=2,medium=1 agents=agent-a,agent-b trials=1,2"
+    ) in output.output
+
+
 def test_report_writes_telemetry_summary_from_jsonl(tmp_path: Path) -> None:
     run_dir = tmp_path / "run"
     run_dir.mkdir()
@@ -739,6 +879,47 @@ def test_report_writes_agent_summary_for_multiple_agents(tmp_path: Path) -> None
         "collected=1,partial=1 | edit,read |"
     ) in report
     assert "| `agent-b` | 1 | 100.0% | 8.00 | - | - | - | unavailable=1 | - |" in report
+
+
+def test_report_polishes_large_multi_axis_local_matrix(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    (run_dir / "run_metadata.json").write_text(
+        '{"run_id": "run-1", "agent": {"name": "mixed"}, "repo": {"base_ref": "main"}}',
+        encoding="utf-8",
+    )
+    _write_results_jsonl(run_dir, _large_local_matrix_results())
+
+    output = CliRunner().invoke(app, ["report", str(run_dir)])
+
+    assert output.exit_code == 0
+    report = (run_dir / "report.md").read_text(encoding="utf-8")
+    assert "## Run Matrix Overview" in report
+    assert "| Task count | 2 |" in report
+    assert "| Variant count | 2 |" in report
+    assert "| Agent count | 2 |" in report
+    assert "| Trial count | 2 |" in report
+    assert "| Case count | 6 |" in report
+    assert "| Failed cases | 2 |" in report
+    assert "| Timeout cases | 1 |" in report
+    assert "| Low-confidence cases | 1 |" in report
+    assert "| Telemetry-gap cases | 3 |" in report
+    assert (
+        "cases=3; pass_rate=66.7%; statuses=completed=2,timeout=1; "
+        "validation=passed=2,failed=1; confidence=high=2,medium=1; "
+        "agents=agent-a,agent-b; trials=1,2"
+    ) in report
+    assert "## Risk Signals" in report
+    assert "### Failed And Timeout Cases" in report
+    assert (
+        "| `task-a` | `experiment` | `agent-a` | 1 | `validation_failed` | "
+        "`failed` | `low` | pytest failed |"
+    ) in report
+    assert "### Low Confidence Cases" in report
+    assert "| `task-a` | `experiment` | `agent-a` | 1 | `validation_failed` | `failed` |" in report
+    assert "### Telemetry Gap Cases" in report
+    assert "| `task-a` | `baseline` | `agent-a` | 2 | `partial` | `json-file` |" in report
+    assert "| `task-a` | `baseline` | `agent-b` | 1 | `unavailable` | `none` |" in report
 
 
 def test_compare_fails_for_missing_results(tmp_path: Path) -> None:
@@ -1070,6 +1251,45 @@ def test_ui_shows_agent_summary_from_run_artifacts(tmp_path: Path) -> None:
     assert "telemetry_statuses=collected=1" in html
     assert "telemetry_statuses=unavailable=1" in html
     assert "common_tool_names=read" in html
+    assert "http://" not in html
+    assert "https://" not in html
+    assert "fetch(" not in html
+    assert "XMLHttpRequest" not in html
+    assert "WebSocket" not in html
+
+
+def test_ui_shows_large_matrix_overview_and_telemetry_columns(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    _write_results_jsonl(run_dir, _large_local_matrix_results())
+    output_path = tmp_path / "context-eval-ui.html"
+
+    output = CliRunner().invoke(
+        app,
+        ["ui", "--run-dir", str(run_dir), "--output", str(output_path)],
+    )
+
+    assert output.exit_code == 0
+    html = output_path.read_text(encoding="utf-8")
+    assert "Run Matrix Overview" in html
+    assert "tasks=2" in html
+    assert "variants=2" in html
+    assert "agents=2" in html
+    assert "trials=2" in html
+    assert "cases=6" in html
+    assert "failed=2" in html
+    assert "telemetry_gaps=3" in html
+    assert "Large Matrix Cells" in html
+    assert "cases=3" in html
+    assert "pass_rate=66.7%" in html
+    assert "agents=agent-a,agent-b" in html
+    assert "<th>Agent</th>" in html
+    assert "<th>Telemetry</th>" in html
+    assert "<th>Agent duration</th>" in html
+    assert "<th>Total tokens</th>" in html
+    assert "<th>Tool calls</th>" in html
+    assert "<td><code>agent-a</code></td>" in html
+    assert "<td><code>partial</code></td>" in html
     assert "http://" not in html
     assert "https://" not in html
     assert "fetch(" not in html

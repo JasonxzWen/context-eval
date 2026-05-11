@@ -160,6 +160,14 @@ them, run:
 context-eval validate-config --config path/to/context-eval.yaml
 ```
 
+For larger local run matrices, start with `context-eval compare` or
+`context-eval report` to read the run matrix overview before opening raw case
+artifacts. In Markdown reports, terminal summaries, and the static UI,
+task/variant cells aggregate repeated trials and multiple agents instead of
+selecting one representative row. The large-matrix sections call out risk signals, including failed, timeout, low-confidence, and telemetry-gap cases.
+agent-level summaries appear only when more than one `agent_name` exists.
+Treat these as local observations, not an absolute leaderboard.
+
 ## Configuration Example
 
 ```yaml

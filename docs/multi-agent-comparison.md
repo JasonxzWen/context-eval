@@ -115,6 +115,33 @@ Useful agent summaries include:
 Single-agent runs may keep the current variant-oriented display and suppress
 the agent summary to avoid redundant output.
 
+## Large Matrix Reporting Polish
+
+Larger local runs need a run matrix overview before detailed rows. The overview
+should report task count, variant count, agent count, trial count, case count,
+failed count, timeout count, low-confidence count, and telemetry-gap count from
+the parsed `results.jsonl` rows. These are local observations from recorded artifacts, not benchmark claims.
+
+Markdown reports, terminal summaries, and the static UI should aggregate cells
+by `task_id` and `variant` instead of selecting a single result row. In other
+words, these surfaces should aggregate cells by `task_id` and `variant` for
+every task/variant intersection. Each aggregate cell should make large matrices
+readable by showing case count, pass rate, status counts, validation counts,
+confidence counts, agent names and trial indexes. The aggregate contract is:
+case count, pass rate, status counts, validation counts, confidence counts,
+agent names and trial indexes. The exact formatting may vary by surface, but
+the values must be derived only from local result rows.
+
+Reporting surfaces should make risk signals easy to find. Failed, timeout,
+low-confidence, and telemetry-gap cases should be listed or summarized
+separately from the raw artifact links. The risk signal set covers failed,
+timeout, low-confidence, and telemetry-gap cases.
+In short: failed, timeout, low-confidence, and telemetry-gap cases are
+first-class reporting signals.
+Telemetry-gap cases include rows whose `telemetry_status` is not `collected`;
+reports must not infer missing telemetry values from logs, command output, or
+neighboring rows.
+
 ## Static UI Behavior
 
 The generated local UI may display agent summary cards or tables from run
@@ -161,6 +188,28 @@ duration, token, and tool-call fields.
 Do not publish the output as an absolute leaderboard. The observations are only
 valid for the local repository, prompts, context variants, validation commands,
 agent versions, machine state, and telemetry collectors used for those runs.
+
+## Large Run Analysis Workflow
+
+For larger local run matrices, read the run matrix overview first, then inspect
+variant metrics, task/variant cells, agent summaries, and risk signals. The
+task/variant cells aggregate repeated trials and multiple agents, so a cell
+represents every recorded row for that `task_id` and `variant` rather than a
+single chosen case.
+
+Risk signals include failed cases, timeout cases, low-confidence cases, and
+telemetry-gap cases. agent-level summaries appear only when more than one `agent_name` exists. Use these summaries as local observations, not an absolute leaderboard.
+
+Suggested large-run reading order:
+
+1. `context-eval compare .context-eval\runs\<run-id>` for terminal overview and
+   variant-level rates.
+2. `context-eval report .context-eval\runs\<run-id>` for Markdown matrix cells,
+   risk signals, artifacts, and confidence notes.
+3. `context-eval export .context-eval\runs\<run-id> --format csv --output summary.csv`
+   for script-friendly row analysis.
+4. `context-eval ui --run-dir .context-eval\runs\<run-id> --output summary.html`
+   for a static local HTML view of the same recorded artifacts.
 
 ## Non-Goals
 
