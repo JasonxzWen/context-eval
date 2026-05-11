@@ -165,6 +165,7 @@ variants:
         target: "docs/deepwiki"
 
 evaluation:
+  timeout_seconds: 300
   commands:
     - "python -m pytest"
 ```
@@ -182,12 +183,19 @@ tasks:
     category: "gameplay"
     difficulty: "medium"
     validation:
+      timeout_seconds: 60
       commands:
         - "python -m pytest tests/test_mail.py"
 ```
 
 `id` and `prompt` are required. If `repo_ref` is absent, context-eval uses
 `repo.base_ref`.
+
+Validation command timeouts are optional. `evaluation.timeout_seconds` sets the
+config default, and `task.validation.timeout_seconds` sets a task-level
+override. The task-level timeout overrides the config default. If neither field
+is set, validation commands run without a timeout. A timed-out validation command
+records `timeout=true`, `exit_code=null`, and makes the case fail validation.
 
 ## Agent Adapter
 

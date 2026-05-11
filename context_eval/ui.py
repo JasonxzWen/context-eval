@@ -300,6 +300,9 @@ def _config_section(
         return _empty_section("Configuration", "No config file loaded.")
 
     evaluation_commands = "\n".join(editor.evaluation_commands)
+    evaluation_timeout_seconds = (
+        "" if editor.evaluation_timeout_seconds is None else str(editor.evaluation_timeout_seconds)
+    )
 
     return f"""
 <div data-role="config-editor">
@@ -319,6 +322,12 @@ def _config_section(
     {_select("Agent network", editor.agent.network, "agent.network", ["disabled", "enabled"])}
     {_input("Tasks file", editor.tasks_path, "tasks_path")}
     {_textarea("Validation commands", evaluation_commands, "evaluation_commands")}
+    {_input(
+        "Validation timeout seconds",
+        evaluation_timeout_seconds,
+        "evaluation_timeout_seconds",
+        input_type="number",
+    )}
   </div>
   <div class="resolved">Resolved repo: <code>{escape(str(config.repo.path))}</code></div>
 </section>
@@ -628,6 +637,11 @@ def _overlay_editors(variant_index: int, overlays) -> str:
 def _task_editor(index: int, task) -> str:
     data = {"task-index": index}
     task_validation_commands = "\n".join(task.validation_commands)
+    task_validation_timeout_seconds = (
+        ""
+        if task.validation_timeout_seconds is None
+        else str(task.validation_timeout_seconds)
+    )
     return f"""
   <fieldset>
     <legend>Task {index + 1}</legend>
@@ -637,6 +651,13 @@ def _task_editor(index: int, task) -> str:
       {_input("Repo ref", task.repo_ref or "", "task.repo_ref", data=data)}
       {_input("Category", task.category or "", "task.category", data=data)}
       {_input("Difficulty", task.difficulty or "", "task.difficulty", data=data)}
+      {_input(
+        "Task validation timeout seconds",
+        task_validation_timeout_seconds,
+        "task.validation_timeout_seconds",
+        input_type="number",
+        data=data,
+    )}
       {_textarea(
         "Task validation commands",
         task_validation_commands,
@@ -683,6 +704,15 @@ def _editor_script(editor: EditableConfigModel | None) -> str:
   function optionalText(value) {{
     const trimmed = String(value).trim();
     return trimmed.length > 0 ? trimmed : null;
+  }}
+
+  function optionalPositiveInteger(value) {{
+    const trimmed = String(value ?? "").trim();
+    if (trimmed.length === 0) {{
+      return null;
+    }}
+    const parsed = Number.parseInt(trimmed, 10);
+    return Number.isFinite(parsed) && parsed >= 1 ? parsed : null;
   }}
 
   function slugify(value) {{
@@ -760,6 +790,13 @@ def _editor_script(editor: EditableConfigModel | None) -> str:
       }}
     }});
     lines.push("evaluation:");
+    if (editableModel.evaluation_timeout_seconds !== null &&
+        editableModel.evaluation_timeout_seconds !== undefined) {{
+      lines.push(
+        "  timeout_seconds: " +
+          String(Number.parseInt(editableModel.evaluation_timeout_seconds, 10) || 1)
+      );
+    }}
     appendYamlList(lines, 2, "commands", editableModel.evaluation_commands);
     return lines.join("\\n") + "\\n";
   }}
@@ -773,8 +810,19 @@ def _editor_script(editor: EditableConfigModel | None) -> str:
       appendYamlField(lines, 4, "repo_ref", task.repo_ref);
       appendYamlField(lines, 4, "category", task.category);
       appendYamlField(lines, 4, "difficulty", task.difficulty);
-      if (Array.isArray(task.validation_commands) && task.validation_commands.length > 0) {{
+      if (
+        (Array.isArray(task.validation_commands) && task.validation_commands.length > 0) ||
+        (task.validation_timeout_seconds !== null &&
+          task.validation_timeout_seconds !== undefined)
+      ) {{
         lines.push("    validation:");
+        if (task.validation_timeout_seconds !== null &&
+            task.validation_timeout_seconds !== undefined) {{
+          lines.push(
+            "      timeout_seconds: " +
+              String(Number.parseInt(task.validation_timeout_seconds, 10) || 1)
+          );
+        }}
         appendYamlList(lines, 6, "commands", task.validation_commands);
       }}
     }});
@@ -813,6 +861,15 @@ def _editor_script(editor: EditableConfigModel | None) -> str:
     }}
     if (!["disabled", "enabled"].includes(String(editableModel.agent.network))) {{
       issues.push("agent.network must be disabled or enabled");
+    }}
+    if (
+      editableModel.evaluation_timeout_seconds !== null &&
+      editableModel.evaluation_timeout_seconds !== undefined
+    ) {{
+      const evaluationTimeout = Number.parseInt(editableModel.evaluation_timeout_seconds, 10);
+      if (!Number.isFinite(evaluationTimeout) || evaluationTimeout < 1) {{
+        issues.push("evaluation.timeout_seconds must be a positive integer");
+      }}
     }}
 
     if (!Array.isArray(editableModel.variants) || editableModel.variants.length === 0) {{
@@ -864,6 +921,18 @@ def _editor_script(editor: EditableConfigModel | None) -> str:
         taskIds.add(id);
       }}
       requireText(task.prompt, "task " + String(index + 1) + " prompt");
+      if (
+        task.validation_timeout_seconds !== null &&
+        task.validation_timeout_seconds !== undefined
+      ) {{
+        const taskTimeout = Number.parseInt(task.validation_timeout_seconds, 10);
+        if (!Number.isFinite(taskTimeout) || taskTimeout < 1) {{
+          issues.push(
+            "task " + String(index + 1) +
+              " validation.timeout_seconds must be a positive integer"
+          );
+        }}
+      }}
     }});
 
     return issues;
@@ -1048,6 +1117,8 @@ def _editor_script(editor: EditableConfigModel | None) -> str:
           editableModel.tasks_path = value;
         }} else if (field === "evaluation_commands") {{
           editableModel.evaluation_commands = splitLines(value);
+        }} else if (field === "evaluation_timeout_seconds") {{
+          editableModel.evaluation_timeout_seconds = optionalPositiveInteger(value);
         }} else if (field === "variant.name" || field === "variant.description") {{
           const variant = editableModel.variants[Number(control.dataset.variantIndex)];
           if (variant) {{
@@ -1063,7 +1134,13 @@ def _editor_script(editor: EditableConfigModel | None) -> str:
           const task = editableModel.tasks[Number(control.dataset.taskIndex)];
           if (task) {{
             const key = field.split(".")[1];
-            task[key] = key === "validation_commands" ? splitLines(value) : optionalText(value);
+            if (key === "validation_commands") {{
+              task[key] = splitLines(value);
+            }} else if (key === "validation_timeout_seconds") {{
+              task[key] = optionalPositiveInteger(value);
+            }} else {{
+              task[key] = optionalText(value);
+            }}
             if (key === "id" || key === "prompt") {{
               task[key] = value;
             }}

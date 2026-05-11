@@ -75,6 +75,70 @@ variants:
     assert config.agent.telemetry.collector == "none"
 
 
+def test_yaml_config_and_tasks_parse_validation_timeout_defaults(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    context_dir = tmp_path / "contexts" / "baseline"
+    context_dir.mkdir(parents=True)
+    (context_dir / "AGENTS.md").write_text("# Instructions\n", encoding="utf-8")
+    tasks_path = tmp_path / "tasks.yaml"
+    tasks_path.write_text(
+        """
+tasks:
+  - id: "task-1"
+    prompt: "Fix the bug."
+    validation:
+      timeout_seconds: 15
+      commands:
+        - "python -m pytest tests/test_bug.py"
+""",
+        encoding="utf-8",
+    )
+    config_path = tmp_path / "context-eval.yaml"
+    config_path.write_text(
+        """
+repo:
+  path: "./repo"
+agent:
+  name: "test-agent"
+  command: "agent -p {prompt_file}"
+tasks: "./tasks.yaml"
+variants:
+  baseline:
+    description: "Baseline"
+    overlays:
+      - source: "./contexts/baseline/AGENTS.md"
+        target: "AGENTS.md"
+evaluation:
+  timeout_seconds: 45
+  commands:
+    - "python -m pytest"
+""",
+        encoding="utf-8",
+    )
+
+    config = load_config(config_path)
+    tasks = load_tasks(tasks_path)
+
+    assert config.evaluation.timeout_seconds == 45
+    assert tasks.tasks[0].validation.timeout_seconds == 15
+
+
+def test_validation_timeout_seconds_must_be_positive(tmp_path: Path) -> None:
+    config_path = _write_config_fixture(tmp_path)
+    config_path.write_text(
+        config_path.read_text(encoding="utf-8")
+        + """
+evaluation:
+  timeout_seconds: 0
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigError, match="timeout_seconds"):
+        load_config(config_path)
+
+
 def test_yaml_config_parses_optional_json_file_telemetry(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

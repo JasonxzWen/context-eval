@@ -33,7 +33,8 @@ def test_development_plan_reconciles_merged_phase_statuses() -> None:
             "Status: complete for current scope."
         ),
         "## Phase 2: Configuration And Task Spec Maturity": (
-            "Status: mostly complete; validation command timeout defaults remain."
+            "Status: mostly complete; config diagnostics and strict validation "
+            "edge cases remain."
         ),
         "## Phase 3: User Workflow Usability": (
             "Status: complete for current scope."
@@ -69,7 +70,6 @@ def test_development_plan_active_backlog_excludes_merged_work() -> None:
     backlog = _section(text, "## Active Backlog Order")
 
     for term in [
-        "Validation command timeout defaults",
         "Config diagnostics and strict validation edge cases",
         "Local UI explicit save or server mode",
         "Agent-specific telemetry collectors",
@@ -89,6 +89,7 @@ def test_development_plan_active_backlog_excludes_merged_work() -> None:
         "Trial support",
         "Report/inspect commands",
         "CI workflow and release checklist",
+        "Validation command timeout defaults",
     ]:
         assert completed_term not in backlog
 

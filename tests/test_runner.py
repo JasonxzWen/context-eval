@@ -387,6 +387,92 @@ def test_runner_marks_validation_failure(tmp_path: Path) -> None:
     assert result["validation_results"][0]["exit_code"] == 1
 
 
+def test_runner_applies_config_validation_timeout_to_task_commands(tmp_path: Path) -> None:
+    repo = _create_repo(tmp_path)
+    overlay_source = tmp_path / "ctx" / "AGENTS.md"
+    overlay_source.parent.mkdir()
+    overlay_source.write_text("# Instructions\n", encoding="utf-8")
+
+    agent_script = tmp_path / "agent.py"
+    agent_script.write_text("print('no changes')\n", encoding="utf-8")
+    validation_script = tmp_path / "slow_validate.py"
+    validation_script.write_text("import time\ntime.sleep(2)\n", encoding="utf-8")
+
+    task_file = TaskFile(
+        tasks=[
+            TaskConfig(
+                id="slow-validation",
+                prompt="Do nothing.",
+                validation=ValidationConfig(commands=[f'"{sys.executable}" "{validation_script}"']),
+            )
+        ]
+    )
+    config = _base_config(
+        tmp_path=tmp_path,
+        repo=repo,
+        agent_command=f'"{sys.executable}" "{agent_script}"',
+        overlay_source=overlay_source,
+    )
+    config.evaluation.timeout_seconds = 1
+
+    run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        cleanup=True,
+        console=_quiet_console(),
+    ).run()
+    result = json.loads((run_dir / "results.jsonl").read_text(encoding="utf-8"))
+
+    assert result["status"] == "validation_failed"
+    assert result["validation_status"] == "failed"
+    assert result["validation_results"][0]["timeout"] is True
+    assert result["validation_results"][0]["exit_code"] is None
+
+
+def test_runner_task_validation_timeout_overrides_config_default(tmp_path: Path) -> None:
+    repo = _create_repo(tmp_path)
+    overlay_source = tmp_path / "ctx" / "AGENTS.md"
+    overlay_source.parent.mkdir()
+    overlay_source.write_text("# Instructions\n", encoding="utf-8")
+
+    agent_script = tmp_path / "agent.py"
+    agent_script.write_text("print('no changes')\n", encoding="utf-8")
+    validation_script = tmp_path / "slow_validate.py"
+    validation_script.write_text("import time\ntime.sleep(2)\n", encoding="utf-8")
+
+    task_file = TaskFile(
+        tasks=[
+            TaskConfig(
+                id="override-timeout",
+                prompt="Do nothing.",
+                validation=ValidationConfig(
+                    commands=[f'"{sys.executable}" "{validation_script}"'],
+                    timeout_seconds=1,
+                ),
+            )
+        ]
+    )
+    config = _base_config(
+        tmp_path=tmp_path,
+        repo=repo,
+        agent_command=f'"{sys.executable}" "{agent_script}"',
+        overlay_source=overlay_source,
+    )
+    config.evaluation.timeout_seconds = 30
+
+    run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        cleanup=True,
+        console=_quiet_console(),
+    ).run()
+    result = json.loads((run_dir / "results.jsonl").read_text(encoding="utf-8"))
+
+    assert result["status"] == "validation_failed"
+    assert result["validation_status"] == "failed"
+    assert result["validation_results"][0]["timeout"] is True
+
+
 def test_runner_records_overlay_failure(tmp_path: Path) -> None:
     repo = _create_repo(tmp_path)
     agent_script = tmp_path / "agent.py"

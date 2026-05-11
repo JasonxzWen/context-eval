@@ -6,5 +6,13 @@ from context_eval.logging import run_command
 from context_eval.models import CommandResult
 
 
-def run_validation_commands(commands: list[str], workspace: Path) -> list[CommandResult]:
-    return [run_command(command, cwd=workspace, shell=True) for command in commands]
+def run_validation_commands(
+    commands: list[str],
+    workspace: Path,
+    *,
+    timeout_seconds: int | None = None,
+) -> list[CommandResult]:
+    return [
+        run_command(command, cwd=workspace, shell=True, timeout_seconds=timeout_seconds)
+        for command in commands
+    ]

@@ -374,7 +374,11 @@ class ContextEvalRunner:
 
             commands = task.validation.commands or self.config.evaluation.commands
             if commands:
-                validation_results = run_validation_commands(commands, workspace)
+                validation_results = run_validation_commands(
+                    commands,
+                    workspace,
+                    timeout_seconds=self._validation_timeout_seconds(task),
+                )
                 result.validation_results = validation_results
                 self._write_validation_logs(run_dir, case_name, validation_results)
                 failed = any(item.timeout or item.exit_code != 0 for item in validation_results)
@@ -419,6 +423,11 @@ class ContextEvalRunner:
         if self.trials == 1:
             return base
         return f"{base}__trial-{trial_index}"
+
+    def _validation_timeout_seconds(self, task: TaskConfig) -> int | None:
+        if task.validation.timeout_seconds is not None:
+            return task.validation.timeout_seconds
+        return self.config.evaluation.timeout_seconds
 
     @staticmethod
     def _task_hash(task: TaskConfig) -> str:
