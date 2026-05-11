@@ -21,6 +21,10 @@ Run `ruff check .` when the dev dependencies are installed.
 Inspect package configuration before release:
 
 - Inspect both the wheel and sdist after running the build command.
+- Package metadata must use `project.license` as an SPDX string, currently
+  `license = "MIT"`.
+- Package metadata must not use table-form license metadata such as
+  `license = { text = "MIT" }`.
 - The artifacts must include entries that show it includes `context_eval/`.
 - The artifacts must include entries that show it includes `context_eval/reports/templates/`.
 - The artifacts do not include `.context-eval/`.
@@ -28,6 +32,7 @@ Inspect package configuration before release:
 - The artifacts do not include `.codex/skills/`.
 - The artifacts do not include `openspec/`.
 - The artifacts do not include `scripts/`.
+- License metadata modernization does not change the runtime package scope.
 - Active `.codex/config.toml` must not be committed; use
   `.codex/config.example.toml` only.
 

@@ -85,6 +85,19 @@ def test_release_checklist_documents_package_build_scope() -> None:
         assert term in text
 
 
+def test_release_checklist_documents_spdx_license_metadata_contract() -> None:
+    text = Path("docs/release-checklist.md").read_text(encoding="utf-8")
+
+    for term in [
+        "Package metadata must use `project.license` as an SPDX string",
+        "`license = \"MIT\"`",
+        "must not use table-form license metadata",
+        "`license = { text = \"MIT\" }`",
+        "does not change the runtime package scope",
+    ]:
+        assert term in text
+
+
 def test_readme_documents_local_package_build_verification() -> None:
     text = Path("README.md").read_text(encoding="utf-8")
 
