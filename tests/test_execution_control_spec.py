@@ -72,3 +72,23 @@ def test_readme_documents_cleanup_policy_usage() -> None:
         "local run artifacts",
     ]:
         assert term in text
+
+
+def test_evaluation_docs_describe_run_manifest_contract() -> None:
+    text = Path("docs/evaluation.md").read_text(encoding="utf-8")
+
+    for term in [
+        "## Run Manifest",
+        "run_manifest.json",
+        "selected tasks",
+        "selected variants",
+        "trials",
+        "case_matrix",
+        "config_hash",
+        "task_hash",
+        "variant_hash",
+        "planned task, variant, and trial order",
+        "local run artifact",
+        "does not rerun agents",
+    ]:
+        assert term in text
