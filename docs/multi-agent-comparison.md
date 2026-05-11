@@ -189,6 +189,28 @@ Do not publish the output as an absolute leaderboard. The observations are only
 valid for the local repository, prompts, context variants, validation commands,
 agent versions, machine state, and telemetry collectors used for those runs.
 
+## Large Run Analysis Workflow
+
+For larger local run matrices, read the run matrix overview first, then inspect
+variant metrics, task/variant cells, agent summaries, and risk signals. The
+task/variant cells aggregate repeated trials and multiple agents, so a cell
+represents every recorded row for that `task_id` and `variant` rather than a
+single chosen case.
+
+Risk signals include failed cases, timeout cases, low-confidence cases, and
+telemetry-gap cases. agent-level summaries appear only when more than one `agent_name` exists. Use these summaries as local observations, not an absolute leaderboard.
+
+Suggested large-run reading order:
+
+1. `context-eval compare .context-eval\runs\<run-id>` for terminal overview and
+   variant-level rates.
+2. `context-eval report .context-eval\runs\<run-id>` for Markdown matrix cells,
+   risk signals, artifacts, and confidence notes.
+3. `context-eval export .context-eval\runs\<run-id> --format csv --output summary.csv`
+   for script-friendly row analysis.
+4. `context-eval ui --run-dir .context-eval\runs\<run-id> --output summary.html`
+   for a static local HTML view of the same recorded artifacts.
+
 ## Non-Goals
 
 This feature does not add an LLM judge, hosted dashboard, multi-user web

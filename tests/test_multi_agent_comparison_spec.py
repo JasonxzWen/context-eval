@@ -149,3 +149,20 @@ def test_reporting_polish_spec_defines_large_matrix_contract() -> None:
         "local observations from recorded artifacts",
     ]:
         assert term in spec
+
+
+def test_docs_describe_large_run_analysis_workflow() -> None:
+    readme = Path("README.md").read_text(encoding="utf-8")
+    workflow = Path("docs/multi-agent-comparison.md").read_text(encoding="utf-8")
+
+    for text in [readme, workflow]:
+        for term in [
+            "larger local run matrices",
+            "run matrix overview",
+            "task/variant cells aggregate",
+            "risk signals",
+            "telemetry-gap cases",
+            "agent-level summaries appear only when more than one `agent_name` exists",
+            "local observations, not an absolute leaderboard",
+        ]:
+            assert term in text
