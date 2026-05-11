@@ -18,6 +18,28 @@ offer download and copy actions for generated YAML. Direct save back to the
 original files is optional future work and must require an explicit local
 capability, such as a local server mode or a browser-supported file picker.
 
+## Persistence Decision
+
+The selected persistence model is static export-only. `context-eval ui`
+generates offline, self-contained HTML. The page can edit the in-memory model,
+preview the task x variant matrix, validate the edited model enough to block
+known-invalid exports, and let the browser copy or download generated YAML.
+
+Static export-only mode has no local server mode and no server endpoints. The
+generated page must not open sockets, call remote services, access remote URLs,
+or silently overwrite existing config files. It must not write local files, run
+agent commands, run validation commands, install packages, or start background
+orchestration.
+All durable writes remain an explicit user action outside the page: copy or
+download both YAML documents, place them at the intended paths, then run
+`context-eval validate-config --config path/to/context-eval.yaml` locally.
+
+Browser file saving and explicit local server mode remain future capabilities.
+If either is added later, it must be specified in a new contract before
+implementation. A server mode would need allowed local endpoints, destination
+paths, write-before validation, and explicit prohibitions on agent execution and
+validation command execution.
+
 ## Editable Fields
 
 The editor should cover the fields users need before a run:

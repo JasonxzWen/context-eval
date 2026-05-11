@@ -9,6 +9,7 @@ def test_local_ui_config_editor_spec_documents_contract() -> None:
 
     required_headings = [
         "## User Contract",
+        "## Persistence Decision",
         "## Editable Fields",
         "## Validation Behavior",
         "## Export And Save Behavior",
@@ -33,6 +34,12 @@ def test_local_ui_config_editor_spec_documents_contract() -> None:
         "validate-config",
         "download",
         "copy",
+        "static export-only",
+        "no local server mode",
+        "no server endpoints",
+        "offline, self-contained HTML",
+        "must not open sockets",
+        "must not write local files",
         "no hosted service",
         "no remote database",
         "no LLM judge",
