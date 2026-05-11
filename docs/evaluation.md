@@ -93,6 +93,29 @@ variant, and trial order. This planned task, variant, and trial order lets
 script consumers compare serial and parallel runs without handling
 nondeterministic row order.
 
+## Run Manifest
+
+Every run directory includes `run_manifest.json` as a local run artifact for
+reproducibility and script inspection. The manifest is written from the selected
+tasks, selected variants, and configured trials for that run. It records the
+planned case matrix before result aggregation and does not rerun agents or read
+completed run artifacts.
+
+The manifest includes:
+
+- `config_hash`: the effective run config hash, using the same output-directory
+  exclusion as result rows.
+- `tasks`: the selected tasks in planned order, each with `task_hash`.
+- `variants`: the selected variants in planned order, each with `variant_hash`.
+- `trials`: the number of trials requested for each selected task and variant.
+- `case_matrix`: one entry for each planned task, variant, and trial
+  combination.
+
+`case_matrix` entries preserve planned task, variant, and trial order and
+include the case ID plus the effective `task_hash` and `variant_hash` used by
+the matching `results.jsonl` row. The manifest is local metadata for a recorded
+run; it is not an external benchmark or hosted dashboard input.
+
 ## Result Stability
 
 Every JSONL result row includes:

@@ -28,6 +28,8 @@ from context_eval.prompt import render_prompt, write_prompt_file
 from context_eval.reports.markdown import render_markdown_report
 from context_eval.workspace import WorkspaceError, create_workspace, remove_workspace, slugify
 
+RUN_MANIFEST_SCHEMA_VERSION = "1"
+
 
 class ContextEvalRunner:
     def __init__(
@@ -77,6 +79,7 @@ class ContextEvalRunner:
             for variant_name in variant_names
             for trial_index in range(1, self.trials + 1)
         ]
+        self._write_manifest(run_id, run_dir, tasks, variant_names, case_plan)
 
         for result in self._run_case_plan(run_id, run_dir, case_plan):
             with results_path.open("a", encoding="utf-8") as handle:
@@ -188,6 +191,60 @@ class ContextEvalRunner:
             encoding="utf-8",
         )
 
+    def _write_manifest(
+        self,
+        run_id: str,
+        run_dir: Path,
+        tasks: list[TaskConfig],
+        variant_names: list[str],
+        case_plan: list[tuple[TaskConfig, str, int]],
+    ) -> None:
+        manifest = {
+            "manifest_schema_version": RUN_MANIFEST_SCHEMA_VERSION,
+            "run_id": run_id,
+            "config_hash": self.config_hash,
+            "config_path": str(self.config.config_path) if self.config.config_path else None,
+            "cleanup_policy": self.cleanup_policy,
+            "jobs": self.jobs,
+            "trials": self.trials,
+            "case_count": len(case_plan),
+            "tasks": [
+                {
+                    "id": task.id,
+                    "title": task.title,
+                    "category": task.category,
+                    "difficulty": task.difficulty,
+                    "repo_ref": task.repo_ref or self.config.repo.base_ref,
+                    "task_hash": self._task_hash(task),
+                }
+                for task in tasks
+            ],
+            "variants": [
+                {
+                    "name": name,
+                    "description": self.config.variants[name].description,
+                    "variant_hash": self._variant_hash(name),
+                }
+                for name in variant_names
+            ],
+            "case_matrix": [
+                {
+                    "case_id": self._case_id(task.id, variant_name, trial_index),
+                    "task_id": task.id,
+                    "variant": variant_name,
+                    "trial_index": trial_index,
+                    "repo_ref": task.repo_ref or self.config.repo.base_ref,
+                    "task_hash": self._task_hash(task),
+                    "variant_hash": self._variant_hash(variant_name),
+                }
+                for task, variant_name, trial_index in case_plan
+            ],
+        }
+        (run_dir / "run_manifest.json").write_text(
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
     def _run_case(
         self,
         run_id: str,
@@ -213,8 +270,8 @@ class ContextEvalRunner:
         result = CaseResult(
             run_id=run_id,
             config_hash=self.config_hash,
-            task_hash=stable_hash(task.model_dump(mode="json")),
-            variant_hash=stable_hash(self.config.variants[variant_name].model_dump(mode="json")),
+            task_hash=self._task_hash(task),
+            variant_hash=self._variant_hash(variant_name),
             case_id=case_name,
             trial_index=trial_index,
             task_id=task.id,
@@ -351,6 +408,13 @@ class ContextEvalRunner:
         if self.trials == 1:
             return base
         return f"{base}__trial-{trial_index}"
+
+    @staticmethod
+    def _task_hash(task: TaskConfig) -> str:
+        return stable_hash(task.model_dump(mode="json"))
+
+    def _variant_hash(self, variant_name: str) -> str:
+        return stable_hash(self.config.variants[variant_name].model_dump(mode="json"))
 
     @staticmethod
     def _record_telemetry(
