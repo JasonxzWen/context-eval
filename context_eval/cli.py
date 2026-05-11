@@ -234,14 +234,17 @@ def validate_config(
     tasks: Annotated[Path | None, typer.Option("--tasks", dir_okay=False)] = None,
     strict: Annotated[
         bool,
-        typer.Option("--strict", help="Verify local Git repo and refs without side effects."),
+        typer.Option(
+            "--strict",
+            help="Verify local Git refs and filename-safe task IDs without side effects.",
+        ),
     ] = False,
 ) -> None:
     """Validate configuration and task YAML files."""
     try:
         loaded_config, task_file = validate_config_files(config, tasks, strict=strict)
     except ConfigError as exc:
-        console.print(f"[red]Invalid config:[/red] {exc}")
+        console.print(f"[red]Invalid config:[/red] {exc}", soft_wrap=True)
         raise typer.Exit(code=1) from exc
 
     console.print("[green]Config valid[/green]")

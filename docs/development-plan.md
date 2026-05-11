@@ -103,7 +103,8 @@ validation failures that explain exactly what to fix.
 
 - Improve `validate-config` diagnostics for malformed config/task YAML,
   duplicate task context, missing files, missing prompt templates, unsafe
-  overlay targets, and strict Git ref checks.
+  overlay targets, and strict Git ref checks. The diagnostics contract lives in
+  `docs/config-diagnostics.md`.
 - Harden strict validation around config-relative paths, overlay targets,
   filename-safe task IDs, and task-level `repo_ref` checks.
 - Keep validation side-effect-free: no workspaces, agents, validation commands,
