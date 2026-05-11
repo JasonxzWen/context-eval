@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import json
 from collections import Counter, defaultdict
+from datetime import UTC, datetime
 from io import StringIO
 from pathlib import Path
 from statistics import mean
@@ -10,6 +11,8 @@ from typing import Any
 
 from context_eval.models import CaseResult
 from context_eval.reporting import status_counts_map
+
+EXPORT_SCHEMA_VERSION = "1"
 
 CASE_COLUMNS = [
     "run_id",
@@ -42,10 +45,17 @@ def export_run_csv(run_dir: Path) -> str:
     return output.getvalue()
 
 
-def export_run_json(run_dir: Path) -> str:
+def export_run_json(run_dir: Path, *, exported_at: datetime | None = None) -> str:
     results = _sorted_results(_load_results(run_dir))
     metadata = _load_metadata(run_dir)
     payload = {
+        "export_schema_version": EXPORT_SCHEMA_VERSION,
+        "exported_at": _format_exported_at(exported_at),
+        "source_files": _source_files(run_dir),
+        "case_count": len(results),
+        "agent_count": len({result.agent_name for result in results}),
+        "variant_count": len({result.variant for result in results}),
+        "task_count": len({result.task_id for result in results}),
         "run": {
             "run_id": metadata.get("run_id") or (results[0].run_id if results else run_dir.name),
             "metadata": metadata,
@@ -54,6 +64,21 @@ def export_run_json(run_dir: Path) -> str:
         "agent_summaries": agent_summary_rows(results),
     }
     return json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True) + "\n"
+
+
+def _format_exported_at(value: datetime | None) -> str:
+    timestamp = value or datetime.now(UTC)
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.replace(tzinfo=UTC)
+    timestamp = timestamp.astimezone(UTC)
+    return timestamp.isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def _source_files(run_dir: Path) -> list[str]:
+    source_files = ["results.jsonl"]
+    if (run_dir / "run_metadata.json").exists():
+        source_files.append("run_metadata.json")
+    return source_files
 
 
 def agent_summary_rows(results: list[CaseResult]) -> list[dict[str, Any]]:
