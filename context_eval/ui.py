@@ -279,6 +279,7 @@ def _html(
   </header>
   {_config_section(config, tasks, editor)}
   {_preflight_section(config, editor)}
+  {_persistence_section()}
   {_matrix_section(editor)}
   {_export_section(config, editor)}
   {_metrics_section(results)}
@@ -435,6 +436,36 @@ def _preflight_section(
   </div>
   <div class="resolved">
     Static mode does not run agents, validation commands, workspaces, or network actions.
+  </div>
+</section>
+"""
+
+
+def _persistence_section() -> str:
+    return """
+<section
+  data-role="persistence-mode"
+  data-persistence-mode="static-export-only"
+  data-server-mode="disabled"
+>
+  <h2>Persistence</h2>
+  <div class="metrics">
+    <div class="metric">
+      <strong>Mode: static export-only</strong>
+      <code>copy/download YAML only</code>
+    </div>
+    <div class="metric">
+      <strong>Server endpoints: disabled</strong>
+      <code>no sockets or local HTTP handlers</code>
+    </div>
+    <div class="metric">
+      <strong>Direct file writes: disabled</strong>
+      <code>browser download is the only write-adjacent action</code>
+    </div>
+    <div class="metric">
+      <strong>Agent and validation execution: disabled</strong>
+      <code>run validate-config outside this page</code>
+    </div>
   </div>
 </section>
 """
