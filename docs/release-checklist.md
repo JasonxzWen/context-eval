@@ -10,6 +10,7 @@ Run the same quality gates expected in CI:
 python -m pytest
 context-eval validate-config --config examples/basic/context-eval.yaml
 powershell -ExecutionPolicy Bypass -File scripts\validate-skills.ps1 -SkipExternal
+python -m build --outdir C:\tmp\context-eval-dist
 git diff --check
 ```
 
@@ -19,11 +20,14 @@ Run `ruff check .` when the dev dependencies are installed.
 
 Inspect package configuration before release:
 
-- `context_eval` is the runtime package and should be included.
-- `context_eval/reports/templates/*.j2` should be included as package data.
-- `.agents/`, `.codex/skills/`, `openspec/`, and `scripts/` are maintainer
-  capability library files in the repository, not runtime package modules.
-- `.context-eval/` run artifacts must not be included.
+- Inspect both the wheel and sdist after running the build command.
+- The artifacts must include entries that show it includes `context_eval/`.
+- The artifacts must include entries that show it includes `context_eval/reports/templates/`.
+- The artifacts do not include `.context-eval/`.
+- The artifacts do not include `.agents/`.
+- The artifacts do not include `.codex/skills/`.
+- The artifacts do not include `openspec/`.
+- The artifacts do not include `scripts/`.
 - Active `.codex/config.toml` must not be committed; use
   `.codex/config.example.toml` only.
 
@@ -34,5 +38,4 @@ Inspect package configuration before release:
 3. Run the local verification commands above.
 4. Confirm CI passes on the release branch or pull request.
 5. Tag the release from the reviewed commit.
-6. Build and inspect artifacts once `python -m build` is part of the dev
-   dependency set.
+6. Build and inspect artifacts before publishing.

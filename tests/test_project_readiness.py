@@ -26,6 +26,21 @@ def test_skill_validation_ci_job_installs_script_dependencies() -> None:
     )
 
 
+def test_ci_runs_package_build_with_dev_dependency() -> None:
+    pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
+    workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
+
+    assert '"build>=1"' in pyproject
+    assert "  package-build:" in workflow
+    package_job = workflow.split("  package-build:", maxsplit=1)[1]
+
+    assert 'python -m pip install -e ".[dev]"' in package_job
+    assert "python -m build" in package_job
+    assert package_job.index('python -m pip install -e ".[dev]"') < package_job.index(
+        "python -m build"
+    )
+
+
 def test_skill_validation_skip_external_does_not_require_home_tools() -> None:
     script = Path("scripts/validate-skills.ps1").read_text(encoding="utf-8")
 
@@ -51,3 +66,34 @@ def test_release_checklist_and_changelog_exist() -> None:
 
     changelog_text = changelog.read_text(encoding="utf-8")
     assert "## Unreleased" in changelog_text
+
+
+def test_release_checklist_documents_package_build_scope() -> None:
+    text = Path("docs/release-checklist.md").read_text(encoding="utf-8")
+
+    for term in [
+        "python -m build --outdir",
+        "Inspect both the wheel and sdist",
+        "includes `context_eval/`",
+        "includes `context_eval/reports/templates/`",
+        "do not include `.context-eval/`",
+        "do not include `.agents/`",
+        "do not include `.codex/skills/`",
+        "do not include `openspec/`",
+        "do not include `scripts/`",
+    ]:
+        assert term in text
+
+
+def test_readme_documents_local_package_build_verification() -> None:
+    text = Path("README.md").read_text(encoding="utf-8")
+
+    for term in [
+        "## Development Verification",
+        "python -m build --outdir",
+        "docs/release-checklist.md",
+        "`context_eval/` is the runtime package",
+        "maintainer capability library",
+        "not runtime package modules",
+    ]:
+        assert term in text
