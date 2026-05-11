@@ -9,3 +9,4 @@
 - Modernize package metadata to use SPDX license metadata instead of
   table-form license metadata.
 - Document Python and platform support expectations for release readiness.
+- Add automated package artifact inspection for wheel and sdist release checks.

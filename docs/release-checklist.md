@@ -11,6 +11,7 @@ python -m pytest
 context-eval validate-config --config examples/basic/context-eval.yaml
 powershell -ExecutionPolicy Bypass -File scripts\validate-skills.ps1 -SkipExternal
 python -m build --outdir C:\tmp\context-eval-dist
+python scripts/inspect-package-artifacts.py C:\tmp\context-eval-dist
 git diff --check
 ```
 
@@ -32,6 +33,15 @@ current release gate.
 Inspect package configuration before release:
 
 - Inspect both the wheel and sdist after running the build command.
+- Run `python scripts/inspect-package-artifacts.py C:\tmp\context-eval-dist`;
+  it inspects both the wheel and sdist artifacts.
+- The artifact inspection command requires `context_eval/`.
+- The artifact inspection command requires `context_eval/reports/templates/`.
+- The artifact inspection command rejects `.context-eval/`.
+- The artifact inspection command rejects `.agents/`.
+- The artifact inspection command rejects `.codex/skills/`.
+- The artifact inspection command rejects `openspec/`.
+- The artifact inspection command rejects `scripts/`.
 - Package metadata must use `project.license` as an SPDX string, currently
   `license = "MIT"`.
 - Package metadata must not use table-form license metadata such as

@@ -79,3 +79,6 @@ jobs:
 
       - name: Build package artifacts
         run: python -m build
+
+      - name: Inspect package artifacts
+        run: python scripts/inspect-package-artifacts.py dist
