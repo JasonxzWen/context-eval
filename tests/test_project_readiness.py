@@ -88,6 +88,23 @@ def test_release_checklist_documents_package_build_scope() -> None:
         assert term in text
 
 
+def test_release_checklist_documents_artifact_inspection_command() -> None:
+    text = Path("docs/release-checklist.md").read_text(encoding="utf-8")
+
+    for term in [
+        "python scripts/inspect-package-artifacts.py C:\\tmp\\context-eval-dist",
+        "inspects both the wheel and sdist artifacts",
+        "requires `context_eval/`",
+        "requires `context_eval/reports/templates/`",
+        "rejects `.context-eval/`",
+        "rejects `.agents/`",
+        "rejects `.codex/skills/`",
+        "rejects `openspec/`",
+        "rejects `scripts/`",
+    ]:
+        assert term in text
+
+
 def test_release_checklist_documents_spdx_license_metadata_contract() -> None:
     text = Path("docs/release-checklist.md").read_text(encoding="utf-8")
 
