@@ -198,6 +198,13 @@ def test_changelog_mentions_automated_package_artifact_inspection() -> None:
     assert "wheel and sdist" in text
 
 
+def test_changelog_mentions_release_state_checking() -> None:
+    text = Path("CHANGELOG.md").read_text(encoding="utf-8")
+
+    assert "release-state check" in text
+    assert "hidden local release blockers" in text
+
+
 def test_pyproject_and_ci_matrix_match_supported_runtime_contract() -> None:
     pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
     workflow = yaml.safe_load(Path(".github/workflows/ci.yml").read_text(encoding="utf-8"))
@@ -228,6 +235,17 @@ def test_readme_documents_package_artifact_inspection_command() -> None:
         "python scripts/inspect-package-artifacts.py C:\\tmp\\context-eval-dist",
         "checks the built wheel and sdist",
         "runtime package scope",
+    ]:
+        assert term in text
+
+
+def test_readme_documents_release_state_check_command() -> None:
+    text = Path("README.md").read_text(encoding="utf-8")
+
+    for term in [
+        "python scripts/check-release-state.py",
+        "hidden local release blockers",
+        "before building package artifacts",
     ]:
         assert term in text
 

@@ -289,6 +289,7 @@ Before opening release-oriented changes, run the local quality gates:
 ```bash
 python -m pytest
 context-eval validate-config --config examples/basic/context-eval.yaml
+python scripts/check-release-state.py
 python -m build --outdir C:\tmp\context-eval-dist
 python scripts/inspect-package-artifacts.py C:\tmp\context-eval-dist
 git diff --check
@@ -300,6 +301,7 @@ when the dev dependencies and Windows PowerShell are available. See
 `docs/release-checklist.md` for the full release packaging scope.
 The artifact inspection command checks the built wheel and sdist against the
 runtime package scope documented there.
+The release-state check catches hidden local release blockers before building package artifacts.
 
 `context_eval/` is the runtime package. `.agents/`, `.codex/skills/`,
 `openspec/`, and `scripts/` are maintainer capability library files and are not runtime package modules.
