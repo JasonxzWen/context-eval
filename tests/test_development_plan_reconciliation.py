@@ -91,3 +91,14 @@ def test_development_plan_active_backlog_excludes_merged_work() -> None:
         "CI workflow and release checklist",
     ]:
         assert completed_term not in backlog
+
+
+def test_changelog_mentions_development_plan_reconciliation_handoff() -> None:
+    text = Path("CHANGELOG.md").read_text(encoding="utf-8")
+
+    for term in [
+        "development plan status reconciliation",
+        "active backlog handoff",
+        "validation command timeout defaults",
+    ]:
+        assert term in text

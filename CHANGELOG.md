@@ -11,3 +11,5 @@
 - Document Python and platform support expectations for release readiness.
 - Add automated package artifact inspection for wheel and sdist release checks.
 - Add a release-state check for hidden local release blockers.
+- Add development plan status reconciliation and an active backlog handoff that
+  names validation command timeout defaults as the next planned work.
