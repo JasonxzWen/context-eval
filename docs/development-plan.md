@@ -125,6 +125,10 @@ Status: complete for current scope.
 
 Status: mostly complete; validation command timeout defaults remain.
 
+Validation command timeout defaults are now the active Phase 2 story. The story
+must document timeout resolution before runtime changes and keep the scope to
+config-level and task-level validation command timeout defaults.
+
 ### Requirements
 
 - Users should be able to validate a config without accidentally running an
@@ -145,8 +149,8 @@ Status: mostly complete; validation command timeout defaults remain.
   - `--task-id`
   - `--category`
   - `--difficulty`
-- Planned next: add config-level defaults for validation command timeout when
-  needed.
+- Planned next: add config-level and task-level validation command timeout
+  defaults.
 
 ### Test Plan
 

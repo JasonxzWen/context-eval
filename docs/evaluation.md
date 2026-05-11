@@ -14,6 +14,20 @@ Validation commands are selected in this order:
 Each command records command text, cwd, exit code, stdout, stderr, timeout flag,
 and duration.
 
+## Validation Timeouts
+
+Validation commands may use an optional timeout. The selected timeout is resolved
+in this order:
+
+1. `task.validation.timeout_seconds`
+2. `config.evaluation.timeout_seconds`
+3. no timeout when neither field is set
+
+A timed-out validation command records `timeout=true`, `exit_code=null`, captured
+stdout/stderr where available, and command duration. Any timed-out validation
+command makes the case `validation_status="failed"` and, when the agent itself
+completed, `status="validation_failed"`.
+
 ## Diff Evaluation
 
 After the agent exits, context-eval runs:

@@ -24,6 +24,7 @@ variants:
         target: "AGENTS.md"
 
 evaluation:
+  timeout_seconds: 300
   commands:
     - "python -m pytest"
 ```
@@ -78,6 +79,33 @@ validation still has no side effects and does not create a workspace. It adds:
 Strict validation is intended to catch local setup errors early. It does not
 install dependencies, test target repository commands, check network access, or
 validate remote repository state.
+
+### Validation Command Timeouts
+
+`evaluation.timeout_seconds` is an optional default timeout for validation
+commands. `task.validation.timeout_seconds` is an optional task-level override
+for task-specific validation commands, so task-level timeout overrides the
+config-level default. Both fields must be a positive integer number of seconds
+when present.
+
+Validation command timeout resolution is independent of command selection:
+
+1. `task.validation.commands` overrides `evaluation.commands`.
+2. `task.validation.timeout_seconds` overrides the config-level default.
+3. `evaluation.timeout_seconds` applies when no task-level timeout is set.
+4. If neither field is set, validation commands run without a timeout.
+
+Example task-level override:
+
+```yaml
+tasks:
+  - id: "focused-test"
+    prompt: "Fix the failing parser test."
+    validation:
+      timeout_seconds: 60
+      commands:
+        - "python -m pytest tests/test_parser.py"
+```
 
 ## Maintainer Tooling
 
