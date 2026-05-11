@@ -3,10 +3,15 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
+import pytest
 import yaml
 
 from context_eval.config import validate_config_files
-from context_eval.config_editor import build_editable_model, export_editable_yaml
+from context_eval.config_editor import (
+    build_editable_model,
+    export_editable_yaml,
+    validate_editable_model,
+)
 
 
 def test_editable_model_includes_supported_fields_from_basic_example() -> None:
@@ -209,3 +214,32 @@ def test_editable_yaml_export_rejects_duplicate_task_ids() -> None:
         assert "duplicate task ids: fix-greeting-punctuation" in str(exc)
     else:
         raise AssertionError("expected duplicate task ids to fail")
+
+
+def test_validate_editable_model_reports_persistence_blockers() -> None:
+    config, tasks = validate_config_files(Path("examples/basic/context-eval.yaml"))
+    model = build_editable_model(config, tasks)
+    model.repo.path = " "
+    model.agent.timeout_minutes = 0
+    model.agent.network = "maybe"
+    model.variants[0].overlays[0].target = "../AGENTS.md"
+    model.tasks[0].prompt = ""
+
+    issues = validate_editable_model(model)
+
+    assert issues == [
+        "repo.path is required",
+        "agent.timeout_minutes must be a positive integer",
+        "agent.network must be disabled or enabled",
+        "variant 1 overlay 1 target must be a safe relative path",
+        "task 1 prompt is required",
+    ]
+
+
+def test_editable_yaml_export_blocks_invalid_model_before_persistence() -> None:
+    config, tasks = validate_config_files(Path("examples/basic/context-eval.yaml"))
+    model = build_editable_model(config, tasks)
+    model.repo.base_ref = ""
+
+    with pytest.raises(ValueError, match="export blocked"):
+        export_editable_yaml(model)

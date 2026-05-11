@@ -18,6 +18,28 @@ offer download and copy actions for generated YAML. Direct save back to the
 original files is optional future work and must require an explicit local
 capability, such as a local server mode or a browser-supported file picker.
 
+## Persistence Decision
+
+The selected persistence model is static export-only. `context-eval ui`
+generates offline, self-contained HTML. The page can edit the in-memory model,
+preview the task x variant matrix, validate the edited model enough to block
+known-invalid exports, and let the browser copy or download generated YAML.
+
+Static export-only mode has no local server mode and no server endpoints. The
+generated page must not open sockets, call remote services, access remote URLs,
+or silently overwrite existing config files. It must not write local files, run
+agent commands, run validation commands, install packages, or start background
+orchestration.
+All durable writes remain an explicit user action outside the page: copy or
+download both YAML documents, place them at the intended paths, then run
+`context-eval validate-config --config path/to/context-eval.yaml` locally.
+
+Browser file saving and explicit local server mode remain future capabilities.
+If either is added later, it must be specified in a new contract before
+implementation. A server mode would need allowed local endpoints, destination
+paths, write-before validation, and explicit prohibitions on agent execution and
+validation command execution.
+
 ## Editable Fields
 
 The editor should cover the fields users need before a run:
@@ -66,6 +88,32 @@ copy controls for each file. It must not silently overwrite local files.
 If a future save mode is added, it must be explicit about the destination path,
 show which files will change, validate the generated YAML before writing, and
 remain local-only.
+
+## User Workflow
+
+1. Generate the static UI with `context-eval ui --config path/to/context-eval.yaml`.
+2. Edit supported fields in the browser and review the task x variant matrix.
+3. Resolve schema preflight issues shown in the page.
+4. Copy or download both generated YAML documents.
+5. Place `context-eval.yaml` and `tasks.yaml` at the intended local paths.
+6. Run `context-eval validate-config --config path/to/context-eval.yaml` before
+   starting an evaluation run.
+
+The UI does not save back to the original files. Users must make the durable
+file write explicitly outside the generated page.
+
+## Failure Modes
+
+- Export is blocked when required fields are empty.
+- Export is blocked when task IDs or variant names are duplicated.
+- Export is blocked when overlay targets are absolute paths or escape the target
+  repository with `..`.
+- Browser clipboard support may be unavailable; users can still select and copy
+  the generated YAML text manually.
+- Browser download behavior is controlled by the user's browser and download
+  settings; the page does not choose a destination path.
+- Full validation may still fail after files are written if local files are
+  missing, strict Git checks fail, or the user changed paths outside the page.
 
 ## Edge Cases
 

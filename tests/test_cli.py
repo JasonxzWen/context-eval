@@ -959,6 +959,13 @@ evaluation:
     assert 'id="preflight-status"' in html
     assert 'id="preflight-issues"' in html
     assert 'id="validate-config-command"' in html
+    assert 'data-role="persistence-mode"' in html
+    assert 'data-persistence-mode="static-export-only"' in html
+    assert 'data-server-mode="disabled"' in html
+    assert "Mode: static export-only" in html
+    assert "Server endpoints: disabled" in html
+    assert "Direct file writes: disabled" in html
+    assert "Agent and validation execution: disabled" in html
     assert 'data-role="yaml-export"' in html
     assert 'id="config-yaml-export"' in html
     assert 'id="tasks-yaml-export"' in html
@@ -999,6 +1006,8 @@ evaluation:
     assert "sendBeacon" not in html
     assert "localStorage" not in html
     assert "showSaveFilePicker" not in html
+    assert "showOpenFilePicker" not in html
+    assert "data-save-target" not in html
 
 
 def test_ui_shows_agent_summary_from_run_artifacts(tmp_path: Path) -> None:

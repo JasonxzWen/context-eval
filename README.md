@@ -147,6 +147,19 @@ Generate a local visual HTML interface for config and run data:
 context-eval ui --config examples/basic/context-eval.yaml --run-dir .context-eval/runs/<run-id>
 ```
 
+The generated UI uses static export-only persistence. It is offline,
+self-contained HTML: edit supported config fields in the browser, review the
+matrix and validation feedback, then copy or download both generated YAML
+documents. The static page does not save back to the original files. It does
+not run agents and does not run validation commands.
+
+After placing the exported `context-eval.yaml` and `tasks.yaml` where you want
+them, run:
+
+```bash
+context-eval validate-config --config path/to/context-eval.yaml
+```
+
 ## Configuration Example
 
 ```yaml
