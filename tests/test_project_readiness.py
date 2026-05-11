@@ -54,6 +54,16 @@ def test_ci_inspects_package_artifacts_after_build() -> None:
     )
 
 
+def test_ci_checks_release_state_before_package_install() -> None:
+    workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
+    package_job = workflow.split("  package-build:", maxsplit=1)[1]
+
+    assert "python scripts/check-release-state.py" in package_job
+    assert package_job.index("python scripts/check-release-state.py") < package_job.index(
+        'python -m pip install -e ".[dev]"'
+    )
+
+
 def test_skill_validation_skip_external_does_not_require_home_tools() -> None:
     script = Path("scripts/validate-skills.ps1").read_text(encoding="utf-8")
 
