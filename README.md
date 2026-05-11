@@ -211,6 +211,20 @@ Supported variables:
 The command runs from the isolated workspace. The agent can modify files and run
 commands, but context-eval never commits automatically.
 
+Customize the prompt text with a local template file:
+
+```yaml
+agent:
+  name: "myAgent"
+  command: "myAgent -p {prompt_file}"
+  prompt_template: "./prompts/agent-task.md"
+```
+
+Prompt templates can use variables such as `{task_id}`, `{task_title}`,
+`{task_prompt}`, `{variant}`, and `{repo_ref}`. The template path is resolved
+relative to the config file. A missing prompt template file fails config
+validation, and an unknown template variable fails before the agent command runs.
+
 ## Context Variants
 
 Variants overlay files or directories into the workspace before the agent runs.
