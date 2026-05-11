@@ -99,6 +99,19 @@ def test_release_checklist_documents_spdx_license_metadata_contract() -> None:
         assert term in text
 
 
+def test_release_checklist_documents_python_platform_support_contract() -> None:
+    text = Path("docs/release-checklist.md").read_text(encoding="utf-8")
+
+    for term in [
+        "## Supported Runtime And Platforms",
+        "supports Python 3.11 or newer",
+        "CI gates Python 3.11 and Python 3.12",
+        "CI gates Ubuntu and Windows",
+        "macOS is not a release-blocking CI platform yet",
+    ]:
+        assert term in text
+
+
 def test_pyproject_uses_spdx_license_string_metadata() -> None:
     pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
     license_metadata = pyproject["project"]["license"]

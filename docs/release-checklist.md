@@ -16,6 +16,17 @@ git diff --check
 
 Run `ruff check .` when the dev dependencies are installed.
 
+## Supported Runtime And Platforms
+
+The package supports Python 3.11 or newer through `requires-python = ">=3.11"`.
+CI gates Python 3.11 and Python 3.12 on pull requests. CI gates Ubuntu and Windows
+for the runtime test matrix. macOS is not a release-blocking CI platform yet.
+
+Vendored skill validation is release-blocking on Windows because it depends on
+the PowerShell validation script. Other local development hosts may work when
+Python and shell prerequisites are available, but they are not part of the
+current release gate.
+
 ## Packaging Scope
 
 Inspect package configuration before release:
