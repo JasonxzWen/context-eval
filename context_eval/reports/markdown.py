@@ -10,7 +10,14 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from context_eval.export import agent_summary_rows, has_multiple_agents
 from context_eval.models import CaseResult
-from context_eval.reporting import format_status_counts, telemetry_stats_by_variant
+from context_eval.reporting import (
+    format_status_counts,
+    has_telemetry_gap,
+    is_failed_result,
+    matrix_cell_grid,
+    run_matrix_overview,
+    telemetry_stats_by_variant,
+)
 
 
 def _load_results(run_dir: Path) -> list[CaseResult]:
@@ -53,10 +60,7 @@ def _variant_stats(results: list[CaseResult]) -> list[dict[str, Any]]:
 
 
 def _matrix(results: list[CaseResult]) -> dict[str, dict[str, CaseResult]]:
-    rows: dict[str, dict[str, CaseResult]] = defaultdict(dict)
-    for result in results:
-        rows[result.task_id][result.variant] = result
-    return dict(sorted(rows.items()))
+    return matrix_cell_grid(results)
 
 
 def _agent_stats(results: list[CaseResult]) -> list[dict[str, Any]]:
@@ -82,9 +86,10 @@ def render_markdown_report(run_dir: Path) -> Path:
     failed_cases = [
         result
         for result in results
-        if result.status not in {"completed"} or result.validation_status == "failed"
+        if is_failed_result(result)
     ]
     low_confidence = [result for result in results if result.confidence == "low"]
+    telemetry_gaps = [result for result in results if has_telemetry_gap(result)]
 
     templates_dir = Path(__file__).parent / "templates"
     env = Environment(
@@ -98,6 +103,7 @@ def render_markdown_report(run_dir: Path) -> Path:
         run_dir=run_dir,
         metadata=metadata,
         results=results,
+        overview=run_matrix_overview(results),
         matrix=_matrix(results),
         variants=sorted({result.variant for result in results}),
         variant_stats=_variant_stats(results),
@@ -105,6 +111,7 @@ def render_markdown_report(run_dir: Path) -> Path:
         agent_stats=_agent_stats(results),
         failed_cases=failed_cases,
         low_confidence=low_confidence,
+        telemetry_gaps=telemetry_gaps,
     )
     report_path = run_dir / "report.md"
     report_path.write_text(body, encoding="utf-8")

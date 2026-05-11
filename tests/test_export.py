@@ -282,3 +282,93 @@ def test_export_run_json_metadata_handles_empty_results(tmp_path: Path) -> None:
     assert payload["task_count"] == 0
     assert payload["cases"] == []
     assert payload["agent_summaries"] == []
+
+
+def test_export_run_json_handles_multi_task_variant_agent_matrix(tmp_path: Path) -> None:
+    run_dir = tmp_path / "matrix-run"
+    _write_run(
+        run_dir,
+        [
+            CaseResult(
+                run_id="run-1",
+                case_id="task-b__experiment__agent-b__trial-2",
+                task_id="task-b",
+                variant="experiment",
+                trial_index=2,
+                repo_ref="main",
+                agent_name="agent-b",
+                network="disabled",
+                status="completed",
+                validation_status="passed",
+                confidence="high",
+                duration_seconds=7.0,
+                telemetry_status="collected",
+                telemetry_source="json-file",
+                total_tokens=200,
+                tool_call_count=5,
+                tool_calls_by_name={"edit": 5},
+            ),
+            CaseResult(
+                run_id="run-1",
+                case_id="task-a__baseline__agent-a__trial-1",
+                task_id="task-a",
+                variant="baseline",
+                trial_index=1,
+                repo_ref="main",
+                agent_name="agent-a",
+                network="disabled",
+                status="completed",
+                validation_status="passed",
+                confidence="high",
+                duration_seconds=2.0,
+                telemetry_status="collected",
+                telemetry_source="json-file",
+                total_tokens=100,
+                tool_call_count=2,
+                tool_calls_by_name={"read": 1, "edit": 1},
+            ),
+            CaseResult(
+                run_id="run-1",
+                case_id="task-a__experiment__agent-a__trial-1",
+                task_id="task-a",
+                variant="experiment",
+                trial_index=1,
+                repo_ref="main",
+                agent_name="agent-a",
+                network="disabled",
+                status="validation_failed",
+                validation_status="failed",
+                confidence="low",
+                duration_seconds=4.0,
+            ),
+        ],
+    )
+
+    payload = json.loads(
+        export_run_json(
+            run_dir,
+            exported_at=datetime(2026, 5, 11, 5, 33, tzinfo=UTC),
+        )
+    )
+
+    assert payload["case_count"] == 3
+    assert payload["agent_count"] == 2
+    assert payload["variant_count"] == 2
+    assert payload["task_count"] == 2
+    assert [
+        (
+            case["agent_name"],
+            case["task_id"],
+            case["variant"],
+            case["trial_index"],
+            case["case_id"],
+        )
+        for case in payload["cases"]
+    ] == [
+        ("agent-a", "task-a", "baseline", 1, "task-a__baseline__agent-a__trial-1"),
+        ("agent-a", "task-a", "experiment", 1, "task-a__experiment__agent-a__trial-1"),
+        ("agent-b", "task-b", "experiment", 2, "task-b__experiment__agent-b__trial-2"),
+    ]
+    assert payload["cases"][1]["total_tokens"] is None
+    assert payload["cases"][1]["tool_call_count"] is None
+    assert payload["cases"][1]["tool_calls_by_name"] == {}

@@ -9,7 +9,14 @@ from rich.console import Console
 from context_eval.export import agent_summary_rows, has_multiple_agents
 from context_eval.inspect_run import _load_metadata, _load_results
 from context_eval.models import CaseResult
-from context_eval.reporting import format_optional_number, format_status_counts, telemetry_summary
+from context_eval.reporting import (
+    format_matrix_overview_inline,
+    format_optional_number,
+    format_status_counts,
+    matrix_cell_rows,
+    run_matrix_overview,
+    telemetry_summary,
+)
 
 
 def compare_run(run_dir: Path, console: Console) -> None:
@@ -20,6 +27,14 @@ def compare_run(run_dir: Path, console: Console) -> None:
 
     console.print(f"[bold]Run:[/bold] {run_id}")
     console.print(f"Results: {len(results)}")
+    console.print(
+        "Local observations only; sourced from results.jsonl and optional run_metadata.json",
+        soft_wrap=True,
+    )
+    console.print(
+        f"Matrix: {format_matrix_overview_inline(run_matrix_overview(results))}",
+        soft_wrap=True,
+    )
     console.print("Variants:")
     for stat in _variant_stats(results):
         console.print(
@@ -39,6 +54,23 @@ def compare_run(run_dir: Path, console: Console) -> None:
             f"avg_tool_calls={format_optional_number(stat['avg_tool_calls'])} "
             f"common_tool_names={stat['common_tool_names']}"
         )
+
+    if results:
+        console.print("Matrix cells:")
+        for cell in matrix_cell_rows(results):
+            console.print(
+                "cell "
+                f"task={cell['task_id']} "
+                f"variant={cell['variant']} "
+                f"cases={cell['cases']} "
+                f"pass_rate={float(cell['pass_rate']):.1%} "
+                f"statuses={cell['status_counts']} "
+                f"validation={cell['validation_counts']} "
+                f"confidence={cell['confidence_counts']} "
+                f"agents={cell['agents']} "
+                f"trials={cell['trials']}",
+                soft_wrap=True,
+            )
 
     if has_multiple_agents(results):
         console.print("Agents:")

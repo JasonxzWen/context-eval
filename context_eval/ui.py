@@ -11,7 +11,14 @@ from context_eval.config_editor import EditableConfigModel, build_editable_model
 from context_eval.export import agent_summary_rows, has_multiple_agents
 from context_eval.inspect_run import _load_metadata, _load_results
 from context_eval.models import CaseResult, ContextEvalConfig, TaskFile
-from context_eval.reporting import format_optional_number, format_status_counts
+from context_eval.reporting import (
+    format_matrix_overview_inline,
+    format_optional_int,
+    format_optional_number,
+    format_status_counts,
+    matrix_cell_rows,
+    run_matrix_overview,
+)
 from context_eval.workspace import slugify
 
 
@@ -282,6 +289,8 @@ def _html(
   {_persistence_section()}
   {_matrix_section(editor)}
   {_export_section(config, editor)}
+  {_run_overview_section(results)}
+  {_large_matrix_cells_section(results)}
   {_metrics_section(results)}
   {_agent_metrics_section(results)}
   {_results_section(results)}
@@ -493,6 +502,78 @@ def _matrix_rows(editor: EditableConfigModel) -> str:
     return "".join(rows)
 
 
+def _run_overview_section(results: list[CaseResult]) -> str:
+    if not results:
+        return _empty_section("Run Matrix Overview", "No run results loaded.")
+
+    overview = run_matrix_overview(results)
+    metrics = [
+        ("tasks", overview["task_count"]),
+        ("variants", overview["variant_count"]),
+        ("agents", overview["agent_count"]),
+        ("trials", overview["trial_count"]),
+        ("cases", overview["case_count"]),
+        ("failed", overview["failed_count"]),
+        ("timeouts", overview["timeout_count"]),
+        ("low_confidence", overview["low_confidence_count"]),
+        ("telemetry_gaps", overview["telemetry_gap_count"]),
+    ]
+    cards = "".join(
+        '<div class="metric">'
+        f"<strong>{escape(label)}</strong>"
+        f"<code>{escape(label)}={value}</code>"
+        "</div>"
+        for label, value in metrics
+    )
+    return f"""
+<section>
+  <h2>Run Matrix Overview</h2>
+  <div class="resolved">
+    Local observations only; sourced from results.jsonl and optional run_metadata.json.
+    <code>{escape(format_matrix_overview_inline(overview))}</code>
+  </div>
+  <div class="metrics">{cards}</div>
+</section>
+"""
+
+
+def _large_matrix_cells_section(results: list[CaseResult]) -> str:
+    if not results:
+        return ""
+
+    rows = []
+    for cell in matrix_cell_rows(results):
+        rows.append(
+            "<tr>"
+            f"<td><code>{escape(str(cell['task_id']))}</code></td>"
+            f"<td><code>{escape(str(cell['variant']))}</code></td>"
+            f"<td>{int(cell['cases'])}</td>"
+            f"<td>{float(cell['pass_rate']):.1%}</td>"
+            f"<td><code>{escape(str(cell['status_counts']))}</code></td>"
+            f"<td><code>{escape(str(cell['validation_counts']))}</code></td>"
+            f"<td><code>{escape(str(cell['confidence_counts']))}</code></td>"
+            f"<td><code>{escape(str(cell['agents']))}</code></td>"
+            f"<td><code>{escape(str(cell['trials']))}</code></td>"
+            f"<td><code>{escape(str(cell['summary']))}</code></td>"
+            "</tr>"
+        )
+    return f"""
+<section>
+  <h2>Large Matrix Cells</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Task</th><th>Variant</th><th>Cases</th><th>Pass rate</th>
+        <th>Status counts</th><th>Validation counts</th><th>Confidence counts</th>
+        <th>Agents</th><th>Trials</th><th>Summary</th>
+      </tr>
+    </thead>
+    <tbody>{''.join(rows)}</tbody>
+  </table>
+</section>
+"""
+
+
 def _metrics_section(results: list[CaseResult]) -> str:
     if not results:
         return _empty_section("Variant Metrics", "No run results loaded.")
@@ -508,7 +589,14 @@ def _metrics_section(results: list[CaseResult]) -> str:
             f"<code>validation_failure_rate={float(stat['validation_failure_rate']):.1%}</code><br>"
             f"<code>avg_duration={float(stat['avg_duration']):.2f}</code><br>"
             f"<code>avg_changed_files={float(stat['avg_changed_files']):.2f}</code><br>"
-            f"<code>common_touched_paths={escape(str(stat['common_touched_paths']))}</code>"
+            f"<code>common_touched_paths={escape(str(stat['common_touched_paths']))}</code><br>"
+            f"<code>telemetry_statuses={escape(str(stat['telemetry_statuses']))}</code><br>"
+            f"<code>avg_agent_duration="
+            f"{format_optional_number(stat['avg_agent_duration_seconds'])}</code><br>"
+            f"<code>avg_total_tokens="
+            f"{format_optional_number(stat['avg_total_tokens'])}</code><br>"
+            f"<code>avg_tool_calls={format_optional_number(stat['avg_tool_calls'])}</code><br>"
+            f"<code>common_tool_names={escape(str(stat['common_tool_names']))}</code>"
             "</div>"
         )
     return f"""
@@ -560,10 +648,15 @@ def _results_section(results: list[CaseResult]) -> str:
             f"<td><code>{escape(result.case_id or '')}</code></td>"
             f"<td><code>{escape(result.task_id)}</code></td>"
             f"<td><code>{escape(result.variant)}</code></td>"
+            f"<td><code>{escape(result.agent_name)}</code></td>"
             f"<td>{result.trial_index}</td>"
             f"<td><code>{escape(result.status)}</code></td>"
             f"<td><code>{escape(result.validation_status)}</code></td>"
             f"<td><code>{escape(result.confidence)}</code></td>"
+            f"<td><code>{escape(result.telemetry_status)}</code></td>"
+            f"<td>{format_optional_number(result.agent_duration_seconds)}</td>"
+            f"<td>{format_optional_int(result.total_tokens)}</td>"
+            f"<td>{format_optional_int(result.tool_call_count)}</td>"
             f"<td>{result.changed_files}</td>"
             "</tr>"
         )
@@ -573,8 +666,9 @@ def _results_section(results: list[CaseResult]) -> str:
   <table>
     <thead>
       <tr>
-        <th>Case</th><th>Task</th><th>Variant</th><th>Trial</th>
-        <th>Status</th><th>Validation</th><th>Confidence</th><th>Changed</th>
+        <th>Case</th><th>Task</th><th>Variant</th><th>Agent</th><th>Trial</th>
+        <th>Status</th><th>Validation</th><th>Confidence</th><th>Telemetry</th>
+        <th>Agent duration</th><th>Total tokens</th><th>Tool calls</th><th>Changed</th>
       </tr>
     </thead>
     <tbody>{''.join(rows)}</tbody>
