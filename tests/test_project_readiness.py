@@ -163,6 +163,13 @@ def test_changelog_mentions_python_platform_support_docs() -> None:
     assert "release readiness" in text
 
 
+def test_changelog_mentions_automated_package_artifact_inspection() -> None:
+    text = Path("CHANGELOG.md").read_text(encoding="utf-8")
+
+    assert "automated package artifact inspection" in text
+    assert "wheel and sdist" in text
+
+
 def test_pyproject_and_ci_matrix_match_supported_runtime_contract() -> None:
     pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
     workflow = yaml.safe_load(Path(".github/workflows/ci.yml").read_text(encoding="utf-8"))
@@ -182,6 +189,17 @@ def test_readme_documents_supported_runtime_and_platform_limits() -> None:
         "CI currently gates Python 3.11 and Python 3.12",
         "CI currently gates Ubuntu and Windows",
         "Windows PowerShell is required for vendored skill validation",
+    ]:
+        assert term in text
+
+
+def test_readme_documents_package_artifact_inspection_command() -> None:
+    text = Path("README.md").read_text(encoding="utf-8")
+
+    for term in [
+        "python scripts/inspect-package-artifacts.py C:\\tmp\\context-eval-dist",
+        "checks the built wheel and sdist",
+        "runtime package scope",
     ]:
         assert term in text
 
