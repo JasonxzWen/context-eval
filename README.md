@@ -280,6 +280,10 @@ run artifacts.
 
 ## Development Verification
 
+Python 3.11 or newer is required. CI currently gates Python 3.11 and Python 3.12
+on pull requests. CI currently gates Ubuntu and Windows for the runtime test
+matrix. Windows PowerShell is required for vendored skill validation.
+
 Before opening release-oriented changes, run the local quality gates:
 
 ```bash

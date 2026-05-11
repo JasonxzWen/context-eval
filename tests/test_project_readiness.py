@@ -1,6 +1,8 @@
 import tomllib
 from pathlib import Path
 
+import yaml
+
 
 def test_ci_workflow_contains_required_quality_gates() -> None:
     workflow = Path(".github/workflows/ci.yml")
@@ -99,6 +101,19 @@ def test_release_checklist_documents_spdx_license_metadata_contract() -> None:
         assert term in text
 
 
+def test_release_checklist_documents_python_platform_support_contract() -> None:
+    text = Path("docs/release-checklist.md").read_text(encoding="utf-8")
+
+    for term in [
+        "## Supported Runtime And Platforms",
+        "supports Python 3.11 or newer",
+        "CI gates Python 3.11 and Python 3.12",
+        "CI gates Ubuntu and Windows",
+        "macOS is not a release-blocking CI platform yet",
+    ]:
+        assert term in text
+
+
 def test_pyproject_uses_spdx_license_string_metadata() -> None:
     pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
     license_metadata = pyproject["project"]["license"]
@@ -112,6 +127,36 @@ def test_changelog_mentions_spdx_license_metadata_cleanup() -> None:
 
     assert "SPDX license metadata" in text
     assert "table-form license metadata" in text
+
+
+def test_changelog_mentions_python_platform_support_docs() -> None:
+    text = Path("CHANGELOG.md").read_text(encoding="utf-8")
+
+    assert "Python and platform support" in text
+    assert "release readiness" in text
+
+
+def test_pyproject_and_ci_matrix_match_supported_runtime_contract() -> None:
+    pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+    workflow = yaml.safe_load(Path(".github/workflows/ci.yml").read_text(encoding="utf-8"))
+
+    matrix = workflow["jobs"]["test"]["strategy"]["matrix"]
+
+    assert pyproject["project"]["requires-python"] == ">=3.11"
+    assert set(matrix["python-version"]) == {"3.11", "3.12"}
+    assert set(matrix["os"]) == {"ubuntu-latest", "windows-latest"}
+
+
+def test_readme_documents_supported_runtime_and_platform_limits() -> None:
+    text = Path("README.md").read_text(encoding="utf-8")
+
+    for term in [
+        "Python 3.11 or newer is required",
+        "CI currently gates Python 3.11 and Python 3.12",
+        "CI currently gates Ubuntu and Windows",
+        "Windows PowerShell is required for vendored skill validation",
+    ]:
+        assert term in text
 
 
 def test_readme_documents_local_package_build_verification() -> None:
