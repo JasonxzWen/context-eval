@@ -209,6 +209,13 @@ def test_changelog_mentions_release_state_checking() -> None:
     assert "hidden local release blockers" in text
 
 
+def test_changelog_mentions_prepare_release_entrypoint() -> None:
+    text = Path("CHANGELOG.md").read_text(encoding="utf-8")
+
+    assert "release preparation entrypoint" in text
+    assert "manual tag and publish checkpoint" in text
+
+
 def test_pyproject_and_ci_matrix_match_supported_runtime_contract() -> None:
     pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
     workflow = yaml.safe_load(Path(".github/workflows/ci.yml").read_text(encoding="utf-8"))
@@ -264,5 +271,18 @@ def test_readme_documents_local_package_build_verification() -> None:
         "`context_eval/` is the runtime package",
         "maintainer capability library",
         "not runtime package modules",
+    ]:
+        assert term in text
+
+
+def test_readme_documents_prepare_release_entrypoint() -> None:
+    text = Path("README.md").read_text(encoding="utf-8")
+
+    for term in [
+        "python scripts/prepare-release.py --dist-dir C:\\tmp\\context-eval-dist",
+        "checks CHANGELOG.md",
+        "runs the release-state check",
+        "builds and inspects release artifacts",
+        "does not tag or publish",
     ]:
         assert term in text

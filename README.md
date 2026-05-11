@@ -341,6 +341,14 @@ Run `ruff check .` and
 `powershell -ExecutionPolicy Bypass -File scripts\validate-skills.ps1 -SkipExternal`
 when the dev dependencies and Windows PowerShell are available. See
 `docs/release-checklist.md` for the full release packaging scope.
+For release preparation, use the consolidated command:
+
+```bash
+python scripts/prepare-release.py --dist-dir C:\tmp\context-eval-dist
+```
+
+It checks CHANGELOG.md, runs the release-state check, builds and inspects release artifacts, and does not tag or publish.
+
 The artifact inspection command checks the built wheel and sdist against the
 runtime package scope documented there.
 The release-state check catches hidden local release blockers before building package artifacts.
