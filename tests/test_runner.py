@@ -2,9 +2,12 @@ import io
 import json
 import subprocess
 import sys
+import threading
+import time
 from datetime import datetime
 from pathlib import Path
 
+import pytest
 from rich.console import Console
 
 from context_eval import __version__
@@ -12,6 +15,7 @@ from context_eval.models import (
     RESULT_SCHEMA_VERSION,
     AgentConfig,
     AgentTelemetryConfig,
+    CaseResult,
     ContextEvalConfig,
     EvaluationConfig,
     OverlayConfig,
@@ -519,3 +523,98 @@ def test_runner_repeats_selected_cases_for_trials(tmp_path: Path) -> None:
     assert len({result["stdout_path"] for result in results}) == 2
     assert len({result["patch_path"] for result in results}) == 2
     assert len({result["workspace_path"] for result in results}) == 2
+
+
+def test_runner_rejects_jobs_less_than_one(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    overlay_source = tmp_path / "ctx" / "AGENTS.md"
+    overlay_source.parent.mkdir()
+    overlay_source.write_text("# Instructions\n", encoding="utf-8")
+    config = _base_config(
+        tmp_path=tmp_path,
+        repo=repo,
+        agent_command="agent -p {prompt_file}",
+        overlay_source=overlay_source,
+    )
+
+    with pytest.raises(ValueError, match="jobs must be at least 1"):
+        ContextEvalRunner(config=config, jobs=0, console=_quiet_console())
+
+
+def test_runner_parallel_jobs_write_results_in_planned_order(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    overlay_source = tmp_path / "ctx" / "AGENTS.md"
+    overlay_source.parent.mkdir()
+    overlay_source.write_text("# Instructions\n", encoding="utf-8")
+    task_file = TaskFile(
+        tasks=[
+            TaskConfig(id="task-1", prompt="First."),
+            TaskConfig(id="task-2", prompt="Second."),
+            TaskConfig(id="task-3", prompt="Third."),
+        ]
+    )
+    config = _base_config(
+        tmp_path=tmp_path,
+        repo=repo,
+        agent_command="agent -p {prompt_file}",
+        overlay_source=overlay_source,
+    )
+    lock = threading.Lock()
+    active_cases = 0
+    max_active_cases = 0
+
+    def fake_run_case(
+        self: ContextEvalRunner,
+        run_id: str,
+        run_dir: Path,
+        agent,
+        task: TaskConfig,
+        variant_name: str,
+        trial_index: int,
+    ) -> CaseResult:
+        nonlocal active_cases, max_active_cases
+        with lock:
+            active_cases += 1
+            max_active_cases = max(max_active_cases, active_cases)
+        time.sleep(0.05 if task.id == "task-1" else 0.01)
+        with lock:
+            active_cases -= 1
+        return CaseResult(
+            run_id=run_id,
+            case_id=f"{task.id}__{variant_name}",
+            task_id=task.id,
+            variant=variant_name,
+            repo_ref="HEAD",
+            agent_name=self.config.agent.name,
+            network=self.config.agent.network,
+            status="completed",
+            validation_status="passed",
+            confidence="high",
+        )
+
+    monkeypatch.setattr(ContextEvalRunner, "_run_case", fake_run_case)
+
+    run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        jobs=2,
+        console=_quiet_console(),
+    ).run()
+
+    results = [
+        json.loads(line)
+        for line in (run_dir / "results.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+
+    assert max_active_cases == 2
+    assert [result["task_id"] for result in results] == ["task-1", "task-2", "task-3"]
+    assert [result["case_id"] for result in results] == [
+        "task-1__baseline",
+        "task-2__baseline",
+        "task-3__baseline",
+    ]
