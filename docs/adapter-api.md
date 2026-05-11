@@ -24,6 +24,34 @@ The command runs with the prepared workspace as the current working directory.
 The agent may modify files and run commands, but context-eval never commits
 changes automatically.
 
+## Prompt Templates
+
+Command-template agents may set `prompt_template` to a local file path:
+
+```yaml
+agent:
+  name: "myAgent"
+  command: "myAgent -p {prompt_file}"
+  prompt_template: "./prompts/agent-task.md"
+```
+
+The `prompt_template` path is resolved relative to the config file. When it is
+absent, the built-in prompt remains unchanged.
+
+Prompt templates support these variables:
+
+- `{task_id}`
+- `{task_title}`
+- `{task_prompt}`
+- `{variant}`
+- `{repo_ref}`
+- `{category}`
+- `{difficulty}`
+
+A missing prompt template file fails config validation. An unknown template variable fails
+before the agent command runs, so a bad prompt file cannot start an agent with
+incomplete instructions.
+
 ## Telemetry Collector Lifecycle
 
 Every adapter owns a telemetry collector at the adapter boundary. The
