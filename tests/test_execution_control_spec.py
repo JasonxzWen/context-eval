@@ -37,3 +37,38 @@ def test_readme_documents_bounded_parallel_run_usage() -> None:
         "not an agent leaderboard",
     ]:
         assert term in text
+
+
+def test_evaluation_docs_describe_cleanup_policy_contract() -> None:
+    text = Path("docs/evaluation.md").read_text(encoding="utf-8")
+
+    for term in [
+        "## Cleanup Policies",
+        "--cleanup-policy",
+        "`never`",
+        "`always`",
+        "`successful`",
+        "`failed`",
+        "default cleanup policy is `never`",
+        "`--cleanup` remains shorthand for `--cleanup-policy always`",
+        "cleanup_status",
+        "`skipped` when the selected policy keeps the workspace",
+        "workspace_retained",
+    ]:
+        assert term in text
+
+
+def test_readme_documents_cleanup_policy_usage() -> None:
+    text = Path("README.md").read_text(encoding="utf-8")
+
+    for term in [
+        "context-eval run --config examples/basic/context-eval.yaml --cleanup-policy successful",
+        "`--cleanup-policy`",
+        "`never`",
+        "`always`",
+        "`successful`",
+        "`failed`",
+        "`--cleanup` is shorthand for `--cleanup-policy always`",
+        "local run artifacts",
+    ]:
+        assert term in text

@@ -435,6 +435,142 @@ def test_runner_records_cleanup_failure_without_hiding_result(
     assert any("workspace cleanup failed" in error for error in result["errors"])
 
 
+def test_runner_rejects_unknown_cleanup_policy(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    overlay_source = tmp_path / "ctx" / "AGENTS.md"
+    overlay_source.parent.mkdir()
+    overlay_source.write_text("# Instructions\n", encoding="utf-8")
+    config = _base_config(
+        tmp_path=tmp_path,
+        repo=repo,
+        agent_command="agent -p {prompt_file}",
+        overlay_source=overlay_source,
+    )
+
+    with pytest.raises(ValueError, match="unsupported cleanup policy"):
+        ContextEvalRunner(
+            config=config,
+            tasks=TaskFile(tasks=[TaskConfig(id="known", prompt="Do nothing.")]),
+            cleanup_policy="sometimes",
+            console=_quiet_console(),
+        )
+
+
+def test_cleanup_policy_successful_removes_only_successful_workspaces(
+    tmp_path: Path,
+) -> None:
+    repo = _create_repo(tmp_path)
+    overlay_source = tmp_path / "ctx" / "AGENTS.md"
+    overlay_source.parent.mkdir()
+    overlay_source.write_text("# Instructions\n", encoding="utf-8")
+
+    agent_script = tmp_path / "agent.py"
+    agent_script.write_text("print('no changes')\n", encoding="utf-8")
+    pass_script = tmp_path / "pass.py"
+    pass_script.write_text("raise SystemExit(0)\n", encoding="utf-8")
+    fail_script = tmp_path / "fail.py"
+    fail_script.write_text("raise SystemExit(1)\n", encoding="utf-8")
+    task_file = TaskFile(
+        tasks=[
+            TaskConfig(
+                id="passes",
+                prompt="Do nothing.",
+                validation=ValidationConfig(commands=[f'"{sys.executable}" "{pass_script}"']),
+            ),
+            TaskConfig(
+                id="fails",
+                prompt="Do nothing.",
+                validation=ValidationConfig(commands=[f'"{sys.executable}" "{fail_script}"']),
+            ),
+        ]
+    )
+    config = _base_config(
+        tmp_path=tmp_path,
+        repo=repo,
+        agent_command=f'"{sys.executable}" "{agent_script}"',
+        overlay_source=overlay_source,
+    )
+
+    run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        cleanup_policy="successful",
+        console=_quiet_console(),
+    ).run()
+    results = [
+        json.loads(line)
+        for line in (run_dir / "results.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    by_task = {result["task_id"]: result for result in results}
+
+    assert by_task["passes"]["status"] == "completed"
+    assert by_task["passes"]["cleanup_status"] == "succeeded"
+    assert by_task["passes"]["workspace_retained"] is False
+    assert not (run_dir / by_task["passes"]["workspace_path"]).exists()
+    assert by_task["fails"]["status"] == "validation_failed"
+    assert by_task["fails"]["cleanup_status"] == "skipped"
+    assert by_task["fails"]["workspace_retained"] is True
+    assert (run_dir / by_task["fails"]["workspace_path"]).exists()
+
+
+def test_cleanup_policy_failed_removes_only_failed_workspaces(
+    tmp_path: Path,
+) -> None:
+    repo = _create_repo(tmp_path)
+    overlay_source = tmp_path / "ctx" / "AGENTS.md"
+    overlay_source.parent.mkdir()
+    overlay_source.write_text("# Instructions\n", encoding="utf-8")
+
+    agent_script = tmp_path / "agent.py"
+    agent_script.write_text("print('no changes')\n", encoding="utf-8")
+    pass_script = tmp_path / "pass.py"
+    pass_script.write_text("raise SystemExit(0)\n", encoding="utf-8")
+    fail_script = tmp_path / "fail.py"
+    fail_script.write_text("raise SystemExit(1)\n", encoding="utf-8")
+    task_file = TaskFile(
+        tasks=[
+            TaskConfig(
+                id="passes",
+                prompt="Do nothing.",
+                validation=ValidationConfig(commands=[f'"{sys.executable}" "{pass_script}"']),
+            ),
+            TaskConfig(
+                id="fails",
+                prompt="Do nothing.",
+                validation=ValidationConfig(commands=[f'"{sys.executable}" "{fail_script}"']),
+            ),
+        ]
+    )
+    config = _base_config(
+        tmp_path=tmp_path,
+        repo=repo,
+        agent_command=f'"{sys.executable}" "{agent_script}"',
+        overlay_source=overlay_source,
+    )
+
+    run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        cleanup_policy="failed",
+        console=_quiet_console(),
+    ).run()
+    results = [
+        json.loads(line)
+        for line in (run_dir / "results.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    by_task = {result["task_id"]: result for result in results}
+
+    assert by_task["passes"]["status"] == "completed"
+    assert by_task["passes"]["cleanup_status"] == "skipped"
+    assert by_task["passes"]["workspace_retained"] is True
+    assert (run_dir / by_task["passes"]["workspace_path"]).exists()
+    assert by_task["fails"]["status"] == "validation_failed"
+    assert by_task["fails"]["cleanup_status"] == "succeeded"
+    assert by_task["fails"]["workspace_retained"] is False
+    assert not (run_dir / by_task["fails"]["workspace_path"]).exists()
+
+
 def test_runner_records_workspace_failure_without_running_case_steps(tmp_path: Path) -> None:
     repo = _create_repo(tmp_path)
     overlay_source = tmp_path / "ctx" / "AGENTS.md"

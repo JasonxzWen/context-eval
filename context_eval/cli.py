@@ -64,6 +64,13 @@ def run(
         bool,
         typer.Option("--cleanup", help="Delete workspaces after each case."),
     ] = False,
+    cleanup_policy: Annotated[
+        str | None,
+        typer.Option(
+            "--cleanup-policy",
+            help="Workspace cleanup policy: never, always, successful, or failed.",
+        ),
+    ] = None,
     dry_run: Annotated[
         bool,
         typer.Option("--dry-run", help="Preview selected cases without creating run artifacts."),
@@ -93,6 +100,10 @@ def run(
 ) -> None:
     """Run tasks across context variants."""
     try:
+        resolved_cleanup_policy = ContextEvalRunner.resolve_cleanup_policy(
+            cleanup=cleanup,
+            cleanup_policy=cleanup_policy,
+        )
         loaded_config, task_file = validate_config_files(config, tasks)
         task_file = filter_tasks(
             task_file,
@@ -108,13 +119,14 @@ def run(
                 max_tasks=max_tasks,
                 trials=trials,
                 jobs=jobs,
+                cleanup_policy=resolved_cleanup_policy,
                 console=console,
             )
             return
         runner = ContextEvalRunner(
             config=loaded_config,
             tasks=task_file,
-            cleanup=cleanup,
+            cleanup_policy=resolved_cleanup_policy,
             max_tasks=max_tasks,
             variants=variant,
             trials=trials,

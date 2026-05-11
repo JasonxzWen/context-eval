@@ -55,6 +55,27 @@ Each result row includes:
 Repeated trials write distinct prompt, log, patch, artifact, and workspace paths
 so result rows do not overwrite each other.
 
+## Cleanup Policies
+
+Use `context-eval run --cleanup-policy POLICY` to choose when case workspaces
+are removed after result capture. The default cleanup policy is `never`, which
+keeps created workspaces for debugging. `--cleanup` remains shorthand for `--cleanup-policy always`.
+
+Supported policies:
+
+- `never`: keep every created workspace.
+- `always`: remove every created workspace after the case finishes.
+- `successful`: remove workspaces for completed cases whose validation did not
+  fail, and retain failed cases for debugging.
+- `failed`: remove workspaces for failed cases, and retain successful cases for
+  inspection.
+
+Each result row records `workspace_retained` and `cleanup_status` after cleanup
+handling. `cleanup_status` is `skipped` when the selected policy keeps the workspace
+or no workspace was created, `succeeded` when a selected workspace was removed,
+and `failed` when cleanup was selected but the workspace remained or cleanup
+raised an error.
+
 ## Bounded Parallelism
 
 Use `context-eval run --jobs N` to run multiple local cases concurrently. The

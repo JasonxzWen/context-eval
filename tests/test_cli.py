@@ -205,6 +205,8 @@ evaluation:
             "2",
             "--jobs",
             "2",
+            "--cleanup-policy",
+            "failed",
             "--variant",
             "baseline",
             "--max-tasks",
@@ -214,6 +216,7 @@ evaluation:
 
     assert trials_result.exit_code == 0
     assert "Jobs: 2" in trials_result.output
+    assert "Cleanup policy: failed" in trials_result.output
     assert "trial=2" in trials_result.output
     assert "docs-easy__baseline__trial-2" in trials_result.output
     assert not output_dir.exists()
