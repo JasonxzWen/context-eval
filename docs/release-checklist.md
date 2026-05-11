@@ -10,6 +10,7 @@ Run the same quality gates expected in CI:
 python -m pytest
 context-eval validate-config --config examples/basic/context-eval.yaml
 powershell -ExecutionPolicy Bypass -File scripts\validate-skills.ps1 -SkipExternal
+python scripts/check-release-state.py
 python -m build --outdir C:\tmp\context-eval-dist
 python scripts/inspect-package-artifacts.py C:\tmp\context-eval-dist
 git diff --check
@@ -32,6 +33,15 @@ current release gate.
 
 Inspect package configuration before release:
 
+- Run `python scripts/check-release-state.py` before building; it checks hidden local release blockers that `git status --short` does not show.
+- The release-state check rejects `.context-eval/`.
+- The release-state check rejects `build/`.
+- The release-state check rejects `dist/`.
+- The release-state check rejects `*.egg-info/`.
+- The release-state check rejects `.codex/config.toml`.
+- The release-state check allows `.venv/`.
+- The release-state check allows cache directories.
+- The release-state check allows Ralph local state.
 - Inspect both the wheel and sdist after running the build command.
 - Run `python scripts/inspect-package-artifacts.py C:\tmp\context-eval-dist`;
   it inspects both the wheel and sdist artifacts.

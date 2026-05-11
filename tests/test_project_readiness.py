@@ -54,6 +54,16 @@ def test_ci_inspects_package_artifacts_after_build() -> None:
     )
 
 
+def test_ci_checks_release_state_before_package_install() -> None:
+    workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
+    package_job = workflow.split("  package-build:", maxsplit=1)[1]
+
+    assert "python scripts/check-release-state.py" in package_job
+    assert package_job.index("python scripts/check-release-state.py") < package_job.index(
+        'python -m pip install -e ".[dev]"'
+    )
+
+
 def test_skill_validation_skip_external_does_not_require_home_tools() -> None:
     script = Path("scripts/validate-skills.ps1").read_text(encoding="utf-8")
 
@@ -115,6 +125,24 @@ def test_release_checklist_documents_artifact_inspection_command() -> None:
         assert term in text
 
 
+def test_release_checklist_documents_hidden_release_state_check() -> None:
+    text = Path("docs/release-checklist.md").read_text(encoding="utf-8")
+
+    for term in [
+        "python scripts/check-release-state.py",
+        "hidden local release blockers",
+        "rejects `.context-eval/`",
+        "rejects `build/`",
+        "rejects `dist/`",
+        "rejects `*.egg-info/`",
+        "rejects `.codex/config.toml`",
+        "allows `.venv/`",
+        "allows cache directories",
+        "allows Ralph local state",
+    ]:
+        assert term in text
+
+
 def test_release_checklist_documents_spdx_license_metadata_contract() -> None:
     text = Path("docs/release-checklist.md").read_text(encoding="utf-8")
 
@@ -170,6 +198,13 @@ def test_changelog_mentions_automated_package_artifact_inspection() -> None:
     assert "wheel and sdist" in text
 
 
+def test_changelog_mentions_release_state_checking() -> None:
+    text = Path("CHANGELOG.md").read_text(encoding="utf-8")
+
+    assert "release-state check" in text
+    assert "hidden local release blockers" in text
+
+
 def test_pyproject_and_ci_matrix_match_supported_runtime_contract() -> None:
     pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
     workflow = yaml.safe_load(Path(".github/workflows/ci.yml").read_text(encoding="utf-8"))
@@ -200,6 +235,17 @@ def test_readme_documents_package_artifact_inspection_command() -> None:
         "python scripts/inspect-package-artifacts.py C:\\tmp\\context-eval-dist",
         "checks the built wheel and sdist",
         "runtime package scope",
+    ]:
+        assert term in text
+
+
+def test_readme_documents_release_state_check_command() -> None:
+    text = Path("README.md").read_text(encoding="utf-8")
+
+    for term in [
+        "python scripts/check-release-state.py",
+        "hidden local release blockers",
+        "before building package artifacts",
     ]:
         assert term in text
 
