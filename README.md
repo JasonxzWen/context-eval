@@ -72,6 +72,16 @@ Run an evaluation:
 context-eval run --config examples/basic/context-eval.yaml
 ```
 
+Run bounded parallel local cases:
+
+```bash
+context-eval run --config examples/basic/context-eval.yaml --jobs 2
+```
+
+`--jobs` defaults to 1. Higher values run concurrent local cases up to that
+limit while writing deterministic local run artifacts. This speeds up a local
+matrix; it is not an agent leaderboard.
+
 Regenerate a report:
 
 ```bash
