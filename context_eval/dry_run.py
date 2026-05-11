@@ -14,6 +14,7 @@ def render_dry_run(
     max_tasks: int | None = None,
     trials: int = 1,
     jobs: int = 1,
+    cleanup_policy: str = "never",
     console: Console,
 ) -> None:
     selected_tasks = tasks.tasks[:max_tasks] if max_tasks else tasks.tasks
@@ -26,6 +27,7 @@ def render_dry_run(
     console.print(f"Variants: {', '.join(variant_names)}")
     console.print(f"Trials: {trials}")
     console.print(f"Jobs: {jobs}")
+    console.print(f"Cleanup policy: {cleanup_policy}")
     console.print("")
     console.print("[bold]Task x Variant Matrix[/bold]")
 

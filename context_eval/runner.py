@@ -19,6 +19,7 @@ from context_eval.hashing import stable_hash
 from context_eval.models import (
     RESULT_SCHEMA_VERSION,
     CaseResult,
+    CleanupPolicy,
     ContextEvalConfig,
     TaskConfig,
     TaskFile,
@@ -36,6 +37,7 @@ class ContextEvalRunner:
         tasks: TaskFile | None = None,
         tasks_path: Path | None = None,
         cleanup: bool = False,
+        cleanup_policy: CleanupPolicy | str | None = None,
         max_tasks: int | None = None,
         variants: list[str] | None = None,
         trials: int = 1,
@@ -47,8 +49,11 @@ class ContextEvalRunner:
             raise ValueError("trials must be at least 1")
         if jobs < 1:
             raise ValueError("jobs must be at least 1")
+        self.cleanup_policy = self.resolve_cleanup_policy(
+            cleanup=cleanup,
+            cleanup_policy=cleanup_policy,
+        )
         self.tasks = tasks or load_tasks(tasks_path or config.tasks)
-        self.cleanup = cleanup
         self.max_tasks = max_tasks
         self.selected_variants = variants or []
         self.trials = trials
@@ -382,7 +387,7 @@ class ContextEvalRunner:
         workspace: Path,
         errors: list[str],
     ) -> None:
-        if not self.cleanup:
+        if not self._should_cleanup(result):
             result.cleanup_status = "skipped"
             result.workspace_retained = workspace.exists()
             return
@@ -403,6 +408,33 @@ class ContextEvalRunner:
         else:
             result.cleanup_status = "succeeded"
         result.errors = errors
+
+    def _should_cleanup(self, result: CaseResult) -> bool:
+        if self.cleanup_policy == "never":
+            return False
+        if self.cleanup_policy == "always":
+            return True
+
+        successful = result.status == "completed" and result.validation_status != "failed"
+        if self.cleanup_policy == "successful":
+            return successful
+        if self.cleanup_policy == "failed":
+            return not successful
+        raise AssertionError(f"unsupported cleanup policy: {self.cleanup_policy}")
+
+    @staticmethod
+    def resolve_cleanup_policy(
+        *,
+        cleanup: bool,
+        cleanup_policy: CleanupPolicy | str | None,
+    ) -> CleanupPolicy:
+        if cleanup_policy is None:
+            return "always" if cleanup else "never"
+        if cleanup and cleanup_policy != "always":
+            raise ValueError("--cleanup cannot be combined with a non-always cleanup policy")
+        if cleanup_policy not in {"never", "always", "successful", "failed"}:
+            raise ValueError(f"unsupported cleanup policy: {cleanup_policy}")
+        return cleanup_policy
 
     @staticmethod
     def _rel(run_dir: Path, path: Path) -> str:

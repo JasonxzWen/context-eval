@@ -20,6 +20,7 @@ RunStatus = Literal[
 ValidationStatus = Literal["passed", "failed", "skipped"]
 Confidence = Literal["high", "medium", "low"]
 CleanupStatus = Literal["skipped", "succeeded", "failed"]
+CleanupPolicy = Literal["never", "always", "successful", "failed"]
 TelemetryStatus = Literal["unavailable", "collected", "partial", "error"]
 TelemetryCollectorKind = Literal["none", "json-file"]
 
