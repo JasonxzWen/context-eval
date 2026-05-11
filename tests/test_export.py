@@ -1,4 +1,5 @@
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 from context_eval.export import export_run_csv, export_run_json
@@ -149,8 +150,20 @@ def test_export_run_json_contains_sorted_cases_and_agent_summaries(tmp_path: Pat
         ],
     )
 
-    payload = json.loads(export_run_json(run_dir))
+    payload = json.loads(
+        export_run_json(
+            run_dir,
+            exported_at=datetime(2026, 5, 11, 5, 30, tzinfo=UTC),
+        )
+    )
 
+    assert payload["export_schema_version"] == "1"
+    assert payload["exported_at"] == "2026-05-11T05:30:00Z"
+    assert payload["source_files"] == ["results.jsonl", "run_metadata.json"]
+    assert payload["case_count"] == 3
+    assert payload["agent_count"] == 2
+    assert payload["variant_count"] == 1
+    assert payload["task_count"] == 1
     assert payload["run"]["run_id"] == "run-1"
     assert [case["agent_name"] for case in payload["cases"]] == [
         "agent-a",
@@ -185,3 +198,87 @@ def test_export_run_json_contains_sorted_cases_and_agent_summaries(tmp_path: Pat
             "common_tool_names": [],
         },
     ]
+
+
+def test_export_run_json_metadata_handles_missing_run_metadata(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run-without-metadata"
+    run_dir.mkdir()
+    results = [
+        CaseResult(
+            run_id="run-from-results",
+            case_id="task-a__baseline__trial-1",
+            task_id="task-a",
+            variant="baseline",
+            trial_index=1,
+            repo_ref="main",
+            agent_name="agent-a",
+            network="disabled",
+            status="completed",
+            validation_status="passed",
+            confidence="high",
+            duration_seconds=1.0,
+        ),
+        CaseResult(
+            run_id="run-from-results",
+            case_id="task-b__experiment__trial-1",
+            task_id="task-b",
+            variant="experiment",
+            trial_index=1,
+            repo_ref="main",
+            agent_name="agent-b",
+            network="disabled",
+            status="timeout",
+            validation_status="failed",
+            confidence="low",
+            duration_seconds=2.0,
+        ),
+    ]
+    (run_dir / "results.jsonl").write_text(
+        "\n".join(result.model_dump_json() for result in results) + "\n",
+        encoding="utf-8",
+    )
+
+    payload = json.loads(
+        export_run_json(
+            run_dir,
+            exported_at=datetime(2026, 5, 11, 5, 31, tzinfo=UTC),
+        )
+    )
+
+    assert payload["exported_at"] == "2026-05-11T05:31:00Z"
+    assert payload["source_files"] == ["results.jsonl"]
+    assert payload["run"] == {
+        "metadata": {},
+        "run_id": "run-from-results",
+    }
+    assert payload["case_count"] == 2
+    assert payload["agent_count"] == 2
+    assert payload["variant_count"] == 2
+    assert payload["task_count"] == 2
+
+
+def test_export_run_json_metadata_handles_empty_results(tmp_path: Path) -> None:
+    run_dir = tmp_path / "empty-run"
+    run_dir.mkdir()
+    (run_dir / "run_metadata.json").write_text('{"run_id": "empty-run"}', encoding="utf-8")
+    (run_dir / "results.jsonl").write_text("", encoding="utf-8")
+
+    payload = json.loads(
+        export_run_json(
+            run_dir,
+            exported_at=datetime(2026, 5, 11, 5, 32, tzinfo=UTC),
+        )
+    )
+
+    assert payload["exported_at"] == "2026-05-11T05:32:00Z"
+    assert payload["source_files"] == ["results.jsonl", "run_metadata.json"]
+    assert payload["run"] == {
+        "metadata": {"run_id": "empty-run"},
+        "run_id": "empty-run",
+    }
+    assert payload["case_count"] == 0
+    assert payload["agent_count"] == 0
+    assert payload["variant_count"] == 0
+    assert payload["task_count"] == 0
+    assert payload["cases"] == []
+    assert payload["agent_summaries"] == []

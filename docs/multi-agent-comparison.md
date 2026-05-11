@@ -63,11 +63,39 @@ CSV export is row oriented and deterministic:
 
 Compact JSON export is deterministic and script-friendly:
 
+- export metadata is included at the top level with
+  `export_schema_version`, `exported_at`, `source_files`, `case_count`,
+  `agent_count`, `variant_count`, and `task_count`;
 - run metadata is included under `run`;
 - case rows are sorted with the same order as CSV;
 - agent summaries are sorted by `agent_name`;
 - scalar missing telemetry values are `null`;
 - dictionaries use sorted keys.
+
+`export_schema_version` is a compact JSON export contract version, independent
+from result row `schema_version`. `exported_at` is the UTC time when the export
+file was generated, formatted as a stable ISO 8601 string. Tests that assert
+the full JSON payload should inject or freeze this timestamp instead of relying
+on wall-clock time, so timestamp checks remain controllable timestamps.
+
+`source_files` lists the local artifact filenames that were present and read,
+in deterministic order. It always includes `results.jsonl`; it includes
+`run_metadata.json` only when that optional file exists. The exporter must not
+read other files, rerun agents, infer metadata from logs, or call external
+services while producing these fields.
+
+The count fields are derived only from parsed `results.jsonl` rows:
+
+- `case_count` is the number of result rows.
+- `agent_count` is the number of distinct `agent_name` values.
+- `variant_count` is the number of distinct `variant` values.
+- `task_count` is the number of distinct `task_id` values.
+
+When `run_metadata.json` is missing, compact JSON export still succeeds with an
+empty `run.metadata` object and omits `run_metadata.json` from `source_files`.
+When `results.jsonl` exists but contains no result rows, compact JSON export
+still succeeds with zero counts, an empty `cases` list, and an empty
+`agent_summaries` list.
 
 ## Reporting Behavior
 
@@ -147,6 +175,8 @@ capability ranking, and must not present an absolute agent capability ranking.
   artifact contract, required dimensions, deterministic exports, and non-goals.
 - Export tests cover CSV and compact JSON generation from synthetic
   `results.jsonl` and `run_metadata.json` fixtures.
+- Export tests cover compact JSON metadata fields, missing `run_metadata.json`,
+  empty `results.jsonl`, and distinct agent, variant, and task counts.
 - CLI tests cover export commands and malformed run directories.
 - Inspect and compare tests cover multi-agent summaries and single-agent
   suppression.

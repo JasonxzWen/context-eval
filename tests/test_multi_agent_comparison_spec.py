@@ -86,3 +86,45 @@ def test_readme_mentions_export_commands() -> None:
 
     assert "context-eval export .context-eval/runs/<run-id> --format csv" in readme
     assert "context-eval export .context-eval/runs/<run-id> --format json" in readme
+
+
+def test_readme_documents_compact_json_export_metadata() -> None:
+    readme = Path("README.md").read_text(encoding="utf-8")
+
+    for term in [
+        "Compact JSON export metadata",
+        "export_schema_version",
+        "exported_at",
+        "source_files",
+        "case_count",
+        "agent_count",
+        "variant_count",
+        "task_count",
+        "local observation",
+    ]:
+        assert term in readme
+
+
+def test_compact_json_export_metadata_contract_is_documented() -> None:
+    spec = Path("docs/multi-agent-comparison.md").read_text(encoding="utf-8")
+    plan = Path("docs/development-plan.md").read_text(encoding="utf-8")
+
+    for term in [
+        "export_schema_version",
+        "exported_at",
+        "source_files",
+        "case_count",
+        "agent_count",
+        "variant_count",
+        "task_count",
+        "run.metadata",
+        "zero counts",
+        "controllable timestamps",
+    ]:
+        assert term in spec
+
+    assert "run_metadata.json` only when that optional file exists" in spec
+    assert "results.jsonl` exists but contains no result rows" in spec
+    assert "derived only from parsed `results.jsonl` rows" in spec
+    assert "Harden compact JSON export metadata" in plan
+    assert "controlled export timestamp" in plan

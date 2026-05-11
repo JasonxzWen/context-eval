@@ -303,6 +303,10 @@ Status: planned.
 - Add result export helpers for CSV and compact JSON summary.
 - Add local-only multi-agent comparison summaries and exports based on
   `docs/multi-agent-comparison.md`.
+- Harden compact JSON export metadata with a stable export schema version,
+  controlled export timestamp, local source file list, and case, agent,
+  variant, and task counts derived only from `results.jsonl` and optional
+  `run_metadata.json`.
 - Improve report template readability for multiple tasks and variants.
 - Add a local visualization entrypoint, such as `context-eval ui`, a generated
   static HTML report, or a terminal UI, that can:
@@ -320,6 +324,9 @@ Status: planned.
 - Report tests using synthetic JSONL fixtures.
 - Export tests for deterministic CSV and compact JSON summaries from local
   artifacts.
+- Export tests for compact JSON export metadata, including missing
+  `run_metadata.json`, empty `results.jsonl`, and multi-agent, multi-variant,
+  multi-task count behavior with controllable timestamps.
 - Snapshot-style assertions for Markdown sections and key table rows.
 - CLI tests for missing or malformed run directories.
 - Interface tests for config editing, validation feedback, and result loading
