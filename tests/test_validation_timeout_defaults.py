@@ -34,13 +34,14 @@ def test_evaluation_docs_define_validation_timeout_behavior() -> None:
         assert term in text
 
 
-def test_development_plan_marks_validation_timeout_defaults_shipped() -> None:
+def test_development_plan_audits_validation_timeout_defaults_and_next_config_work() -> None:
     text = Path("docs/development-plan.md").read_text(encoding="utf-8")
 
     for term in [
-        "Validation command timeout defaults are complete for current scope",
-        "config-level and task-level validation command timeout defaults are shipped",
-        "Config diagnostics and strict validation edge cases are the next Phase 2 work",
+        "validation timeout defaults",
+        "## Capability Epic A: Config Diagnostics And Strict Validation Hardening",
+        "Make configuration failures actionable before users create workspaces",
+        "Strict mode remains local and side-effect-free",
     ]:
         assert term in text
 

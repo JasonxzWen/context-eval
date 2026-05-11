@@ -7,99 +7,106 @@ def _section(text: str, heading: str, next_heading: str | None = None) -> str:
     return text[start:end]
 
 
-def _squash(text: str) -> str:
-    return " ".join(text.split())
+def _epic_sections(text: str) -> list[str]:
+    headings = [
+        "## Capability Epic A:",
+        "## Capability Epic B:",
+        "## Capability Epic C:",
+        "## Capability Epic D:",
+        "## Capability Epic E:",
+    ]
+    return [
+        _section(
+            text,
+            heading,
+            headings[index + 1] if index + 1 < len(headings) else None,
+        )
+        for index, heading in enumerate(headings)
+    ]
 
 
-def test_development_plan_defines_reconciliation_status_model() -> None:
+def test_development_plan_defines_capability_pr_cadence() -> None:
     text = Path("docs/development-plan.md").read_text(encoding="utf-8")
 
     for term in [
-        "## Plan Status Model",
-        "`complete for current scope`",
-        "`mostly complete`",
-        "`planned next`",
-        "`deferred`",
-        "A status line must separate shipped behavior from remaining backlog",
+        "## Development Cadence Policy",
+        "A Ralph story is not a pull request",
+        "A capability PR should contain 3-6 related Ralph stories",
+        "Each story still follows SDD + TDD",
+        "Do not open one PR per story",
+        "spec, tests, implementation, docs, verification",
     ]:
         assert term in text
 
 
-def test_development_plan_reconciles_merged_phase_statuses() -> None:
+def test_development_plan_audits_pr_1_to_17_and_batches_future_work() -> None:
     text = Path("docs/development-plan.md").read_text(encoding="utf-8")
-
-    expected_statuses = {
-        "## Phase 1: Core Runner Correctness": (
-            "Status: complete for current scope."
-        ),
-        "## Phase 2: Configuration And Task Spec Maturity": (
-            "Status: mostly complete; config diagnostics and strict validation "
-            "edge cases remain."
-        ),
-        "## Phase 3: User Workflow Usability": (
-            "Status: complete for current scope."
-        ),
-        "## Phase 4: Execution Control And Reproducibility": (
-            "Status: complete for current scope."
-        ),
-        "## Phase 4.5: Agent Telemetry And Usage Accounting": (
-            "Status: complete for first collector scope; agent-specific collectors "
-            "are deferred."
-        ),
-        "## Phase 5: Reporting And Analysis": (
-            "Status: complete for artifact-based reporting; UI save/server mode "
-            "and report polish remain."
-        ),
-        "## Phase 6: Adapter And Prompt Extensibility": (
-            "Status: complete for prompt-template scope; thin Python entrypoint "
-            "adapter is deferred."
-        ),
-        "## Phase 7: CI And Release Readiness": (
-            "Status: complete for current release readiness; release automation "
-            "remains."
-        ),
-    }
-
-    for heading, status in expected_statuses.items():
-        section = _squash(_section(text, heading))
-        assert status in section
-
-
-def test_development_plan_active_backlog_excludes_merged_work() -> None:
-    text = Path("docs/development-plan.md").read_text(encoding="utf-8")
-    backlog = _section(text, "## Active Backlog Order")
 
     for term in [
-        "Config diagnostics and strict validation edge cases",
-        "Local UI explicit save or server mode",
-        "Agent-specific telemetry collectors",
-        "Thin Python entrypoint adapter",
-        "Report template readability",
-        "Release automation",
-        "Optional macOS release gate",
+        "## Capability Audit: PR #1-#17",
+        "PR #1-#4 established broad capability slices",
+        "PR #5-#17 delivered useful work, but the cadence became too fine-grained",
+        (
+            "release readiness was split across build, license, platform, "
+            "artifact inspection, and release-state PRs"
+        ),
+        "Future planning should batch related stories into coherent capability PRs",
     ]:
-        assert term in backlog
-
-    for completed_term in [
-        "Unique run directory guard",
-        "Strict config validation and task filters",
-        "Self-contained fixture repo example",
-        "`context-eval run --dry-run`",
-        "`context-eval init`",
-        "Trial support",
-        "Report/inspect commands",
-        "CI workflow and release checklist",
-        "Validation command timeout defaults",
-    ]:
-        assert completed_term not in backlog
+        assert term in text
 
 
-def test_changelog_mentions_development_plan_reconciliation_handoff() -> None:
+def test_development_plan_uses_five_larger_capability_epics() -> None:
+    text = Path("docs/development-plan.md").read_text(encoding="utf-8")
+
+    expected_headings = [
+        "## Capability Epic A: Config Diagnostics And Strict Validation Hardening",
+        "## Capability Epic B: Local UI Persistence And Server-Mode Decision",
+        (
+            "## Capability Epic C: Reporting Polish For Multi-Task, "
+            "Multi-Variant, Multi-Agent Runs"
+        ),
+        "## Capability Epic D: Release Automation And Packaging Workflow Polish",
+        "## Capability Epic E: Optional Adapter And Telemetry Expansion",
+    ]
+    for heading in expected_headings:
+        assert heading in text
+
+    assert text.count("## Capability Epic ") == 5
+    assert "## Active Backlog Order" not in text
+    assert "## Phase 7:" not in text
+
+
+def test_each_capability_epic_has_merge_package_and_batching_rationale() -> None:
+    text = Path("docs/development-plan.md").read_text(encoding="utf-8")
+
+    required_subheads = [
+        "### Goal",
+        "### Scope",
+        "### Non-Goals",
+        "### Merge Acceptance Criteria",
+        "### Suggested Ralph Stories",
+        "### Test Strategy",
+        "### Why One Capability PR",
+    ]
+    for section in _epic_sections(text):
+        for subhead in required_subheads:
+            assert subhead in section
+        for term in [
+            "spec",
+            "tests",
+            "implementation",
+            "docs",
+            "verification",
+        ]:
+            assert term in section
+
+
+def test_changelog_mentions_larger_capability_pr_replanning() -> None:
     text = Path("CHANGELOG.md").read_text(encoding="utf-8")
 
     for term in [
-        "development plan status reconciliation",
-        "active backlog handoff",
-        "validation command timeout defaults",
+        "Replan the development roadmap around larger capability PRs",
+        "Ralph stories remain SDD/TDD units inside a capability PR",
+        "replace the fine-grained active backlog with five capability epics",
     ]:
         assert term in text

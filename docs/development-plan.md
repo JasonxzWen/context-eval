@@ -1,479 +1,426 @@
 # Development Plan
 
-This plan defines how context-eval should evolve using a combined
-Spec-Driven Development and Test-Driven Development workflow.
+This plan defines how context-eval should evolve using Spec-Driven Development
+and Test-Driven Development while avoiding a PR cadence that is too small for
+maintainer review.
 
-SDD keeps each phase tied to an explicit product contract before code changes.
-TDD keeps implementation honest by requiring failing or expanded tests before
-behavior is considered complete.
+The project has moved past its initial MVP foundation. Future work should be
+planned as capability PRs: each PR owns one coherent user-facing capability,
+can contain several Ralph stories, and must merge with a complete acceptance
+package.
 
-## Development Method
+## Product Boundaries
 
-Every feature phase follows the same loop:
-
-1. Spec: update the relevant document in `docs/` with the user-facing contract,
-   accepted inputs, outputs, edge cases, and non-goals.
-2. Tests: add or update tests that encode the contract before implementation is
-   treated as complete.
-3. Implementation: make the smallest code change that satisfies the tests and
-   preserves existing behavior.
-4. Verification: run the phase acceptance commands and inspect generated
-   artifacts when the behavior is file or report oriented.
-5. Documentation: update README or examples only when the user workflow changes.
-
-Phase work should not introduce LLM judges, hosted or multi-user web
-dashboards, issue mining, or real network isolation unless a later spec
-explicitly changes the project scope. Local-only web or visual interfaces are
-in scope when they help users configure runs or inspect local evaluation data.
-
-## Plan Status Model
-
-Each phase status line is a reconciliation aid, not a release guarantee.
-A status line must separate shipped behavior from remaining backlog so Ralph
-does not spend iterations on work that has already merged.
-
-- `complete for current scope`: the phase's intended user-facing behavior has
-  shipped for the current MVP boundary. Future changes are maintenance or
-  polish unless the active backlog names a new story.
-- `mostly complete`: the phase's primary workflow has shipped, but one or more
-  bounded follow-up stories remain.
-- `planned next`: the next backlog item is not implemented yet and should be
-  treated as eligible Ralph work.
-- `deferred`: the idea is intentionally outside the active near-term plan until
-  a later spec changes the scope or priority.
-
-## Phase 0: Baseline Stewardship
-
-Status: complete for current scope; ongoing maintenance.
-
-### Requirements
-
-- Keep the runtime Python package separate from vendored maintainer tooling.
-- Keep active Codex configuration opt-in.
-- Keep user-facing docs focused on context-eval, not the imported skill library.
-- Preserve the MVP contract: local Git repos, YAML config/tasks, variants,
-  overlays, command-template agents, JSONL results, Markdown reports, and no
-  automatic commits.
-
-### Changes
-
-- Runtime code stays under `context_eval/`.
-- Vendored development skills stay under `.agents/`, `.codex/skills/`,
-  `openspec/`, and `scripts/`.
-- Active `.codex/config.toml` remains ignored; maintainers can copy
+- `context_eval/` is the runtime Python package.
+- `.agents/`, `.codex/skills/`, `openspec/`, and `scripts/` are maintainer
+  capability library files, not runtime package modules.
+- Deleted general-purpose skill-hub documents must not be restored.
+- Active `.codex/config.toml` must not be committed; maintainers can copy
   `.codex/config.example.toml` locally.
-- `docs/skill-hub-import.md` remains the only skill-hub provenance document.
+- context-eval remains a local engineering tool for comparing context variants,
+  not an agent leaderboard.
+- Multi-agent comparison must be based only on local `results.jsonl` and
+  `run_metadata.json` artifacts, and must not claim absolute agent benchmark
+  results.
+- Report, export, compare, and UI aggregation must read local run artifacts.
+  They must not rerun agents, scrape missing telemetry from logs, or call
+  hosted services.
+- The active roadmap does not include an LLM judge, hosted or multi-user web
+  dashboard, issue miner, real network isolation, or automatic commits.
 
-### Test Plan
+## Development Cadence Policy
 
-- `python -m pytest`
-- `context-eval validate-config --config examples/basic/context-eval.yaml`
-- `powershell -ExecutionPolicy Bypass -File scripts\validate-skills.ps1 -SkipExternal`
+A Ralph story is not a pull request. A Ralph story is the smallest autonomous
+unit inside a capability PR. A capability PR should contain 3-6 related Ralph stories.
+Those stories must share one capability boundary and can be reviewed as one
+product change.
 
-### Acceptance Criteria
+Each story still follows SDD + TDD:
 
-- No upstream skill-hub `AGENTS.md` or `README*` is tracked.
-- No active `.codex/config.toml` is tracked.
-- Package discovery only includes `context_eval*`.
-- User docs remain readable without knowing skill-hub internals.
+1. Spec: update the relevant document in `docs/` with the contract, edge cases,
+   and non-goals.
+2. Tests: add or update tests that encode that contract before the
+   implementation is treated as complete.
+3. Implementation: make the smallest code change needed for the story.
+4. Docs: update README, examples, or workflow docs when user behavior changes.
+5. Verification: run the agreed quality gates and inspect generated artifacts
+   when the story affects reports, exports, prompts, workspaces, or UI.
 
-## Phase 1: Core Runner Correctness
+Do not open one PR per story. Open or update the PR only when the capability has
+a coherent merge package: spec, tests, implementation, docs, verification. A
+story can still be committed separately inside the PR so review history remains
+clear.
 
-Status: complete for current scope.
+Capability PRs should be split only when one of these is true:
 
-### Requirements
+- the stories have different users or different operational boundaries;
+- verification would require unrelated artifact sets;
+- the PR would mix runtime behavior with maintainer tooling without a shared
+  acceptance contract;
+- the review would exceed a coherent diff size or introduce unrelated risk.
 
-- A run must produce stable, versioned, machine-readable results.
-- A case patch must represent agent changes relative to the selected variant,
-  not the overlay itself.
-- Failures must be explicit and recoverable at task plus variant granularity.
-- Workspaces must be isolated and safe to retain or clean up.
-- Git commands must fail loudly enough for users to debug repo/ref/worktree
-  problems.
+## Capability Audit: PR #1-#17
 
-### Changes
+PR #1-#4 established broad capability slices: runner/config maturity, local UI
+config editing, agent telemetry, and local multi-agent comparison. Those PRs
+were easier to reason about because the spec, tests, implementation, docs, and
+verification all pointed at the same capability.
 
-- Keep `schema_version`, `context_eval_version`, `config_hash`, `task_hash`, and
-  `variant_hash` in each JSONL row.
-- Keep a unique-run-directory guard so two runs in the same second never collide.
-- Record Git workspace preparation failures with a specific status or structured
-  error code.
-- Keep explicit result fields for `workspace_retained` and `cleanup_status`.
-- Keep overlay baseline logic in `context_eval/evaluators/diff.py`.
+PR #5-#17 delivered useful work, but the cadence became too fine-grained. The
+work added Markdown agent summaries, compact JSON metadata, bounded jobs,
+cleanup policies, run manifests, prompt templates, package build checks,
+license metadata, platform docs, artifact inspection, release-state checks,
+development-plan reconciliation, and validation timeout defaults. Several of
+these were good stories, but they were often promoted to separate PRs before
+the surrounding capability was complete.
 
-### Test Plan
+The strongest signal is release readiness: release readiness was split across build, license, platform, artifact inspection, and release-state PRs.
+Those changes should have been reviewed as one release automation and packaging
+capability with separate commits and shared acceptance gates.
 
-- Unit tests for hash stability and hash exclusions.
-- Runner integration tests for:
-  - completed run with validation pass
-  - validation failure
-  - overlay failure
-  - missing repo ref
-  - agent timeout
-  - cleanup success and cleanup failure
-  - empty patch after successful no-op agent
+Future planning should batch related stories into coherent capability PRs. The
+goal is fewer PRs, stronger review context, less manual intervention, and no
+loss of SDD/TDD discipline.
 
-### Acceptance Criteria
+## Recommended PR Order
 
-- `python -m pytest` passes with runner integration coverage.
-- `results.jsonl` can be parsed line by line with `CaseResult`.
-- Overlay files do not appear in patch output unless the agent changes them
-  after the overlay baseline is created.
-- Timeout and agent failure cases continue to the next task and variant.
+1. PR A: Config Diagnostics And Strict Validation Hardening.
+2. PR B: Local UI Persistence And Server-Mode Decision.
+3. PR C: Reporting Polish For Multi-Task, Multi-Variant, Multi-Agent Runs.
+4. PR D: Release Automation And Packaging Workflow Polish.
+5. PR E: Optional Adapter And Telemetry Expansion, only if justified by stable
+   local artifact formats or repeated command-template friction.
 
-## Phase 2: Configuration And Task Spec Maturity
+## Capability Epic A: Config Diagnostics And Strict Validation Hardening
 
-Status: mostly complete; config diagnostics and strict validation edge cases
-remain.
+### Goal
 
-Validation command timeout defaults are complete for current scope. The
-config-level and task-level validation command timeout defaults are shipped, so
-Config diagnostics and strict validation edge cases are the next Phase 2 work.
+Make configuration failures actionable before users create workspaces or spend
+agent time. Users should see field-specific errors, path context, and strict
+validation failures that explain exactly what to fix.
 
-### Requirements
+### Scope
 
-- Users should be able to validate a config without accidentally running an
-  agent or validation command.
-- Config errors should point to the faulty field and file.
-- Task files should support enough metadata for filtering and reporting without
-  becoming a benchmark format.
-- Path behavior must be predictable across Windows, macOS, and Linux.
+- Improve `validate-config` diagnostics for malformed config/task YAML,
+  duplicate task context, missing files, missing prompt templates, unsafe
+  overlay targets, and strict Git ref checks.
+- Harden strict validation around config-relative paths, overlay targets,
+  filename-safe task IDs, and task-level `repo_ref` checks.
+- Keep validation side-effect-free: no workspaces, agents, validation commands,
+  dependency installation, or network calls.
+- Update `docs/configuration.md`, `docs/task-format.md`, README snippets, and
+  examples when behavior changes.
 
-### Changes
+### Non-Goals
 
-- Expand `docs/configuration.md` with a formal field reference.
-- Expand `docs/task-format.md` with a formal field reference and examples.
-- Keep `context-eval validate-config --strict` for stronger local checks:
-  repo is a Git repository, `base_ref` resolves, overlay targets are safe, and
-  task IDs are filename-safe.
-- Keep task filters:
-  - `--task-id`
-  - `--category`
-  - `--difficulty`
-- Keep config-level and task-level validation command timeout defaults.
-- Planned next: improve config diagnostics and strict validation edge cases.
+- Do not implement real network isolation.
+- Do not run target repository validation commands during config validation.
+- Do not add remote repo cloning, issue mining, or hosted validation services.
+- Do not change the runtime package boundary or restore skill-hub docs.
 
-### Test Plan
+### Merge Acceptance Criteria
 
-- Pydantic model tests for invalid overlay targets, duplicate tasks, empty
-  prompts, and unknown variants.
-- CLI tests for strict validation success/failure.
-- Path-resolution tests for config-relative paths and explicit task overrides.
-
-### Acceptance Criteria
-
+- The capability PR includes spec, tests, implementation, docs, verification.
 - Invalid config and task files fail before any workspace is created.
-- Error messages include enough path/field context for a user to fix YAML.
-- Filtering selects the expected task set without mutating loaded config.
+- Errors name the relevant file, field, task ID, variant, or overlay when that
+  context is available.
+- Strict mode remains local and side-effect-free.
+- Existing valid examples still pass `context-eval validate-config`.
 
-## Phase 3: User Workflow Usability
+### Suggested Ralph Stories
 
-Status: complete for current scope.
+- US-A1: Specify the config diagnostics contract and error taxonomy.
+- US-A2: Add tests for field-specific config/task validation failures.
+- US-A3: Harden strict Git and path validation while keeping default validation
+  lightweight.
+- US-A4: Update configuration/task docs, README examples, and CLI error wording.
 
-### Requirements
+### Test Strategy
 
-- A new user should be able to bootstrap a config and run a dry check quickly.
-- Users should understand what will run before paying agent or test cost.
-- Existing examples should demonstrate a realistic repository workflow without
-  relying on external services.
+- Spec tests for the diagnostics contract.
+- Pydantic and loader tests for invalid fields, duplicate task IDs, unsafe
+  overlay targets, and prompt template paths.
+- CLI tests for strict and non-strict validation output.
+- Regression tests proving validation does not create workspaces or run
+  validation commands.
+- Full verification commands after each completed story and before the PR is
+  marked ready.
 
-### Changes
+### Why One Capability PR
 
-- Keep `context-eval init` to generate:
-  - `context-eval.yaml`
-  - `tasks.yaml`
-  - `contexts/baseline/AGENTS.md`
-  - `contexts/experiment/AGENTS.md`
-- Keep `context-eval run --dry-run` to print the task x variant matrix, resolved
-  repo refs, overlay operations, prompt file paths, and validation commands.
-- Keep a local fixture repository under `examples/fixture-repo/` for a complete
-  self-contained demo.
-- Keep README quickstart coverage for the fixture repo rather than the context-eval
-  repository itself.
+The stories all change the same user workflow: getting from YAML to a trusted
+preflight result. Splitting them into separate PRs would force reviewers to
+rebuild the same error model repeatedly and would risk docs/tests describing a
+partial validation contract.
 
-### Test Plan
+## Capability Epic B: Local UI Persistence And Server-Mode Decision
 
-- CLI tests for `init` generated files.
-- CLI tests for `--dry-run` output and zero side effects.
-- Smoke test that runs the fixture example end to end.
+### Goal
 
-### Acceptance Criteria
+Decide and implement the next local UI persistence step without weakening the
+static UI safety contract. Users should know whether they are exporting YAML,
+using a browser file capability, or running an explicit local server mode.
 
-- A fresh clone can run the documented example without external repositories.
-- `--dry-run` creates no workspace, patch, or result file.
-- Generated config validates without manual editing except repo path and agent
-  command.
+### Scope
 
-## Phase 4: Execution Control And Reproducibility
+- Write a spec that chooses the persistence model: keep static export-only,
+  add browser file save, or add explicit local server mode.
+- If server mode is chosen, define allowed local endpoints, destination paths,
+  validation before write, and no agent execution from the UI.
+- Preserve static mode as offline, self-contained HTML that can inspect config
+  and run artifacts without remote dependencies.
+- Keep all result display based on existing local run artifacts.
+- Update `docs/local-ui-config-editor.md`, README UI usage, and tests for the
+  chosen persistence behavior.
 
-Status: complete for current scope.
+### Non-Goals
 
-### Requirements
+- Do not add a hosted service, remote database, multi-user dashboard, or
+  background run orchestration.
+- Do not let the static UI run agents, validation commands, package installs,
+  or network checks.
+- Do not silently overwrite config files.
+- Do not make UI persistence a prerequisite for artifact inspection.
 
-- Users need controlled repetition because coding agents can be nondeterministic.
-- Users need bounded execution when evaluating many tasks and variants.
-- Parallel execution must not corrupt workspaces or result files.
-- Cleanup policy should support debugging without accumulating large run dirs.
+### Merge Acceptance Criteria
 
-### Changes
+- The capability PR includes spec, tests, implementation, docs, verification.
+- The selected persistence mode is explicit in docs and UI wording.
+- Save/export behavior validates generated YAML before writing or downloading.
+- Static mode remains safe and does not open sockets or write local files.
+- UI tests cover config editing, matrix preview, validation feedback, and
+  persistence/export controls.
 
-- Keep repeated trials:
-  - `--trials N`
-  - `trial_index`
-  - `case_id`
-- Keep bounded parallelism:
-  - `--jobs N`
-  - result writing through a single append-safe writer
-- Keep cleanup policies:
-  - `never`
-  - `always`
-  - `successful`
-  - `failed`
-- Keep run manifest with selected tasks, variants, trials, and effective config
-  hashes.
+### Suggested Ralph Stories
 
-### Test Plan
+- US-B1: Specify the local UI persistence decision and safety model.
+- US-B2: Add tests for the chosen save/export/server-mode contract.
+- US-B3: Implement persistence controls or server endpoints within the selected
+  boundary.
+- US-B4: Document user workflow, failure modes, and local-only constraints.
 
-- Unit tests for case ID generation.
-- Integration tests for trial result counts.
-- Parallel execution tests with small deterministic agents.
-- Cleanup policy tests for success and failure cases.
+### Test Strategy
 
-### Acceptance Criteria
+- Spec tests for static mode, save mode, and non-goals.
+- Unit tests for editable model export and validation before persistence.
+- CLI/UI HTML tests for visible controls and local-only text.
+- Browser or Playwright checks when interactive controls change.
+- Full verification commands after each completed story and before the PR is
+  marked ready.
 
-- `tasks * variants * trials` result rows are produced exactly once.
-- Parallel and serial runs produce equivalent result sets for deterministic
-  agents.
-- Cleanup behavior matches the selected policy.
+### Why One Capability PR
 
-## Phase 4.5: Agent Telemetry And Usage Accounting
+Persistence is a product decision plus implementation. Splitting the decision,
+UI controls, server behavior, and docs across many PRs would create ambiguous
+intermediate states where users cannot tell whether the UI is export-only or
+safe to save.
 
-Status: complete for first collector scope; agent-specific collectors are
-deferred.
+## Capability Epic C: Reporting Polish For Multi-Task, Multi-Variant, Multi-Agent Runs
 
-### Requirements
+### Goal
 
-- Users should be able to compare task completion behavior across coding agents
-  without treating context-eval as an absolute agent benchmark.
-- runner-guaranteed metrics must be recorded for every case, even when the
-  agent exposes no structured usage data.
-- hook-provided metrics such as token usage and tool calling counts must be
-  collected through optional adapter-level collectors.
-- Existing command-template agent configs must keep working through a no-op
-  collector.
-- Telemetry collection must remain local-only and must not call hosted services
-  or require a networked dashboard.
+Make reports, exports, terminal summaries, and the local UI easier to read for
+larger local run matrices while preserving the artifact-only and non-benchmark
+contract.
 
-### Changes
+### Scope
 
-- Add `docs/agent-telemetry.md` as the contract for telemetry fields,
-  collector behavior, reporting, and non-goals.
-- Extend `CaseResult` with a backwards-compatible normalized telemetry schema:
-  `agent_duration_seconds`, `telemetry_status`, `telemetry_source`,
-  `prompt_tokens`, `completion_tokens`, `total_tokens`, `reasoning_tokens`,
-  `tool_call_count`, and `tool_calls_by_name`.
-- Add an adapter telemetry hook interface that can prepare a per-case telemetry
-  target and collect data after the command-template agent exits.
-- Keep a default no-op collector and a generic JSON telemetry collector for
-  agents that can write local usage metadata.
-- Add report, compare, inspect, and local UI aggregations for collected,
-  partial, and unavailable telemetry.
-- Deferred: add agent-specific telemetry collectors only after a spec defines
-  exact local artifact formats for those agents.
-
-### Test Plan
-
-- Spec tests for `docs/agent-telemetry.md` and this development plan phase.
-- Model tests for backwards-compatible result parsing and telemetry defaults.
-- Adapter tests for the no-op collector and generic JSON telemetry collector.
-- Runner integration tests for agent duration, telemetry status, token counts,
-  and tool calling counts in `results.jsonl`.
-- Report and CLI tests for aggregation behavior across collected, partial, and
-  unavailable telemetry.
-
-### Acceptance Criteria
-
-- Agent telemetry contract and normalized result schema are documented and
-  tested before implementation.
-- `results.jsonl` remains parseable for old and new runs.
-- Missing token/tool telemetry is represented explicitly, not guessed from logs.
-- Do not claim absolute coding-agent capability; reports frame metrics as local
-  observations for a recorded agent, task, variant, and trial configuration.
-- The first implementation supports a no-op collector and a generic JSON
-  telemetry collector without adding agent-specific brittle parsers.
-
-## Phase 5: Reporting And Analysis
-
-Status: complete for artifact-based reporting; UI save/server mode and report
-polish remain.
-
-### Requirements
-
-- Reports should help compare context variants, not claim absolute agent skill.
-- JSONL should remain the source of truth.
-- Users should be able to regenerate reports and inspect summaries without
-  rerunning agents.
-- Users should have a local web interface or other visual interface for
-  configuring evaluation environments and viewing current or historical test
-  data without editing YAML or reading JSONL directly.
-- The visual interface must remain local-first: it may read and write local
-  config/task files and local run artifacts, but it must not require a hosted
-  service, remote database, or networked dashboard backend.
-
-### Changes
-
-- Keep `context-eval inspect-run RUN_DIR` for tabular terminal summaries.
-- Keep `context-eval compare RUN_DIR` for variant-oriented metrics:
-  pass rate, timeout rate, agent failure rate, validation failure rate, average
-  duration, average changed files, and common touched paths.
-- Keep result export helpers for CSV and compact JSON summary.
-- Keep local-only multi-agent comparison summaries and exports based on
-  `docs/multi-agent-comparison.md`.
-- Harden compact JSON export metadata with a stable export schema version,
-  controlled export timestamp, local source file list, and case, agent,
-  variant, and task counts derived only from `results.jsonl` and optional
+- Improve Markdown report templates for multi-task, multi-variant, multi-agent,
+  and repeated-trial runs.
+- Use `docs/multi-agent-comparison.md` as the source spec for local multi-agent
+  comparison language and artifact boundaries.
+- Keep variant-level analysis primary for context comparison, and show
+  agent-level summaries only when more than one `agent_name` exists.
+- Improve low-confidence, failed, timeout, and missing-telemetry presentation.
+- Keep CSV and compact JSON deterministic and script-friendly.
+- Keep compact JSON metadata stable, including controlled export timestamp
+  testing and local source file accounting.
+- Keep all aggregation sourced only from `results.jsonl` and optional
   `run_metadata.json`.
-- Planned next: improve report template readability for multiple tasks and
-  variants.
-- Keep a local visualization entrypoint, such as `context-eval ui`, a generated
-  static HTML report, or a terminal UI, that can:
-  - configure repo path, base ref, agent command, variants, overlays, tasks, and
-    validation commands;
-  - validate the edited configuration before a run starts;
-  - show the selected task x variant matrix before execution;
-  - display current and previous run results from local `results.jsonl` and
-    `run_metadata.json` files.
-- Use `docs/local-ui-config-editor.md` as the contract for the local UI config
-  editor, YAML export, and any future explicit local save behavior.
-- Deferred: add an explicit local UI save or server mode only with a spec that
-  names the destination path and preserves static-mode safety.
 
-### Test Plan
+### Non-Goals
 
-- Report tests using synthetic JSONL fixtures.
-- Export tests for deterministic CSV and compact JSON summaries from local
+- Do not rerun agents to fill report gaps.
+- Do not infer token or tool-call data from logs.
+- Do not publish an absolute coding-agent capability ranking.
+- Do not add a hosted dashboard or remote sharing workflow.
+
+### Merge Acceptance Criteria
+
+- The capability PR includes spec, tests, implementation, docs, verification.
+- Markdown, inspect, compare, export, and UI output describe local observations
+  rather than benchmark claims.
+- Multi-task and multi-variant report sections remain readable with synthetic
+  fixture data.
+- Multi-agent sections appear only when more than one `agent_name` is present.
+- Exports remain deterministic and compatible with existing compact JSON/CSV
+  contracts.
+
+### Suggested Ralph Stories
+
+- US-C1: Specify reporting polish for large local run matrices.
+- US-C2: Add report template tests for multi-task, multi-variant, multi-agent,
+  failed, low-confidence, and missing-telemetry cases.
+- US-C3: Implement Markdown/terminal/UI presentation improvements from local
   artifacts.
-- Export tests for compact JSON export metadata, including missing
-  `run_metadata.json`, empty `results.jsonl`, and multi-agent, multi-variant,
-  multi-task count behavior with controllable timestamps.
-- Snapshot-style assertions for Markdown sections and key table rows.
-- CLI tests for missing or malformed run directories.
-- Interface tests for config editing, validation feedback, and result loading
-  from local run artifacts.
+- US-C4: Update README examples and workflow docs for larger run analysis.
 
-### Acceptance Criteria
+### Test Strategy
 
-- Report generation works from JSONL and metadata alone.
-- Low-confidence results are clearly called out.
-- Aggregations are deterministic and documented.
-- Multi-agent comparison is framed as local run observation, not an absolute
-  coding-agent benchmark.
-- A user can configure an evaluation environment through the local visual
-  interface, validate it, and inspect current test data without opening YAML or
-  JSONL files directly.
-- The visual interface can run offline against local files and does not create
-  or depend on a hosted dashboard service.
+- Spec tests for artifact-only aggregation and non-benchmark language.
+- Report snapshot-style tests with synthetic JSONL fixtures.
+- CLI tests for inspect/compare output and single-agent suppression.
+- Export tests for deterministic CSV and compact JSON compatibility.
+- UI content tests, with browser verification if layout or interaction changes.
+- Full verification commands after each completed story and before the PR is
+  marked ready.
 
-## Phase 6: Adapter And Prompt Extensibility
+### Why One Capability PR
 
-Status: complete for prompt-template scope; thin Python entrypoint adapter is
-deferred.
+The reporting surfaces share one aggregation contract. Reviewing them together
+prevents terminal output, Markdown, exports, and UI from drifting into slightly
+different interpretations of the same run artifacts.
 
-### Requirements
+## Capability Epic D: Release Automation And Packaging Workflow Polish
 
-- The command-template adapter remains the stable default.
-- Advanced users can customize prompts without changing Python code.
-- Adapter extensions must not force complex framework dependencies into the MVP.
+### Goal
 
-### Changes
+Turn the current manual release checklist into a reproducible packaging
+workflow that catches local blockers and verifies artifacts without including
+maintainer capability library files in the runtime package.
 
-- Keep config support for `prompt_template`.
-- Keep prompt rendering tests for template variables and missing fields.
-- Keep adapter contract docs that specify command environment, cwd, timeout,
-  stdout/stderr capture, and no automatic commits.
-- Deferred: consider a thin Python entrypoint adapter only if repeated
-  command-template use shows real friction.
+### Scope
 
-### Test Plan
+- Consolidate release-state checks, package builds, artifact inspection,
+  changelog checks, and tag/publish preparation into a clear release workflow.
+- Keep CI and local release commands aligned.
+- Preserve packaging scope: include `context_eval/` and report templates; reject
+  `.agents/`, `.codex/skills/`, `openspec/`, `scripts/`, run artifacts, and
+  active `.codex/config.toml`.
+- Document supported Python versions and platform gates.
+- Add automation only after the manual path remains stable in tests.
 
-- Prompt template unit tests.
-- Config validation tests for missing template files.
-- Adapter tests for command substitution and unknown variables.
+### Non-Goals
 
-### Acceptance Criteria
+- Do not publish packages automatically without an explicit release step.
+- Do not make macOS release-blocking unless a later spec changes platform
+  support.
+- Do not include maintainer library files in the runtime package.
+- Do not commit local run artifacts or active Codex config.
 
-- Existing configs continue to work unchanged.
-- Custom prompt templates can reproduce the default prompt.
-- Missing template files fail during config validation.
+### Merge Acceptance Criteria
 
-## Phase 7: CI And Release Readiness
+- The capability PR includes spec, tests, implementation, docs, verification.
+- Release commands are documented in one checklist and mirrored by tests or CI
+  where practical.
+- Built wheel and sdist artifact inspection rejects forbidden paths.
+- Release-state checks catch hidden local blockers before build/publish steps.
+- CHANGELOG requirements are clear for future releases.
 
-Status: complete for current release readiness; release automation remains.
+### Suggested Ralph Stories
 
-### Requirements
+- US-D1: Specify release automation boundaries and manual publish checkpoints.
+- US-D2: Add changelog and release-state tests for release blockers.
+- US-D3: Polish scripts/CI so build and artifact inspection are reproducible.
+- US-D4: Update release checklist and README verification guidance.
 
-- Contributors should get fast feedback before merge.
-- Releases should be reproducible and not include local run artifacts.
-- The project should declare supported Python versions and platform limits.
+### Test Strategy
 
-### Changes
+- Script tests for release-state and artifact inspection behavior.
+- Packaging tests for wheel and sdist contents.
+- CI workflow checks on Windows and Linux for Python 3.11 and 3.12.
+- Docs tests for release checklist command coverage.
+- Full verification commands after each completed story and before the PR is
+  marked ready.
 
-- Keep GitHub Actions for:
-  - pytest
-  - ruff
-  - example config validation
-  - skill validation with `-SkipExternal`
-- Ensure every CI job installs the dependencies needed by the commands it runs.
-- Keep `-SkipExternal` skill validation independent from maintainer-home tools
-  that are not available on hosted CI runners.
-- Keep packaging check with `python -m build` and automated package artifact
-  inspection.
-- Keep SPDX license metadata, Python/platform support docs, `CHANGELOG.md`,
-  release checklist documentation, and release-state checking.
-- Planned next: add release automation only after the manual tag and artifact
-  publishing workflow is stable.
+### Why One Capability PR
 
-### Test Plan
+Release work is only useful as an end-to-end gate. Splitting build checks,
+metadata, artifact inspection, changelog rules, and docs into isolated PRs
+increases manual coordination and can leave the release path half-automated.
 
-- CI workflow runs on pull requests.
-- Local commands mirror CI commands.
-- Build artifact contents are inspected for accidental vendored runtime data.
+## Capability Epic E: Optional Adapter And Telemetry Expansion
 
-### Acceptance Criteria
+### Goal
 
-- CI passes on Windows and Linux for Python 3.11+.
-- Published package contains `context_eval` runtime and report templates, not
-  run artifacts.
-- Release checklist can be followed without hidden local state.
+Expand adapter or telemetry support only when there is evidence that the
+command-template adapter or generic JSON collector is causing repeated local
+workflow friction.
 
-## Cross-Phase Quality Gates
+### Scope
 
-Before a phase is considered complete:
+- Reassess whether a thin Python entrypoint adapter solves real repeated
+  command-template friction.
+- Use `docs/agent-telemetry.md` as the source spec for runner-guaranteed and
+  hook-provided metrics.
+- Consider agent-specific telemetry collectors only for stable local artifact
+  formats that can be covered with fixtures.
+- Keep the no-op collector and generic JSON collector as the default supported
+  collector baseline unless evidence justifies another local format.
+- Preserve backwards-compatible `CaseResult` parsing and missing-telemetry
+  semantics.
+- Document every new collector format before implementation.
+- Keep comparisons scoped to local observations from recorded run artifacts.
 
-- The phase spec is present in docs.
-- Tests for new behavior exist and fail before implementation or clearly cover a
-  bug being fixed.
-- `python -m pytest` passes.
-- `context-eval validate-config --config examples/basic/context-eval.yaml`
-  passes.
-- `powershell -ExecutionPolicy Bypass -File scripts\validate-skills.ps1 -SkipExternal`
-  passes on Windows maintainer machines.
-- Generated artifacts are inspected when the change affects reports, JSONL,
-  prompts, patches, or workspaces.
+### Non-Goals
 
-## Active Backlog Order
+- Do not add hosted API calls, provider billing reconciliation, remote cost
+  accounting, or brittle log scraping.
+- Do not require every agent to expose token/tool telemetry.
+- Do not install or manage coding agents automatically.
+- Do not turn telemetry expansion into an absolute agent benchmark.
 
-1. Config diagnostics and strict validation edge cases, especially safe overlay
-   paths, duplicate task context, and field-specific error messages.
-2. Local UI explicit save or server mode, if a spec defines destination paths
-   and keeps static mode offline and non-executing.
-3. Agent-specific telemetry collectors for local artifacts with stable,
-   documented formats.
-4. Thin Python entrypoint adapter, only if command-template usage shows repeated
-   friction that a small adapter can remove.
-5. Report template readability for multi-task, multi-variant, and multi-agent
-   runs.
-6. Release automation for tags, artifact upload, and changelog checks after the
-   manual release path remains stable.
-7. Optional macOS release gate if the project decides macOS should become
-   release-blocking.
+### Merge Acceptance Criteria
+
+- The capability PR includes spec, tests, implementation, docs, verification.
+- The PR starts with evidence that the expansion is justified.
+- New adapters or collectors have fixture-based tests and clear failure modes.
+- Missing telemetry remains null/empty rather than guessed.
+- Existing command-template configs continue to work unchanged.
+
+### Suggested Ralph Stories
+
+- US-E1: Decide whether adapter or telemetry expansion is justified.
+- US-E2: Specify any accepted local artifact format or adapter contract.
+- US-E3: Add fixture tests for parsing, errors, and backwards compatibility.
+- US-E4: Implement the minimal adapter or collector and update docs.
+
+### Test Strategy
+
+- Spec tests for collector/adapter boundaries and non-goals.
+- Model tests for backwards-compatible result parsing.
+- Adapter tests for command-template compatibility and any new entrypoint.
+- Collector fixture tests for collected, partial, unavailable, and error states.
+- Report/export tests proving new telemetry remains local-artifact based.
+- Full verification commands after each completed story and before the PR is
+  marked ready.
+
+### Why One Capability PR
+
+Adapters and telemetry collectors affect schema, runner behavior, reports, and
+docs together. Shipping them as isolated micro-PRs would make it hard to verify
+that a new local artifact format is documented, parsed, reported, and exported
+consistently.
+
+## Cross-Epic Quality Gates
+
+Every completed story should run the local gates requested for this repository:
+
+```powershell
+.\.venv\Scripts\python -m ruff check .
+.\.venv\Scripts\python -m pytest --basetemp C:\tmp\context-eval-pytest
+.\.venv\Scripts\context-eval validate-config --config examples/basic/context-eval.yaml
+powershell -ExecutionPolicy Bypass -File scripts\validate-skills.ps1 -SkipExternal
+git diff --check
+```
+
+Before a capability PR is marked ready, confirm CI status and fix failing checks
+before asking for review.
+
+## Current Replanning Stories
+
+- US-069: Audit current development cadence and define larger capability PR
+  policy.
+- US-070: Replan `docs/development-plan.md` into capability epics with
+  acceptance criteria.
+- US-071: Document the new Ralph/SDD/TDD batching policy and changelog handoff.
