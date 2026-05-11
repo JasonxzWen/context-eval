@@ -129,6 +129,13 @@ def test_changelog_mentions_spdx_license_metadata_cleanup() -> None:
     assert "table-form license metadata" in text
 
 
+def test_changelog_mentions_python_platform_support_docs() -> None:
+    text = Path("CHANGELOG.md").read_text(encoding="utf-8")
+
+    assert "Python and platform support" in text
+    assert "release readiness" in text
+
+
 def test_pyproject_and_ci_matrix_match_supported_runtime_contract() -> None:
     pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
     workflow = yaml.safe_load(Path(".github/workflows/ci.yml").read_text(encoding="utf-8"))

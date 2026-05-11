@@ -8,3 +8,4 @@
   local static UI generator.
 - Modernize package metadata to use SPDX license metadata instead of
   table-form license metadata.
+- Document Python and platform support expectations for release readiness.
