@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -8,6 +9,16 @@ from pydantic import ValidationError
 
 from context_eval.logging import run_command
 from context_eval.models import ContextEvalConfig, TaskFile
+
+_TASK_ID_FILENAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
+_WINDOWS_RESERVED_FILENAMES = {
+    "CON",
+    "PRN",
+    "AUX",
+    "NUL",
+    *(f"COM{number}" for number in range(1, 10)),
+    *(f"LPT{number}" for number in range(1, 10)),
+}
 
 
 class ConfigError(RuntimeError):
@@ -130,31 +141,36 @@ def validate_config_files(
                 )
 
     if strict:
-        _validate_strict_config(config, tasks)
+        _validate_strict_config(config, tasks, tasks_path)
 
     return config, tasks
 
 
-def _validate_strict_config(config: ContextEvalConfig, tasks: TaskFile) -> None:
+def _validate_strict_config(config: ContextEvalConfig, tasks: TaskFile, tasks_path: Path) -> None:
     repo_check = run_command(
         ["git", "-C", str(config.repo.path), "rev-parse", "--is-inside-work-tree"],
         cwd=config.repo.path,
         shell=False,
     )
     if repo_check.exit_code != 0 or repo_check.stdout.strip() != "true":
-        raise ConfigError(f"repo.path is not a Git repository: {config.repo.path}")
+        raise ConfigError(
+            f"{config.config_path}: repo.path is not a Git repository: {config.repo.path}"
+        )
+
+    _validate_strict_task_ids(tasks, tasks_path)
 
     _require_git_ref(
         config.repo.path,
         config.repo.base_ref,
-        f"repo.base_ref does not resolve: {config.repo.base_ref}",
+        f"{config.config_path}: repo.base_ref does not resolve: {config.repo.base_ref}",
     )
     for task in tasks.tasks:
         if task.repo_ref:
             _require_git_ref(
                 config.repo.path,
                 task.repo_ref,
-                f"task '{task.id}' repo_ref does not resolve: {task.repo_ref}",
+                f"{tasks_path}: tasks[{task.id}].repo_ref does not resolve: "
+                f"{task.repo_ref}",
             )
 
 
@@ -168,6 +184,24 @@ def _require_git_ref(repo_path: Path, ref: str, message: str) -> None:
         detail = result.stderr.strip() or result.stdout.strip()
         suffix = f" ({detail})" if detail else ""
         raise ConfigError(f"{message}{suffix}")
+
+
+def _validate_strict_task_ids(tasks: TaskFile, tasks_path: Path) -> None:
+    for task in tasks.tasks:
+        if not _is_filename_safe_task_id(task.id):
+            raise ConfigError(
+                f"{tasks_path}: tasks[{task.id}].id must be filename-safe: "
+                "use letters, numbers, '.', '_' or '-' and avoid reserved names"
+            )
+
+
+def _is_filename_safe_task_id(value: str) -> bool:
+    if not _TASK_ID_FILENAME_RE.fullmatch(value):
+        return False
+    if value.endswith("."):
+        return False
+    basename = value.split(".", 1)[0].upper()
+    return basename not in _WINDOWS_RESERVED_FILENAMES
 
 
 def _format_validation_errors(path: Path, exc: ValidationError, data: dict[str, Any]) -> str:

@@ -23,6 +23,22 @@ def _run_git(repo: Path, *args: str) -> None:
     )
 
 
+def _init_git_repo_with_commit(repo: Path) -> None:
+    _run_git(repo, "init")
+    (repo / "README.md").write_text("base\n", encoding="utf-8")
+    _run_git(repo, "add", "README.md")
+    _run_git(
+        repo,
+        "-c",
+        "user.email=test@example.com",
+        "-c",
+        "user.name=Test",
+        "commit",
+        "-m",
+        "init",
+    )
+
+
 def test_yaml_config_and_tasks_parse(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -373,29 +389,81 @@ def test_strict_validation_requires_base_ref_to_resolve(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     _run_git(repo, "init")
 
-    with pytest.raises(ConfigError, match="repo.base_ref does not resolve"):
+    with pytest.raises(ConfigError) as excinfo:
         validate_config_files(config_path, strict=True)
+
+    message = str(excinfo.value)
+    assert "context-eval.yaml: repo.base_ref does not resolve" in message
 
 
 def test_strict_validation_requires_task_repo_refs_to_resolve(tmp_path: Path) -> None:
     config_path = _write_config_fixture(tmp_path, task_repo_ref="missing-task-ref")
     repo = tmp_path / "repo"
-    _run_git(repo, "init")
-    (repo / "README.md").write_text("base\n", encoding="utf-8")
-    _run_git(repo, "add", "README.md")
-    _run_git(
-        repo,
-        "-c",
-        "user.email=test@example.com",
-        "-c",
-        "user.name=Test",
-        "commit",
-        "-m",
-        "init",
+    _init_git_repo_with_commit(repo)
+
+    with pytest.raises(ConfigError) as excinfo:
+        validate_config_files(config_path, strict=True)
+
+    message = str(excinfo.value)
+    assert "tasks.yaml: tasks[task-1].repo_ref does not resolve" in message
+
+
+def test_default_validation_keeps_task_id_filename_check_lightweight(tmp_path: Path) -> None:
+    config_path = _write_config_fixture(tmp_path)
+    (tmp_path / "tasks.yaml").write_text(
+        """
+tasks:
+  - id: "bad/task id"
+    prompt: "Fix the bug."
+""",
+        encoding="utf-8",
     )
 
-    with pytest.raises(ConfigError, match="task 'task-1' repo_ref does not resolve"):
+    config, tasks = validate_config_files(config_path)
+
+    assert config.repo.path == (tmp_path / "repo").resolve()
+    assert tasks.tasks[0].id == "bad/task id"
+
+
+def test_strict_validation_requires_filename_safe_task_ids(tmp_path: Path) -> None:
+    config_path = _write_config_fixture(tmp_path)
+    (tmp_path / "tasks.yaml").write_text(
+        """
+tasks:
+  - id: "bad/task id"
+    prompt: "Fix the bug."
+""",
+        encoding="utf-8",
+    )
+    _init_git_repo_with_commit(tmp_path / "repo")
+
+    with pytest.raises(ConfigError) as excinfo:
         validate_config_files(config_path, strict=True)
+
+    message = str(excinfo.value)
+    assert "tasks.yaml: tasks[bad/task id].id must be filename-safe" in message
+
+
+def test_validate_config_does_not_run_validation_commands(tmp_path: Path) -> None:
+    config_path = _write_config_fixture(tmp_path)
+    marker = tmp_path / "validation-command-ran.txt"
+    marker_literal = marker.as_posix()
+    (tmp_path / "tasks.yaml").write_text(
+        f"""
+tasks:
+  - id: "task-1"
+    prompt: "Fix the bug."
+    validation:
+      commands:
+        - "python -c \\"from pathlib import Path; Path('{marker_literal}').write_text('ran')\\""
+""",
+        encoding="utf-8",
+    )
+    _init_git_repo_with_commit(tmp_path / "repo")
+
+    validate_config_files(config_path, strict=True)
+
+    assert not marker.exists()
 
 
 def test_filter_tasks_combines_dimensions_without_mutating_task_file() -> None:
