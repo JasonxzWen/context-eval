@@ -83,3 +83,17 @@ def test_release_checklist_documents_package_build_scope() -> None:
         "do not include `scripts/`",
     ]:
         assert term in text
+
+
+def test_readme_documents_local_package_build_verification() -> None:
+    text = Path("README.md").read_text(encoding="utf-8")
+
+    for term in [
+        "## Development Verification",
+        "python -m build --outdir",
+        "docs/release-checklist.md",
+        "`context_eval/` is the runtime package",
+        "maintainer capability library",
+        "not runtime package modules",
+    ]:
+        assert term in text
