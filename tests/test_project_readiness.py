@@ -107,6 +107,13 @@ def test_pyproject_uses_spdx_license_string_metadata() -> None:
     assert not isinstance(license_metadata, dict)
 
 
+def test_changelog_mentions_spdx_license_metadata_cleanup() -> None:
+    text = Path("CHANGELOG.md").read_text(encoding="utf-8")
+
+    assert "SPDX license metadata" in text
+    assert "table-form license metadata" in text
+
+
 def test_readme_documents_local_package_build_verification() -> None:
     text = Path("README.md").read_text(encoding="utf-8")
 
