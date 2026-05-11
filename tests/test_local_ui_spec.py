@@ -13,6 +13,8 @@ def test_local_ui_config_editor_spec_documents_contract() -> None:
         "## Editable Fields",
         "## Validation Behavior",
         "## Export And Save Behavior",
+        "## User Workflow",
+        "## Failure Modes",
         "## Edge Cases",
         "## Non-Goals",
         "## Test Plan",
@@ -53,3 +55,19 @@ def test_development_plan_links_local_ui_editor_spec() -> None:
     text = Path("docs/development-plan.md").read_text(encoding="utf-8")
 
     assert "docs/local-ui-config-editor.md" in text
+
+
+def test_readme_documents_static_ui_persistence_workflow() -> None:
+    text = Path("README.md").read_text(encoding="utf-8")
+    normalized = " ".join(text.split())
+
+    required_terms = [
+        "static export-only",
+        "copy or download",
+        "does not save back to the original files",
+        "does not run agents",
+        "does not run validation commands",
+        "context-eval validate-config --config",
+    ]
+    for term in required_terms:
+        assert term in normalized
