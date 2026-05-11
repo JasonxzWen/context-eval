@@ -58,9 +58,13 @@ def test_multi_agent_comparison_spec_documents_non_goals() -> None:
 def test_development_plan_links_multi_agent_comparison_spec() -> None:
     plan = Path("docs/development-plan.md").read_text(encoding="utf-8")
 
-    assert "docs/multi-agent-comparison.md" in plan
-    assert "CSV and compact JSON" in plan
-    assert "not an absolute" in plan
+    for term in [
+        "## Capability Epic C: Reporting Polish For Multi-Task, Multi-Variant, Multi-Agent Runs",
+        "docs/multi-agent-comparison.md",
+        "CSV and compact JSON",
+        "Do not publish an absolute coding-agent capability ranking",
+    ]:
+        assert term in plan
 
 
 def test_multi_agent_comparison_spec_documents_local_workflow_examples() -> None:
@@ -126,5 +130,5 @@ def test_compact_json_export_metadata_contract_is_documented() -> None:
     assert "run_metadata.json` only when that optional file exists" in spec
     assert "results.jsonl` exists but contains no result rows" in spec
     assert "derived only from parsed `results.jsonl` rows" in spec
-    assert "Harden compact JSON export metadata" in plan
+    assert "compact JSON metadata" in plan
     assert "controlled export timestamp" in plan

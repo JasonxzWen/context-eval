@@ -37,16 +37,19 @@ def test_agent_telemetry_spec_defines_collector_contract() -> None:
         assert term in text
 
 
-def test_development_plan_includes_agent_telemetry_phase() -> None:
+def test_development_plan_includes_optional_telemetry_expansion_epic() -> None:
     plan = Path("docs/development-plan.md").read_text(encoding="utf-8")
 
-    assert "## Phase 4.5: Agent Telemetry And Usage Accounting" in plan
-    assert "docs/agent-telemetry.md" in plan
-    assert "runner-guaranteed" in plan
-    assert "hook-provided" in plan
-    assert "generic JSON telemetry collector" in plan
-    assert "Do not claim absolute coding-agent capability" in plan
-    assert "Agent telemetry contract and normalized result schema" in plan
+    for term in [
+        "## Capability Epic E: Optional Adapter And Telemetry Expansion",
+        "docs/agent-telemetry.md",
+        "runner-guaranteed",
+        "hook-provided",
+        "generic JSON collector",
+        "Do not turn telemetry expansion into an absolute agent benchmark",
+        "Missing telemetry remains null/empty rather than guessed",
+    ]:
+        assert term in plan
 
 
 def test_evaluation_docs_describe_normalized_telemetry_fields() -> None:
