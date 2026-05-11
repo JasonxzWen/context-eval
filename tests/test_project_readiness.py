@@ -51,3 +51,20 @@ def test_release_checklist_and_changelog_exist() -> None:
 
     changelog_text = changelog.read_text(encoding="utf-8")
     assert "## Unreleased" in changelog_text
+
+
+def test_release_checklist_documents_package_build_scope() -> None:
+    text = Path("docs/release-checklist.md").read_text(encoding="utf-8")
+
+    for term in [
+        "python -m build --outdir",
+        "Inspect both the wheel and sdist",
+        "includes `context_eval/`",
+        "includes `context_eval/reports/templates/`",
+        "do not include `.context-eval/`",
+        "do not include `.agents/`",
+        "do not include `.codex/skills/`",
+        "do not include `openspec/`",
+        "do not include `scripts/`",
+    ]:
+        assert term in text
