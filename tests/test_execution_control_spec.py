@@ -92,3 +92,21 @@ def test_evaluation_docs_describe_run_manifest_contract() -> None:
         "does not rerun agents",
     ]:
         assert term in text
+
+
+def test_readme_documents_run_manifest_usage() -> None:
+    text = Path("README.md").read_text(encoding="utf-8")
+
+    for term in [
+        "`run_manifest.json`",
+        "selected tasks",
+        "selected variants",
+        "trials",
+        "`case_matrix`",
+        "`config_hash`",
+        "`task_hash`",
+        "`variant_hash`",
+        "local run artifacts",
+        "not a benchmark",
+    ]:
+        assert term in text

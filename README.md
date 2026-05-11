@@ -243,12 +243,19 @@ correctness.
 Each run creates `.context-eval/runs/<run-id>` with:
 
 - `results.jsonl`
+- `run_manifest.json`
 - `report.md`
 - prompt files
 - agent stdout and stderr logs
 - validation logs
 - Git patches
 - retained workspaces by default
+
+`run_manifest.json` records the selected tasks, selected variants, trials, and
+ordered `case_matrix` for the run. It also includes `config_hash`,
+`task_hash`, and `variant_hash` values so scripts can match the planned matrix
+to `results.jsonl` rows and inspect reproducibility metadata from local run
+artifacts. The manifest describes one recorded local run; it is not a benchmark.
 
 Each JSONL row includes a `schema_version`, `context_eval_version`,
 `config_hash`, `task_hash`, and `variant_hash` so downstream analysis can detect
