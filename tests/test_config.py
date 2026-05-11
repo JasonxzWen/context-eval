@@ -214,6 +214,81 @@ def test_validate_config_rejects_missing_prompt_template(tmp_path: Path) -> None
         validate_config_files(config_path)
 
 
+def test_config_schema_error_names_file_and_field(tmp_path: Path) -> None:
+    config_path = _write_config_fixture(tmp_path)
+    config_path.write_text(
+        config_path.read_text(encoding="utf-8").replace('  path: "./repo"\n', ""),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigError) as excinfo:
+        load_config(config_path)
+
+    message = str(excinfo.value)
+    assert "context-eval.yaml: repo.path" in message
+    assert "Field required" in message
+
+
+def test_config_overlay_target_error_names_variant_and_overlay_field(tmp_path: Path) -> None:
+    config_path = _write_config_fixture(tmp_path)
+    config_path.write_text(
+        config_path.read_text(encoding="utf-8").replace(
+            'target: "AGENTS.md"',
+            'target: "../escape.md"',
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigError) as excinfo:
+        load_config(config_path)
+
+    message = str(excinfo.value)
+    assert "context-eval.yaml: variants.baseline.overlays[0].target" in message
+    assert "overlay target must be a safe relative path" in message
+
+
+def test_task_schema_error_names_task_id_and_field(tmp_path: Path) -> None:
+    config_path = _write_config_fixture(tmp_path)
+    (tmp_path / "tasks.yaml").write_text(
+        """
+tasks:
+  - id: "task-1"
+    prompt: "Fix the bug."
+    validation:
+      timeout_seconds: 0
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigError) as excinfo:
+        validate_config_files(config_path)
+
+    message = str(excinfo.value)
+    assert "tasks.yaml: tasks[task-1].validation.timeout_seconds" in message
+    assert "greater than or equal to 1" in message
+
+
+def test_duplicate_task_id_error_names_task_file_and_task_id(tmp_path: Path) -> None:
+    config_path = _write_config_fixture(tmp_path)
+    (tmp_path / "tasks.yaml").write_text(
+        """
+tasks:
+  - id: "task-1"
+    prompt: "Fix the first bug."
+  - id: "task-1"
+    prompt: "Fix the second bug."
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigError) as excinfo:
+        validate_config_files(config_path)
+
+    message = str(excinfo.value)
+    assert "tasks.yaml: tasks[task-1].id" in message
+    assert "duplicate task id" in message
+
+
 def test_yaml_config_rejects_unsafe_telemetry_file(tmp_path: Path) -> None:
     config_path = _write_config_fixture(tmp_path)
     text = config_path.read_text(encoding="utf-8")

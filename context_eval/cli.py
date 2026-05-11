@@ -241,7 +241,7 @@ def validate_config(
     try:
         loaded_config, task_file = validate_config_files(config, tasks, strict=strict)
     except ConfigError as exc:
-        console.print(f"[red]Invalid config:[/red] {exc}")
+        console.print(f"[red]Invalid config:[/red] {exc}", soft_wrap=True)
         raise typer.Exit(code=1) from exc
 
     console.print("[green]Config valid[/green]")
