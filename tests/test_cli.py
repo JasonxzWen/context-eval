@@ -203,6 +203,8 @@ evaluation:
             "--dry-run",
             "--trials",
             "2",
+            "--jobs",
+            "2",
             "--variant",
             "baseline",
             "--max-tasks",
@@ -211,6 +213,7 @@ evaluation:
     )
 
     assert trials_result.exit_code == 0
+    assert "Jobs: 2" in trials_result.output
     assert "trial=2" in trials_result.output
     assert "docs-easy__baseline__trial-2" in trials_result.output
     assert not output_dir.exists()

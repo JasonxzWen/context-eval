@@ -70,6 +70,10 @@ def run(
     ] = False,
     max_tasks: Annotated[int | None, typer.Option("--max-tasks", min=1)] = None,
     trials: Annotated[int, typer.Option("--trials", min=1, help="Trials per task/variant.")] = 1,
+    jobs: Annotated[
+        int,
+        typer.Option("--jobs", min=1, help="Maximum concurrent cases."),
+    ] = 1,
     variant: Annotated[
         list[str] | None,
         typer.Option("--variant", help="Variant to run. Repeatable."),
@@ -103,6 +107,7 @@ def run(
                 variants=variant,
                 max_tasks=max_tasks,
                 trials=trials,
+                jobs=jobs,
                 console=console,
             )
             return
@@ -113,6 +118,7 @@ def run(
             max_tasks=max_tasks,
             variants=variant,
             trials=trials,
+            jobs=jobs,
             console=console,
         )
         run_dir = runner.run()

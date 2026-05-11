@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 
@@ -38,16 +39,20 @@ class ContextEvalRunner:
         max_tasks: int | None = None,
         variants: list[str] | None = None,
         trials: int = 1,
+        jobs: int = 1,
         console: Console | None = None,
     ) -> None:
         self.config = config
+        if trials < 1:
+            raise ValueError("trials must be at least 1")
+        if jobs < 1:
+            raise ValueError("jobs must be at least 1")
         self.tasks = tasks or load_tasks(tasks_path or config.tasks)
         self.cleanup = cleanup
         self.max_tasks = max_tasks
         self.selected_variants = variants or []
-        if trials < 1:
-            raise ValueError("trials must be at least 1")
         self.trials = trials
+        self.jobs = jobs
         self.console = console or Console()
         self.config_hash = stable_hash(
             config.model_dump(mode="json", exclude={"output_dir"})
@@ -59,17 +64,35 @@ class ContextEvalRunner:
         self._write_metadata(run_id, run_dir)
 
         results_path = run_dir / "results.jsonl"
-        agent = CommandTemplateAgent(self.config.agent)
         tasks = self.tasks.tasks[: self.max_tasks] if self.max_tasks else self.tasks.tasks
         variant_names = self._variant_names()
+        case_plan = [
+            (task, variant_name, trial_index)
+            for task in tasks
+            for variant_name in variant_names
+            for trial_index in range(1, self.trials + 1)
+        ]
 
-        for task in tasks:
-            for variant_name in variant_names:
-                for trial_index in range(1, self.trials + 1):
-                    self.console.print(
-                        f"Running task={task.id} variant={variant_name} trial={trial_index}"
-                    )
-                    result = self._run_case(
+        for result in self._run_case_plan(run_id, run_dir, case_plan):
+            with results_path.open("a", encoding="utf-8") as handle:
+                handle.write(result.model_dump_json() + "\n")
+
+        render_markdown_report(run_dir)
+        return run_dir
+
+    def _run_case_plan(
+        self,
+        run_id: str,
+        run_dir: Path,
+        case_plan: list[tuple[TaskConfig, str, int]],
+    ) -> list[CaseResult]:
+        if self.jobs == 1:
+            agent = CommandTemplateAgent(self.config.agent)
+            results = []
+            for task, variant_name, trial_index in case_plan:
+                self._print_case_start(task, variant_name, trial_index)
+                results.append(
+                    self._run_case(
                         run_id,
                         run_dir,
                         agent,
@@ -77,11 +100,34 @@ class ContextEvalRunner:
                         variant_name,
                         trial_index,
                     )
-                    with results_path.open("a", encoding="utf-8") as handle:
-                        handle.write(result.model_dump_json() + "\n")
+                )
+            return results
 
-        render_markdown_report(run_dir)
-        return run_dir
+        futures = []
+        with ThreadPoolExecutor(max_workers=self.jobs) as executor:
+            for task, variant_name, trial_index in case_plan:
+                self._print_case_start(task, variant_name, trial_index)
+                agent = CommandTemplateAgent(self.config.agent)
+                futures.append(
+                    executor.submit(
+                        self._run_case,
+                        run_id,
+                        run_dir,
+                        agent,
+                        task,
+                        variant_name,
+                        trial_index,
+                    )
+                )
+            return [future.result() for future in futures]
+
+    def _print_case_start(
+        self,
+        task: TaskConfig,
+        variant_name: str,
+        trial_index: int,
+    ) -> None:
+        self.console.print(f"Running task={task.id} variant={variant_name} trial={trial_index}")
 
     def _variant_names(self) -> list[str]:
         if not self.selected_variants:
