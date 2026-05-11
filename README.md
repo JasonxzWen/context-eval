@@ -97,6 +97,18 @@ context-eval export .context-eval/runs/<run-id> --format csv --output summary.cs
 context-eval export .context-eval/runs/<run-id> --format json --output summary.json
 ```
 
+Compact JSON export metadata includes:
+
+- `export_schema_version`: the compact JSON export contract version.
+- `exported_at`: the UTC timestamp for when the export file was generated.
+- `source_files`: local artifact filenames read by the exporter, always
+  `results.jsonl` and optionally `run_metadata.json` when that file exists.
+- `case_count`, `agent_count`, `variant_count`, and `task_count`: counts
+  derived only from parsed `results.jsonl` rows.
+
+These fields describe the exported local observation. They do not make the
+output an absolute agent benchmark.
+
 Generate a local visual HTML interface for config and run data:
 
 ```bash
