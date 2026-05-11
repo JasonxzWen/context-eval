@@ -26,6 +26,22 @@ dashboards, issue mining, or real network isolation unless a later spec
 explicitly changes the project scope. Local-only web or visual interfaces are
 in scope when they help users configure runs or inspect local evaluation data.
 
+## Plan Status Model
+
+Each phase status line is a reconciliation aid, not a release guarantee.
+A status line must separate shipped behavior from remaining backlog so Ralph
+does not spend iterations on work that has already merged.
+
+- `complete for current scope`: the phase's intended user-facing behavior has
+  shipped for the current MVP boundary. Future changes are maintenance or
+  polish unless the active backlog names a new story.
+- `mostly complete`: the phase's primary workflow has shipped, but one or more
+  bounded follow-up stories remain.
+- `planned next`: the next backlog item is not implemented yet and should be
+  treated as eligible Ralph work.
+- `deferred`: the idea is intentionally outside the active near-term plan until
+  a later spec changes the scope or priority.
+
 ## Phase 0: Baseline Stewardship
 
 Status: complete, with ongoing maintenance.
