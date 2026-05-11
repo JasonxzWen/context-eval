@@ -115,6 +115,24 @@ def test_release_checklist_documents_artifact_inspection_command() -> None:
         assert term in text
 
 
+def test_release_checklist_documents_hidden_release_state_check() -> None:
+    text = Path("docs/release-checklist.md").read_text(encoding="utf-8")
+
+    for term in [
+        "python scripts/check-release-state.py",
+        "hidden local release blockers",
+        "rejects `.context-eval/`",
+        "rejects `build/`",
+        "rejects `dist/`",
+        "rejects `*.egg-info/`",
+        "rejects `.codex/config.toml`",
+        "allows `.venv/`",
+        "allows cache directories",
+        "allows Ralph local state",
+    ]:
+        assert term in text
+
+
 def test_release_checklist_documents_spdx_license_metadata_contract() -> None:
     text = Path("docs/release-checklist.md").read_text(encoding="utf-8")
 
