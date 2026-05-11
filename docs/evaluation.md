@@ -55,6 +55,23 @@ Each result row includes:
 Repeated trials write distinct prompt, log, patch, artifact, and workspace paths
 so result rows do not overwrite each other.
 
+## Bounded Parallelism
+
+Use `context-eval run --jobs N` to run multiple local cases concurrently. The
+option defaults to 1, which preserves the existing serial execution behavior.
+`N` must be at least 1.
+
+Parallelism is bounded by case: each task, variant, and trial combination is
+still a separate case with its own prompt, log, patch, artifact, and workspace
+paths. context-eval does not rerun completed local run artifacts, install
+agents, call a hosted service, or change the meaning of recorded results.
+
+`results.jsonl` writing remains single-threaded in the main runner flow. Even
+when cases finish out of order, result rows are written in planned task,
+variant, and trial order. This planned task, variant, and trial order lets
+script consumers compare serial and parallel runs without handling
+nondeterministic row order.
+
 ## Result Stability
 
 Every JSONL result row includes:
