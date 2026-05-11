@@ -26,9 +26,25 @@ dashboards, issue mining, or real network isolation unless a later spec
 explicitly changes the project scope. Local-only web or visual interfaces are
 in scope when they help users configure runs or inspect local evaluation data.
 
+## Plan Status Model
+
+Each phase status line is a reconciliation aid, not a release guarantee.
+A status line must separate shipped behavior from remaining backlog so Ralph
+does not spend iterations on work that has already merged.
+
+- `complete for current scope`: the phase's intended user-facing behavior has
+  shipped for the current MVP boundary. Future changes are maintenance or
+  polish unless the active backlog names a new story.
+- `mostly complete`: the phase's primary workflow has shipped, but one or more
+  bounded follow-up stories remain.
+- `planned next`: the next backlog item is not implemented yet and should be
+  treated as eligible Ralph work.
+- `deferred`: the idea is intentionally outside the active near-term plan until
+  a later spec changes the scope or priority.
+
 ## Phase 0: Baseline Stewardship
 
-Status: complete, with ongoing maintenance.
+Status: complete for current scope; ongoing maintenance.
 
 ### Requirements
 
@@ -63,7 +79,7 @@ Status: complete, with ongoing maintenance.
 
 ## Phase 1: Core Runner Correctness
 
-Status: partially complete; finish before adding broad features.
+Status: complete for current scope.
 
 ### Requirements
 
@@ -79,10 +95,10 @@ Status: partially complete; finish before adding broad features.
 
 - Keep `schema_version`, `context_eval_version`, `config_hash`, `task_hash`, and
   `variant_hash` in each JSONL row.
-- Add a unique-run-directory guard so two runs in the same second never collide.
+- Keep a unique-run-directory guard so two runs in the same second never collide.
 - Record Git workspace preparation failures with a specific status or structured
   error code.
-- Add explicit result fields for `workspace_retained` and `cleanup_status`.
+- Keep explicit result fields for `workspace_retained` and `cleanup_status`.
 - Keep overlay baseline logic in `context_eval/evaluators/diff.py`.
 
 ### Test Plan
@@ -107,7 +123,7 @@ Status: partially complete; finish before adding broad features.
 
 ## Phase 2: Configuration And Task Spec Maturity
 
-Status: planned.
+Status: mostly complete; validation command timeout defaults remain.
 
 ### Requirements
 
@@ -122,14 +138,15 @@ Status: planned.
 
 - Expand `docs/configuration.md` with a formal field reference.
 - Expand `docs/task-format.md` with a formal field reference and examples.
-- Add `context-eval validate-config --strict` for stronger local checks:
+- Keep `context-eval validate-config --strict` for stronger local checks:
   repo is a Git repository, `base_ref` resolves, overlay targets are safe, and
   task IDs are filename-safe.
-- Add task filters:
+- Keep task filters:
   - `--task-id`
   - `--category`
   - `--difficulty`
-- Add config-level defaults for validation command timeout when needed.
+- Planned next: add config-level defaults for validation command timeout when
+  needed.
 
 ### Test Plan
 
@@ -146,7 +163,7 @@ Status: planned.
 
 ## Phase 3: User Workflow Usability
 
-Status: planned.
+Status: complete for current scope.
 
 ### Requirements
 
@@ -157,16 +174,16 @@ Status: planned.
 
 ### Changes
 
-- Add `context-eval init` to generate:
+- Keep `context-eval init` to generate:
   - `context-eval.yaml`
   - `tasks.yaml`
   - `contexts/baseline/AGENTS.md`
   - `contexts/experiment/AGENTS.md`
-- Add `context-eval run --dry-run` to print the task x variant matrix, resolved
+- Keep `context-eval run --dry-run` to print the task x variant matrix, resolved
   repo refs, overlay operations, prompt file paths, and validation commands.
-- Add a local fixture repository under `examples/fixture-repo/` for a complete
+- Keep a local fixture repository under `examples/fixture-repo/` for a complete
   self-contained demo.
-- Improve README quickstart to use the fixture repo rather than the context-eval
+- Keep README quickstart coverage for the fixture repo rather than the context-eval
   repository itself.
 
 ### Test Plan
@@ -184,7 +201,7 @@ Status: planned.
 
 ## Phase 4: Execution Control And Reproducibility
 
-Status: planned.
+Status: complete for current scope.
 
 ### Requirements
 
@@ -195,19 +212,19 @@ Status: planned.
 
 ### Changes
 
-- Add repeated trials:
+- Keep repeated trials:
   - `--trials N`
   - `trial_index`
   - `case_id`
-- Add bounded parallelism:
+- Keep bounded parallelism:
   - `--jobs N`
   - result writing through a single append-safe writer
-- Add cleanup policies:
+- Keep cleanup policies:
   - `never`
   - `always`
   - `successful`
   - `failed`
-- Add run manifest with selected tasks, variants, trials, and effective config
+- Keep run manifest with selected tasks, variants, trials, and effective config
   hashes.
 
 ### Test Plan
@@ -226,7 +243,8 @@ Status: planned.
 
 ## Phase 4.5: Agent Telemetry And Usage Accounting
 
-Status: planned.
+Status: complete for first collector scope; agent-specific collectors are
+deferred.
 
 ### Requirements
 
@@ -251,10 +269,12 @@ Status: planned.
   `tool_call_count`, and `tool_calls_by_name`.
 - Add an adapter telemetry hook interface that can prepare a per-case telemetry
   target and collect data after the command-template agent exits.
-- Add a default no-op collector and a generic JSON telemetry collector for
+- Keep a default no-op collector and a generic JSON telemetry collector for
   agents that can write local usage metadata.
 - Add report, compare, inspect, and local UI aggregations for collected,
   partial, and unavailable telemetry.
+- Deferred: add agent-specific telemetry collectors only after a spec defines
+  exact local artifact formats for those agents.
 
 ### Test Plan
 
@@ -279,7 +299,8 @@ Status: planned.
 
 ## Phase 5: Reporting And Analysis
 
-Status: planned.
+Status: complete for artifact-based reporting; UI save/server mode and report
+polish remain.
 
 ### Requirements
 
@@ -296,19 +317,20 @@ Status: planned.
 
 ### Changes
 
-- Add `context-eval inspect-run RUN_DIR` for tabular terminal summaries.
-- Add `context-eval compare RUN_DIR` for variant-oriented metrics:
+- Keep `context-eval inspect-run RUN_DIR` for tabular terminal summaries.
+- Keep `context-eval compare RUN_DIR` for variant-oriented metrics:
   pass rate, timeout rate, agent failure rate, validation failure rate, average
   duration, average changed files, and common touched paths.
-- Add result export helpers for CSV and compact JSON summary.
-- Add local-only multi-agent comparison summaries and exports based on
+- Keep result export helpers for CSV and compact JSON summary.
+- Keep local-only multi-agent comparison summaries and exports based on
   `docs/multi-agent-comparison.md`.
 - Harden compact JSON export metadata with a stable export schema version,
   controlled export timestamp, local source file list, and case, agent,
   variant, and task counts derived only from `results.jsonl` and optional
   `run_metadata.json`.
-- Improve report template readability for multiple tasks and variants.
-- Add a local visualization entrypoint, such as `context-eval ui`, a generated
+- Planned next: improve report template readability for multiple tasks and
+  variants.
+- Keep a local visualization entrypoint, such as `context-eval ui`, a generated
   static HTML report, or a terminal UI, that can:
   - configure repo path, base ref, agent command, variants, overlays, tasks, and
     validation commands;
@@ -318,6 +340,8 @@ Status: planned.
     `run_metadata.json` files.
 - Use `docs/local-ui-config-editor.md` as the contract for the local UI config
   editor, YAML export, and any future explicit local save behavior.
+- Deferred: add an explicit local UI save or server mode only with a spec that
+  names the destination path and preserves static-mode safety.
 
 ### Test Plan
 
@@ -347,7 +371,8 @@ Status: planned.
 
 ## Phase 6: Adapter And Prompt Extensibility
 
-Status: planned.
+Status: complete for prompt-template scope; thin Python entrypoint adapter is
+deferred.
 
 ### Requirements
 
@@ -357,12 +382,12 @@ Status: planned.
 
 ### Changes
 
-- Add config support for `prompt_template`.
-- Add prompt rendering tests for template variables and missing fields.
-- Add adapter contract docs that specify command environment, cwd, timeout,
+- Keep config support for `prompt_template`.
+- Keep prompt rendering tests for template variables and missing fields.
+- Keep adapter contract docs that specify command environment, cwd, timeout,
   stdout/stderr capture, and no automatic commits.
-- Consider a thin Python entrypoint adapter only if repeated command-template
-  use shows real friction.
+- Deferred: consider a thin Python entrypoint adapter only if repeated
+  command-template use shows real friction.
 
 ### Test Plan
 
@@ -378,7 +403,7 @@ Status: planned.
 
 ## Phase 7: CI And Release Readiness
 
-Status: planned.
+Status: complete for current release readiness; release automation remains.
 
 ### Requirements
 
@@ -388,7 +413,7 @@ Status: planned.
 
 ### Changes
 
-- Add GitHub Actions for:
+- Keep GitHub Actions for:
   - pytest
   - ruff
   - example config validation
@@ -396,10 +421,12 @@ Status: planned.
 - Ensure every CI job installs the dependencies needed by the commands it runs.
 - Keep `-SkipExternal` skill validation independent from maintainer-home tools
   that are not available on hosted CI runners.
-- Add packaging check with `python -m build` once `build` is in dev
-  dependencies.
-- Add `CHANGELOG.md`.
-- Add release checklist documentation.
+- Keep packaging check with `python -m build` and automated package artifact
+  inspection.
+- Keep SPDX license metadata, Python/platform support docs, `CHANGELOG.md`,
+  release checklist documentation, and release-state checking.
+- Planned next: add release automation only after the manual tag and artifact
+  publishing workflow is stable.
 
 ### Test Plan
 
@@ -429,16 +456,21 @@ Before a phase is considered complete:
 - Generated artifacts are inspected when the change affects reports, JSONL,
   prompts, patches, or workspaces.
 
-## Near-Term Backlog Order
+## Active Backlog Order
 
-1. Unique run directory guard and cleanup status fields.
-2. Strict config validation and task filters.
-3. Self-contained fixture repo example.
-4. `context-eval run --dry-run`.
-5. `context-eval init`.
-6. Trial support.
-7. Agent telemetry contract and normalized result schema.
-8. Adapter telemetry hook interface with no-op and generic JSON collectors.
-9. Report/inspect commands.
-10. Local visual interface for config and run data.
-11. CI workflow and release checklist.
+1. Validation command timeout defaults for config-level and task-level
+   validation commands.
+2. Config diagnostics and strict validation edge cases, especially safe overlay
+   paths, duplicate task context, and field-specific error messages.
+3. Local UI explicit save or server mode, if a spec defines destination paths
+   and keeps static mode offline and non-executing.
+4. Agent-specific telemetry collectors for local artifacts with stable,
+   documented formats.
+5. Thin Python entrypoint adapter, only if command-template usage shows repeated
+   friction that a small adapter can remove.
+6. Report template readability for multi-task, multi-variant, and multi-agent
+   runs.
+7. Release automation for tags, artifact upload, and changelog checks after the
+   manual release path remains stable.
+8. Optional macOS release gate if the project decides macOS should become
+   release-blocking.
