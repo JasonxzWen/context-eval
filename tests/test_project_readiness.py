@@ -26,6 +26,21 @@ def test_skill_validation_ci_job_installs_script_dependencies() -> None:
     )
 
 
+def test_ci_runs_package_build_with_dev_dependency() -> None:
+    pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
+    workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
+
+    assert '"build>=1"' in pyproject
+    assert "  package-build:" in workflow
+    package_job = workflow.split("  package-build:", maxsplit=1)[1]
+
+    assert 'python -m pip install -e ".[dev]"' in package_job
+    assert "python -m build" in package_job
+    assert package_job.index('python -m pip install -e ".[dev]"') < package_job.index(
+        "python -m build"
+    )
+
+
 def test_skill_validation_skip_external_does_not_require_home_tools() -> None:
     script = Path("scripts/validate-skills.ps1").read_text(encoding="utf-8")
 
