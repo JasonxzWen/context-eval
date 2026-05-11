@@ -74,14 +74,8 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Check release state
-        run: python scripts/check-release-state.py
+      - name: Install package build dependency
+        run: python -m pip install "build>=1"
 
-      - name: Install package
-        run: python -m pip install -e ".[dev]"
-
-      - name: Build package artifacts
-        run: python -m build
-
-      - name: Inspect package artifacts
-        run: python scripts/inspect-package-artifacts.py dist
+      - name: Prepare release artifacts
+        run: python scripts/prepare-release.py --dist-dir dist
