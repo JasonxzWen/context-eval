@@ -9,7 +9,11 @@ from context_eval.adapters.base import (
     TelemetryCollectionResult,
     TelemetryCollector,
 )
-from context_eval.adapters.command import CommandTemplateAgent, JsonFileTelemetryCollector
+from context_eval.adapters.command import (
+    CommandTemplateAgent,
+    JsonFileTelemetryCollector,
+    render_command_template,
+)
 from context_eval.models import AgentConfig, CommandResult, TaskConfig
 
 
@@ -154,6 +158,11 @@ def test_command_template_agent_defaults_to_noop_collector_and_preserves_command
     assert output_dir.exists()
     assert telemetry.status == "unavailable"
     assert telemetry.source == "none"
+
+
+def test_render_command_template_rejects_unknown_variables_before_execution() -> None:
+    with pytest.raises(ValueError, match="unknown variable: missing"):
+        render_command_template("agent -p {prompt_file} --bad {missing}", {"prompt_file": "p.md"})
 
 
 def test_command_template_agent_allows_collector_preparation(

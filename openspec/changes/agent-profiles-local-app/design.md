@@ -12,7 +12,8 @@ local app mode that can write config files and launch runs.
 **Goals:**
 
 - Keep the existing single `agent` config working.
-- Add named profiles for Codex CLI, Claude Code, and custom local agents.
+- Add named profiles for Codex CLI, Claude Code, traecli, and custom local
+  agents.
 - Support a deterministic agent x task x variant x trial matrix.
 - Introduce a local app mode with save, preflight, run, progress, and result
   workflows.
@@ -22,8 +23,8 @@ local app mode that can write config files and launch runs.
 
 - No hosted dashboard, remote database, shared account system, or remote run
   service.
-- No automatic installation or upgrading of Codex CLI, Claude Code, or custom
-  agents.
+- No automatic installation or upgrading of Codex CLI, Claude Code, traecli, or
+  custom agents.
 - No LLM judge, automatic commits, provider billing reconciliation, or absolute
   coding-agent ranking.
 - No change to static UI safety: static HTML remains offline and cannot run
@@ -40,7 +41,7 @@ local app mode that can write config files and launch runs.
 
 2. Keep command templates as the adapter baseline.
 
-   Codex CLI, Claude Code, and custom agents all differ in flags and local
+   Codex CLI, Claude Code, traecli, and custom agents all differ in flags and local
    authentication behavior, but they can be represented by editable
    noninteractive command templates. Built-in profile kinds should provide
    presets and validation copy, not opaque SDK integrations.
@@ -101,4 +102,3 @@ compatibility rollback path.
   frontend build tool after the API contract is stable?
 - Should a real external-agent smoke test remain manual, or be added as an
   opt-in local test marker after fake-agent local-e2e coverage is green?
-

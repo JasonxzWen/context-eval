@@ -198,6 +198,109 @@ variants:
     assert config.agent.telemetry.file == "metrics/usage.json"
 
 
+def test_yaml_config_parses_agents_map_and_resolves_prompt_templates(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    context_dir = tmp_path / "contexts" / "baseline"
+    context_dir.mkdir(parents=True)
+    (context_dir / "AGENTS.md").write_text("# Instructions\n", encoding="utf-8")
+    prompt_template = tmp_path / "prompts" / "codex.md"
+    prompt_template.parent.mkdir()
+    prompt_template.write_text("Task={task_id}", encoding="utf-8")
+    (tmp_path / "tasks.yaml").write_text(
+        """
+tasks:
+  - id: "task-1"
+    prompt: "Fix the bug."
+""",
+        encoding="utf-8",
+    )
+    config_path = tmp_path / "context-eval.yaml"
+    config_path.write_text(
+        """
+repo:
+  path: "./repo"
+agents:
+  codex:
+    kind: "codex-cli"
+    command: "codex exec -C {workspace} - < {prompt_file}"
+    prompt_template: "./prompts/codex.md"
+  coco:
+    kind: "custom"
+    command: "coco -p {prompt_file}"
+    timeout_minutes: 15
+  trae:
+    kind: "traecli"
+    command: "traecli -p \\"{prompt}\\""
+    timeout_minutes: 20
+tasks: "./tasks.yaml"
+variants:
+  baseline:
+    description: "Baseline"
+    overlays:
+      - source: "./contexts/baseline/AGENTS.md"
+        target: "AGENTS.md"
+""",
+        encoding="utf-8",
+    )
+
+    config = load_config(config_path)
+    profiles = config.agent_profiles()
+
+    assert config.agent is None
+    assert list(profiles) == ["codex", "coco", "trae"]
+    assert profiles["codex"].name == "codex"
+    assert profiles["codex"].kind == "codex-cli"
+    assert profiles["codex"].prompt_template == prompt_template.resolve()
+    assert profiles["coco"].kind == "custom"
+    assert profiles["coco"].timeout_minutes == 15
+    assert profiles["trae"].kind == "traecli"
+    assert profiles["trae"].command == 'traecli -p "{prompt}"'
+
+
+def test_yaml_config_rejects_mixed_agent_shapes(tmp_path: Path) -> None:
+    config_path = _write_config_fixture(tmp_path)
+    config_path.write_text(
+        config_path.read_text(encoding="utf-8")
+        + """
+agents:
+  codex:
+    kind: "codex-cli"
+    command: "codex exec - < {prompt_file}"
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigError) as excinfo:
+        load_config(config_path)
+
+    message = str(excinfo.value)
+    assert "context-eval.yaml: agents" in message
+    assert "cannot set both top-level agent and agents" in message
+
+
+def test_yaml_config_rejects_unknown_agent_command_template_variable(
+    tmp_path: Path,
+) -> None:
+    config_path = _write_config_fixture(tmp_path)
+    config_path.write_text(
+        config_path.read_text(encoding="utf-8").replace(
+            'command: "agent -p {prompt_file}"',
+            'command: "agent -p {prompt_file} --bad {missing}"',
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigError) as excinfo:
+        load_config(config_path)
+
+    message = str(excinfo.value)
+    assert "context-eval.yaml: agent.command" in message
+    assert "unknown variable: missing" in message
+
+
 def test_yaml_config_resolves_prompt_template_relative_to_config(tmp_path: Path) -> None:
     config_path = _write_config_fixture(tmp_path)
     prompt_template = tmp_path / "prompts" / "agent-task.md"
@@ -228,6 +331,34 @@ def test_validate_config_rejects_missing_prompt_template(tmp_path: Path) -> None
 
     with pytest.raises(ConfigError, match="agent.prompt_template does not exist"):
         validate_config_files(config_path)
+
+
+def test_validate_config_rejects_missing_agent_profile_prompt_template(
+    tmp_path: Path,
+) -> None:
+    config_path = _write_config_fixture(tmp_path)
+    text = config_path.read_text(encoding="utf-8")
+    config_path.write_text(
+        text.replace(
+            """agent:
+  name: "test-agent"
+  command: "agent -p {prompt_file}"
+""",
+            """agents:
+  codex:
+    kind: "codex-cli"
+    command: "codex exec - < {prompt_file}"
+    prompt_template: "./missing-prompt.md"
+""",
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigError) as excinfo:
+        validate_config_files(config_path)
+
+    message = str(excinfo.value)
+    assert "agents.codex.prompt_template does not exist" in message
 
 
 def test_config_schema_error_names_file_and_field(tmp_path: Path) -> None:

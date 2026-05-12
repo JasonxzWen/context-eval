@@ -14,7 +14,7 @@ compatible shape.
 #### Scenario: Multiple profiles are configured
 
 - **WHEN** a config contains an `agents` mapping with `codex-cli`,
-  `claude-code`, or `custom` profile kinds
+  `claude-code`, `traecli`, or `custom` profile kinds
 - **THEN** the system validates each profile independently and records the
   selected profile key as `agent_name`
 
@@ -46,6 +46,13 @@ template that is validated before agent execution.
 - **WHEN** a user configures a custom profile command such as
   `coco -p {prompt_file}`
 - **THEN** the runner executes it from the prepared workspace for selected cases
+
+#### Scenario: traecli command is supported
+
+- **WHEN** a user configures a `traecli` profile command such as
+  `traecli -p "{prompt}"`
+- **THEN** the runner renders the task prompt into the command template and
+  executes it from the prepared workspace for selected cases
 
 ### Requirement: Agent matrix execution
 
@@ -86,4 +93,3 @@ NOT present them as an absolute coding-agent leaderboard.
 - **WHEN** a run artifact contains only one distinct `agent_name`
 - **THEN** agent-level summaries remain suppressed unless a later spec changes
   that behavior
-

@@ -35,16 +35,41 @@ directory.
 
 `network` is recorded in results. The MVP does not implement network isolation.
 
-## Planned Agent Profiles
+## Agent Profiles
 
-The current released config uses a single `agent` mapping. The planned
-multi-agent config shape is documented in `docs/agent-profiles.md` and keeps
-the existing `agent` mapping backwards-compatible while adding a named `agents`
-map for Codex CLI, Claude Code, and custom noninteractive commands.
+The single `agent` mapping remains valid and is treated as one implicit profile.
+The multi-agent config shape is documented in `docs/agent-profiles.md` and adds
+a named `agents` map for Codex CLI, Claude Code, traecli, and custom
+noninteractive commands.
 
-That future profile model is still local-only. It will not install coding
-agents, manage provider credentials, or turn results into an absolute
-leaderboard.
+```yaml
+agents:
+  codex:
+    kind: "codex-cli"
+    command: "codex exec -C {workspace} - < {prompt_file}"
+    timeout_minutes: 60
+    network: "disabled"
+
+  coco:
+    kind: "custom"
+    command: "coco -p {prompt_file}"
+    timeout_minutes: 60
+    network: "disabled"
+
+  trae:
+    kind: "traecli"
+    command: "traecli -p \"{prompt}\""
+    timeout_minutes: 60
+    network: "disabled"
+```
+
+Do not set both top-level `agent` and `agents` in the same config. The loader
+rejects mixed shapes rather than guessing precedence.
+
+The profile model is still local-only. It does not install coding agents,
+manage provider credentials, or turn results into an absolute leaderboard.
+`context-eval run` runs every configured profile by default; repeat `--agent
+<profile>` to select specific profiles.
 
 ## Agent Telemetry
 
@@ -71,6 +96,8 @@ the run artifact directory. context-eval also sets
 `agent_duration_seconds`, `prompt_tokens`, `completion_tokens`,
 `total_tokens`, `reasoning_tokens`, `tool_call_count`, and
 `tool_calls_by_name`.
+
+The same telemetry block is valid inside each `agents.<profile>` entry.
 
 ## Validation
 

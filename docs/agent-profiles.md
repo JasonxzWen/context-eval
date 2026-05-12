@@ -1,11 +1,11 @@
 # Agent Profiles And Noninteractive Commands
 
-This spec defines the planned first-class model for running context-eval against
-Codex CLI, Claude Code, and custom local coding agents through noninteractive
-commands.
+This spec defines the accepted first-class model for running context-eval against
+Codex CLI, Claude Code, traecli, and custom local coding agents through
+noninteractive commands.
 
-The current runtime already supports one command-template agent through
-`agent.command`. This plan keeps that behavior and expands it into named agent
+The runtime supports one command-template agent through the legacy
+`agent.command` shape. The profile model keeps that behavior and expands it into named agent
 profiles so users can run the same task, context variant, and trial matrix
 against multiple local agents without copying entire config files.
 
@@ -24,6 +24,11 @@ agents:
   claude:
     kind: "claude-code"
     command: "claude -p {prompt_file}"
+    timeout_minutes: 60
+
+  trae:
+    kind: "traecli"
+    command: "traecli -p \"{prompt}\""
     timeout_minutes: 60
 
   coco:
@@ -60,7 +65,8 @@ the failure mode clear instead of guessing which shape wins.
 Each profile has:
 
 - `name`: derived from the map key and written to result rows as `agent_name`.
-- `kind`: `codex-cli`, `claude-code`, or `custom`.
+- `kind`: required for `agents` profiles and set to `codex-cli`, `claude-code`,
+  `traecli`, or `custom`; legacy `agent` configs default to `custom`.
 - `command`: the noninteractive command template.
 - `timeout_minutes`: command timeout for the coding agent process.
 - `network`: recorded in results as today; still not real network isolation.
@@ -97,6 +103,8 @@ Built-in presets help users start, but they remain editable templates:
 
 - `codex-cli`: a Codex CLI noninteractive command template.
 - `claude-code`: a Claude Code noninteractive command template.
+- `traecli`: a traecli noninteractive command template such as
+  `traecli -p "{prompt}"`.
 - `custom`: a user-supplied command such as `coco -p {prompt_file}`.
 
 The preset layer must not assume every machine has the agent installed. Preflight
@@ -116,6 +124,13 @@ Artifacts remain case-local, including prompt, logs, patch, workspace, and
 optional telemetry files. Row ordering should remain deterministic by selected
 agent, task, variant, and trial unless a later spec changes the ordering.
 
+The CLI runs all configured profiles by default. `context-eval run --agent
+<profile>` may be repeated to select a subset from the configured profile map.
+Legacy single-agent configs keep the existing task x variant x trial artifact
+names. Profile-map runs include the profile key in case-local artifact names so
+multiple agents cannot overwrite prompt, log, patch, workspace, or telemetry
+files for the same task and variant.
+
 ## Reporting Behavior
 
 Reports, exports, terminal summaries, and UI views continue to frame results as
@@ -134,7 +149,7 @@ local observations. Agent summaries are shown only when more than one
 
 ## Non-Goals
 
-This capability does not install Codex CLI, Claude Code, coco, or any other
+This capability does not install Codex CLI, Claude Code, traecli, coco, or any other
 agent. It does not manage provider accounts, hosted APIs, remote cost
 accounting, or billing reconciliation. It does not add an LLM judge, automatic
 commits, or absolute leaderboard language.

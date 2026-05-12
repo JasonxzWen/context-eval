@@ -36,9 +36,12 @@ def inspect_run(run_dir: Path, console: Console) -> None:
     )
     if metadata:
         agent = metadata.get("agent", {}).get("name")
+        agent_names = _metadata_agent_names(metadata)
         base_ref = metadata.get("repo", {}).get("base_ref")
         if agent:
             console.print(f"Agent: {agent}")
+        if len(agent_names) > 1:
+            console.print(f"Agent profiles: {', '.join(agent_names)}")
         if base_ref:
             console.print(f"Base ref: {base_ref}")
 
@@ -117,3 +120,19 @@ def _load_metadata(run_dir: Path) -> dict[str, Any]:
     if not metadata_path.exists():
         return {}
     return json.loads(metadata_path.read_text(encoding="utf-8"))
+
+
+def _metadata_agent_names(metadata: dict[str, Any]) -> list[str]:
+    agents = metadata.get("agents")
+    if isinstance(agents, list):
+        names = [
+            item.get("name")
+            for item in agents
+            if isinstance(item, dict) and isinstance(item.get("name"), str)
+        ]
+        if names:
+            return names
+    agent = metadata.get("agent")
+    if isinstance(agent, dict) and isinstance(agent.get("name"), str):
+        return [agent["name"]]
+    return []

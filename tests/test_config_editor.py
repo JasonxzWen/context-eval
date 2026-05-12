@@ -136,6 +136,65 @@ tasks:
     ]
 
 
+def test_editable_model_preserves_agents_map_on_export(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    context_dir = tmp_path / "contexts" / "baseline"
+    context_dir.mkdir(parents=True)
+    (context_dir / "AGENTS.md").write_text("# Instructions\n", encoding="utf-8")
+    config_path = tmp_path / "context-eval.yaml"
+    config_path.write_text(
+        """
+repo:
+  path: "./repo"
+agents:
+  codex:
+    kind: "codex-cli"
+    command: "codex exec - < {prompt_file}"
+  coco:
+    kind: "custom"
+    command: "coco -p {prompt_file}"
+  trae:
+    kind: "traecli"
+    command: "traecli -p \\"{prompt}\\""
+tasks: "./tasks.yaml"
+variants:
+  baseline:
+    description: "Baseline"
+    overlays:
+      - source: "./contexts/baseline/AGENTS.md"
+        target: "AGENTS.md"
+""",
+        encoding="utf-8",
+    )
+    tasks_path = tmp_path / "tasks.yaml"
+    tasks_path.write_text(
+        """
+tasks:
+  - id: "task-1"
+    prompt: "Fix the bug."
+""",
+        encoding="utf-8",
+    )
+    config, tasks = validate_config_files(config_path)
+    model = build_editable_model(config, tasks)
+
+    exported = export_editable_yaml(model)
+    config_data = yaml.safe_load(exported.config_yaml)
+
+    assert model.agent_shape == "agents"
+    assert [agent.name for agent in model.agents] == ["codex", "coco", "trae"]
+    assert "agent" not in config_data
+    assert config_data["agents"]["codex"]["kind"] == "codex-cli"
+    assert config_data["agents"]["coco"]["command"] == "coco -p {prompt_file}"
+    assert config_data["agents"]["trae"]["kind"] == "traecli"
+    assert config_data["agents"]["trae"]["command"] == 'traecli -p "{prompt}"'
+
+    config_path.write_text(exported.config_yaml, encoding="utf-8")
+    round_tripped_config, _ = validate_config_files(config_path)
+    assert list(round_tripped_config.agent_profiles()) == ["codex", "coco", "trae"]
+
+
 def test_editable_model_exports_validation_timeout_defaults(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

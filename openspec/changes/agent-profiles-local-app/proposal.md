@@ -9,8 +9,8 @@ benchmark service.
 
 ## What Changes
 
-- Add a planned first-class agent profile model for Codex CLI, Claude Code, and
-  custom local commands such as `coco -p {prompt_file}`.
+- Add a planned first-class agent profile model for Codex CLI, Claude Code,
+  traecli, and custom local commands such as `coco -p {prompt_file}`.
 - Expand the planned execution matrix from task x variant x trial to agent x
   task x variant x trial while preserving local artifacts and non-benchmark
   language.
@@ -45,4 +45,3 @@ benchmark service.
 - Docs/tests: `docs/agent-profiles.md`, `docs/local-app-workflow.md`, and
   `docs/development-plan.md` become the source contracts for the next product
   expansion.
-

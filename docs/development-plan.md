@@ -99,8 +99,8 @@ loss of SDD/TDD discipline.
 7. PR G: Release Candidate Install Smoke And Changelog Finalization, before
    tagging or publishing the first 0.1.0 release candidate.
 8. PR H: Agent Profiles And Noninteractive Agent Matrix, before full Web UI
-   work. This unblocks Codex CLI, Claude Code, and custom commands such as
-   `coco -p {prompt_file}` as first-class local profiles.
+   work. This unblocks Codex CLI, Claude Code, traecli, and custom commands
+   such as `coco -p {prompt_file}` as first-class local profiles.
 9. PR I: Local App Server And Run Orchestration, after agent profiles are
    stable. This creates the explicit local server mode behind the visual app.
 10. PR J: Full Web UI Workflow For Non-Technical Users, after the server API is
@@ -581,7 +581,7 @@ would make it too easy to tag a commit that has only partial release evidence.
 
 ### Goal
 
-Make Codex CLI, Claude Code, and custom local commands first-class
+Make Codex CLI, Claude Code, traecli, and custom local commands first-class
 noninteractive agent profiles before building the full visual workflow.
 
 ### Scope
@@ -590,8 +590,8 @@ noninteractive agent profiles before building the full visual workflow.
   `agent-profiles-local-app` change as the source specs.
 - Preserve the existing single `agent` config as a backwards-compatible
   implicit profile.
-- Add a new `agents` profile map for `codex-cli`, `claude-code`, and `custom`
-  profile kinds.
+- Add a new `agents` profile map for `codex-cli`, `claude-code`, `traecli`,
+  and `custom` profile kinds.
 - Validate command template variables and provide rendered command previews
   before an agent process starts.
 - Expand run planning to agent x task x variant x trial and keep row ordering
@@ -602,7 +602,7 @@ noninteractive agent profiles before building the full visual workflow.
 
 ### Non-Goals
 
-- Do not install Codex CLI, Claude Code, coco, or any other coding agent.
+- Do not install Codex CLI, Claude Code, traecli, coco, or any other coding agent.
 - Do not manage provider accounts, credentials, billing, or hosted APIs.
 - Do not add a local app server or frontend in this PR.
 - Do not add an LLM judge, automatic commits, or leaderboard language.
@@ -612,8 +612,8 @@ noninteractive agent profiles before building the full visual workflow.
 - The capability PR includes spec, tests, implementation, docs, verification.
 - Existing single-agent configs continue to work unchanged.
 - Mixed `agent` and `agents` config shapes fail with a clear diagnostic.
-- Custom commands such as `coco -p {prompt_file}` are supported through the
-  command-template adapter.
+- traecli commands such as `traecli -p "{prompt}"` and custom commands such as
+  `coco -p {prompt_file}` are supported through the command-template adapter.
 - Multi-agent runs produce deterministic manifests, result rows, logs, patches,
   and reports.
 

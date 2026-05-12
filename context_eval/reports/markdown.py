@@ -109,6 +109,7 @@ def render_markdown_report(run_dir: Path) -> Path:
         variant_stats=_variant_stats(results),
         telemetry_stats=telemetry_stats_by_variant(results),
         agent_stats=_agent_stats(results),
+        metadata_agent_names=_metadata_agent_names(metadata),
         failed_cases=failed_cases,
         low_confidence=low_confidence,
         telemetry_gaps=telemetry_gaps,
@@ -116,3 +117,19 @@ def render_markdown_report(run_dir: Path) -> Path:
     report_path = run_dir / "report.md"
     report_path.write_text(body, encoding="utf-8")
     return report_path
+
+
+def _metadata_agent_names(metadata: dict[str, Any]) -> list[str]:
+    agents = metadata.get("agents")
+    if isinstance(agents, list):
+        names = [
+            item.get("name")
+            for item in agents
+            if isinstance(item, dict) and isinstance(item.get("name"), str)
+        ]
+        if names:
+            return names
+    agent = metadata.get("agent")
+    if isinstance(agent, dict) and isinstance(agent.get("name"), str):
+        return [agent["name"]]
+    return []

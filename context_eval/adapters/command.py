@@ -11,10 +11,17 @@ from context_eval.adapters.base import (
     TelemetryCollector,
 )
 from context_eval.logging import run_command
-from context_eval.models import AgentConfig, AgentTelemetryConfig, CommandResult, TaskConfig
+from context_eval.models import (
+    AgentConfig,
+    AgentTelemetryConfig,
+    CommandResult,
+    TaskConfig,
+    validate_agent_command_template,
+)
 
 
 def render_command_template(template: str, variables: dict[str, str]) -> str:
+    validate_agent_command_template(template, allowed_variables=set(variables))
     try:
         return template.format(**variables)
     except KeyError as exc:
