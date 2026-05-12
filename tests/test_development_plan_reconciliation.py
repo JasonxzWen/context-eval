@@ -14,6 +14,7 @@ def _epic_sections(text: str) -> list[str]:
         "## Capability Epic C:",
         "## Capability Epic D:",
         "## Capability Epic E:",
+        "## Capability Epic F:",
     ]
     return [
         _section(
@@ -55,7 +56,7 @@ def test_development_plan_audits_pr_1_to_17_and_batches_future_work() -> None:
         assert term in text
 
 
-def test_development_plan_uses_five_larger_capability_epics() -> None:
+def test_development_plan_uses_six_larger_capability_epics() -> None:
     text = Path("docs/development-plan.md").read_text(encoding="utf-8")
 
     expected_headings = [
@@ -67,11 +68,12 @@ def test_development_plan_uses_five_larger_capability_epics() -> None:
         ),
         "## Capability Epic D: Release Automation And Packaging Workflow Polish",
         "## Capability Epic E: Optional Adapter And Telemetry Expansion",
+        "## Capability Epic F: Local E2E CI Smoke And Test Taxonomy",
     ]
     for heading in expected_headings:
         assert heading in text
 
-    assert text.count("## Capability Epic ") == 5
+    assert text.count("## Capability Epic ") == 6
     assert "## Active Backlog Order" not in text
     assert "## Phase 7:" not in text
 
@@ -107,6 +109,29 @@ def test_changelog_mentions_larger_capability_pr_replanning() -> None:
     for term in [
         "Replan the development roadmap around larger capability PRs",
         "Ralph stories remain SDD/TDD units inside a capability PR",
-        "replace the fine-grained active backlog with five capability epics",
+        "replace the fine-grained active backlog with six capability epics",
     ]:
         assert term in text
+
+
+def test_development_plan_inserts_local_e2e_before_later_capability_work() -> None:
+    text = Path("docs/development-plan.md").read_text(encoding="utf-8")
+    epic_f = _section(
+        text,
+        "## Capability Epic F: Local E2E CI Smoke And Test Taxonomy",
+        "## Cross-Epic Quality Gates",
+    )
+
+    for term in [
+        "docs/local-e2e-ci.md",
+        "local-e2e smoke",
+        "installed CLI",
+        "fixture repository",
+        "context-eval run",
+        "context-eval report",
+        "context-eval export",
+        "context-eval ui",
+        "no hosted services",
+        "no real external coding agent",
+    ]:
+        assert term in epic_f
