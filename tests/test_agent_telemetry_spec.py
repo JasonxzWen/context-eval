@@ -21,8 +21,11 @@ def test_agent_telemetry_spec_defines_collector_contract() -> None:
     required_terms = [
         "runner-guaranteed",
         "hook-provided",
+        "Accepted JSON Telemetry Fields",
+        "agent_duration_seconds",
         "telemetry_status",
         "telemetry_source",
+        "telemetry_error",
         "prompt_tokens",
         "completion_tokens",
         "total_tokens",
@@ -42,6 +45,8 @@ def test_development_plan_includes_optional_telemetry_expansion_epic() -> None:
 
     for term in [
         "## Capability Epic E: Optional Adapter And Telemetry Expansion",
+        "keeps the command-template adapter as the only adapter",
+        "Accepted local artifact format",
         "docs/agent-telemetry.md",
         "runner-guaranteed",
         "hook-provided",

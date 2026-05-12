@@ -177,6 +177,7 @@ class ContextEvalRunner:
                 "command": self.config.agent.command,
                 "timeout_minutes": self.config.agent.timeout_minutes,
                 "network": self.config.agent.network,
+                "telemetry": self.config.agent.telemetry.model_dump(mode="json"),
             },
             "variants": {
                 name: {

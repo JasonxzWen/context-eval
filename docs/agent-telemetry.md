@@ -52,6 +52,25 @@ Collectors must be local-only. They must not call a hosted API, upload logs,
 perform cost estimation through a remote service, or execute agent commands on
 their own.
 
+## Accepted JSON Telemetry Fields
+
+The generic JSON telemetry collector accepts only documented fields from a
+case-local JSON object written by the configured agent command. The file may
+contain:
+
+- `agent_duration_seconds`: a non-negative number supplied by the local agent
+  artifact when it can report a more precise internal duration.
+- `prompt_tokens`, `completion_tokens`, `total_tokens`, and
+  `reasoning_tokens`: non-negative integers.
+- `tool_call_count`: a non-negative integer.
+- `tool_calls_by_name`: an object whose keys are non-empty tool names and whose
+  values are non-negative integers.
+
+The collector derives `tool_call_count` from `tool_calls_by_name` only when the
+total is absent. It ignores unknown fields, records invalid known fields as
+partial or error telemetry, stores the concise message in `telemetry_error`,
+and never guesses missing counts.
+
 ## Result Schema
 
 `CaseResult` should preserve existing fields and add optional normalized

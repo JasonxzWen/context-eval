@@ -286,3 +286,21 @@ def test_readme_documents_prepare_release_entrypoint() -> None:
         "does not tag or publish",
     ]:
         assert term in text
+
+
+def test_readme_documents_optional_local_telemetry_workflow() -> None:
+    text = Path("README.md").read_text(encoding="utf-8")
+
+    for term in [
+        "## Optional Local Agent Telemetry",
+        "collector: \"json-file\"",
+        "{telemetry_file}",
+        "CONTEXT_EVAL_TELEMETRY_FILE",
+        "agent_duration_seconds",
+        "telemetry_status",
+        "telemetry_source",
+        "telemetry_error",
+        "local artifacts only",
+        "does not call hosted services",
+    ]:
+        assert term in text

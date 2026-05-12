@@ -283,6 +283,7 @@ def test_json_file_telemetry_collector_normalizes_metrics(tmp_path: Path) -> Non
   "completion_tokens": 5,
   "total_tokens": 15,
   "reasoning_tokens": 2,
+  "agent_duration_seconds": 1.75,
   "tool_calls_by_name": {
     "read": 2,
     "shell": 1
@@ -308,6 +309,7 @@ def test_json_file_telemetry_collector_normalizes_metrics(tmp_path: Path) -> Non
     assert result.completion_tokens == 5
     assert result.total_tokens == 15
     assert result.reasoning_tokens == 2
+    assert result.agent_duration_seconds == 1.75
     assert result.tool_call_count == 3
     assert result.tool_calls_by_name == {"read": 2, "shell": 1}
 
@@ -383,3 +385,29 @@ def test_json_file_telemetry_collector_preserves_valid_partial_metrics(
     assert result.completion_tokens is None
     assert result.tool_call_count == 1
     assert result.tool_calls_by_name == {"read": 1}
+
+
+def test_json_file_telemetry_collector_rejects_invalid_agent_duration(
+    tmp_path: Path,
+) -> None:
+    collector = JsonFileTelemetryCollector()
+    task = TaskConfig(id="task-1", prompt="Fix it.")
+    output_dir = tmp_path / "artifacts"
+    output_dir.mkdir()
+    (output_dir / "telemetry.json").write_text(
+        '{"agent_duration_seconds": -1}',
+        encoding="utf-8",
+    )
+
+    result = collector.collect(
+        workspace=tmp_path / "workspace",
+        prompt_file=tmp_path / "prompt.md",
+        task=task,
+        variant="baseline",
+        output_dir=output_dir,
+        command_result=_command_result(),
+    )
+
+    assert result.status == "error"
+    assert result.agent_duration_seconds is None
+    assert "agent_duration_seconds" in (result.error or "")

@@ -201,6 +201,7 @@ def test_runner_records_json_file_agent_telemetry(tmp_path: Path) -> None:
         console=_quiet_console(),
     ).run()
     result = json.loads((run_dir / "results.jsonl").read_text(encoding="utf-8"))
+    metadata = json.loads((run_dir / "run_metadata.json").read_text(encoding="utf-8"))
 
     assert result["status"] == "completed"
     assert result["telemetry_status"] == "collected"
@@ -212,6 +213,11 @@ def test_runner_records_json_file_agent_telemetry(tmp_path: Path) -> None:
     assert result["reasoning_tokens"] == 3
     assert result["tool_call_count"] == 3
     assert result["tool_calls_by_name"] == {"read": 1, "edit": 2}
+    assert metadata["agent"]["telemetry"] == {
+        "collector": "json-file",
+        "file": "telemetry.json",
+        "environment_variable": "CONTEXT_EVAL_TELEMETRY_FILE",
+    }
 
 
 def test_runner_writes_custom_prompt_template(tmp_path: Path) -> None:
