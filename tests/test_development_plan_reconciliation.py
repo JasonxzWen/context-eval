@@ -9,12 +9,9 @@ def _section(text: str, heading: str, next_heading: str | None = None) -> str:
 
 def _epic_sections(text: str) -> list[str]:
     headings = [
-        "## Capability Epic A:",
-        "## Capability Epic B:",
-        "## Capability Epic C:",
-        "## Capability Epic D:",
-        "## Capability Epic E:",
-        "## Capability Epic F:",
+        line
+        for line in text.splitlines()
+        if line.startswith("## Capability Epic ")
     ]
     return [
         _section(
@@ -56,7 +53,7 @@ def test_development_plan_audits_pr_1_to_17_and_batches_future_work() -> None:
         assert term in text
 
 
-def test_development_plan_uses_seven_larger_capability_epics() -> None:
+def test_development_plan_uses_larger_capability_epics() -> None:
     text = Path("docs/development-plan.md").read_text(encoding="utf-8")
 
     expected_headings = [
@@ -70,11 +67,15 @@ def test_development_plan_uses_seven_larger_capability_epics() -> None:
         "## Capability Epic E: Optional Adapter And Telemetry Expansion",
         "## Capability Epic F: Local E2E CI Smoke And Test Taxonomy",
         "## Capability Epic G: Release Candidate Install Smoke And Changelog Finalization",
+        "## Capability Epic H: Agent Profiles And Noninteractive Agent Matrix",
+        "## Capability Epic I: Local App Server And Run Orchestration",
+        "## Capability Epic J: Full Web UI Workflow For Non-Technical Users",
+        "## Capability Epic K: No-CLI Launcher And Packaging",
     ]
     for heading in expected_headings:
         assert heading in text
 
-    assert text.count("## Capability Epic ") == 7
+    assert text.count("## Capability Epic ") == 11
     assert "## Active Backlog Order" not in text
     assert "## Phase 7:" not in text
 
@@ -110,7 +111,7 @@ def test_changelog_mentions_larger_capability_pr_replanning() -> None:
     for term in [
         "Replan the development roadmap around larger capability PRs",
         "Ralph stories remain SDD/TDD units inside a capability PR",
-        "replace the fine-grained active backlog with seven capability epics",
+        "replace the fine-grained active backlog with capability epics",
     ]:
         assert term in text
 
@@ -136,3 +137,93 @@ def test_development_plan_inserts_local_e2e_before_later_capability_work() -> No
         "no real external coding agent",
     ]:
         assert term in epic_f
+
+
+def test_development_plan_prioritizes_agent_profiles_before_full_web_ui() -> None:
+    text = Path("docs/development-plan.md").read_text(encoding="utf-8")
+
+    required_order = [
+        "PR H: Agent Profiles And Noninteractive Agent Matrix",
+        "PR I: Local App Server And Run Orchestration",
+        "PR J: Full Web UI Workflow For Non-Technical Users",
+        "PR K: No-CLI Launcher And Packaging",
+    ]
+    positions = [text.index(term) for term in required_order]
+    assert positions == sorted(positions)
+
+    epic_h = _section(
+        text,
+        "## Capability Epic H: Agent Profiles And Noninteractive Agent Matrix",
+        "## Capability Epic I: Local App Server And Run Orchestration",
+    )
+    for term in [
+        "Codex CLI",
+        "Claude Code",
+        "custom local commands",
+        "`coco -p {prompt_file}`",
+        "agent x task x variant x trial",
+        "Existing single-agent configs continue to work unchanged",
+        "Do not install Codex CLI",
+    ]:
+        assert term in epic_h
+
+
+def test_development_plan_defines_local_app_and_no_cli_followups() -> None:
+    text = Path("docs/development-plan.md").read_text(encoding="utf-8")
+    epic_i = _section(
+        text,
+        "## Capability Epic I: Local App Server And Run Orchestration",
+        "## Capability Epic J: Full Web UI Workflow For Non-Technical Users",
+    )
+    epic_j = _section(
+        text,
+        "## Capability Epic J: Full Web UI Workflow For Non-Technical Users",
+        "## Capability Epic K: No-CLI Launcher And Packaging",
+    )
+    epic_k = _section(
+        text,
+        "## Capability Epic K: No-CLI Launcher And Packaging",
+        "## Cross-Epic Quality Gates",
+    )
+
+    for term in [
+        "explicit local app/server command",
+        "loopback",
+        "config save/load",
+        "preflight",
+        "run lifecycle",
+        "log streaming",
+        "static UI mode",
+    ]:
+        assert term in epic_i
+
+    for term in [
+        "non-technical users",
+        "first-run setup",
+        "evaluation criteria",
+        "run progress",
+        "risk signals",
+        "Browser verification",
+    ]:
+        assert term in epic_j
+
+    for term in [
+        "without requiring users to type a command",
+        "starts the local app server and opens the browser",
+        "Startup failures are visible",
+        "Do not package external coding agents",
+    ]:
+        assert term in epic_k
+
+
+def test_changelog_mentions_agent_profiles_and_local_app_specs() -> None:
+    text = Path("CHANGELOG.md").read_text(encoding="utf-8")
+
+    for term in [
+        "agent profiles",
+        "noninteractive",
+        "local app/server mode",
+        "full Web UI workflows",
+        "no-command-line launcher",
+    ]:
+        assert term in text

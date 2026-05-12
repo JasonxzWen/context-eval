@@ -158,6 +158,11 @@ matrix and validation feedback, then copy or download both generated YAML
 documents. The static page does not save back to the original files. It does
 not run agents and does not run validation commands.
 
+The planned full local app workflow is documented in
+`docs/local-app-workflow.md`. It is a future explicit local server/app mode for
+visual configuration, preflight, run orchestration, and result review. Static
+HTML remains the safe offline mode.
+
 After placing the exported `context-eval.yaml` and `tasks.yaml` where you want
 them, run:
 
@@ -257,6 +262,11 @@ Supported variables:
 
 The command runs from the isolated workspace. The agent can modify files and run
 commands, but context-eval never commits automatically.
+
+The planned agent profile model is documented in `docs/agent-profiles.md`. It
+will keep this single-agent shape compatible while adding named Codex CLI,
+Claude Code, and custom noninteractive profiles such as
+`coco -p {prompt_file}`.
 
 Customize the prompt text with a local template file:
 

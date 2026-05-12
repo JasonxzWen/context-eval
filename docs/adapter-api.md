@@ -24,6 +24,17 @@ The command runs with the prepared workspace as the current working directory.
 The agent may modify files and run commands, but context-eval never commits
 changes automatically.
 
+## Planned Agent Profiles
+
+The next adapter expansion is named local agent profiles, specified in
+`docs/agent-profiles.md`. Profiles keep the command-template adapter as the
+baseline while making Codex CLI, Claude Code, and custom commands such as
+`coco -p {prompt_file}` first-class noninteractive configurations.
+
+Existing configs with a single `agent` mapping remain the compatibility shape.
+The planned `agents` map is for multi-agent matrices and should not install or
+manage coding agents automatically.
+
 ## Prompt Templates
 
 Command-template agents may set `prompt_template` to a local file path:

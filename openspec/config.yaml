@@ -1,20 +1,20 @@
 schema: spec-driven
 
 context: |
-  Project: skill-hub
-  Purpose: Curate and adapt famous agent skills into Codex-friendly versions.
-  Primary language: Chinese documentation, with source URLs and technical names preserved in English.
-  Initial focus: Superpowers, Everything Claude Code, and adjacent high-signal coding skill packs.
+  Project: context-eval
+  Purpose: Compare how context assets affect coding agent task outcomes in local Git repositories.
+  Primary language: English project documentation, with user-facing conversation in Chinese when requested.
+  Initial focus: Local-only evaluation workflows, deterministic artifacts, noninteractive coding-agent commands, and local web UI ergonomics.
   Constraints:
-    - Prefer source attribution over unattributed prompt copying.
-    - Adapt Claude Code tool assumptions to Codex-native tools and workflows.
-    - Keep skills focused, composable, and testable.
-    - Review licenses and security posture before importing third-party content.
+    - Keep context-eval local-only and artifact-based; do not turn results into an absolute agent benchmark.
+    - Prefer explicit specs, tests, implementation, docs, and verification for every capability PR.
+    - Preserve deterministic outputs from results.jsonl, run_metadata.json, and run_manifest.json.
+    - Do not add hosted dashboards, automatic commits, LLM judges, or automatic coding-agent installation without a new accepted spec.
 
 rules:
   proposal:
     - Keep proposals concise and include non-goals when useful.
-    - Call out upstream source projects and license/security considerations.
+    - Call out local-only boundaries, artifact sources, and compatibility impact.
   tasks:
     - Break work into small verifiable steps.
     - Include file paths and validation commands when implementation is expected.

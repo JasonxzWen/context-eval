@@ -1,0 +1,133 @@
+from pathlib import Path
+
+
+def test_agent_profiles_spec_documents_noninteractive_contract() -> None:
+    text = Path("docs/agent-profiles.md").read_text(encoding="utf-8")
+
+    for heading in [
+        "## User Contract",
+        "## Compatibility",
+        "## Profile Model",
+        "## Command Template Contract",
+        "## Built-In Presets",
+        "## Agent Matrix Execution",
+        "## Reporting Behavior",
+        "## Failure Modes",
+        "## Non-Goals",
+        "## Test Plan",
+    ]:
+        assert heading in text
+
+    for term in [
+        "Codex CLI",
+        "Claude Code",
+        "custom",
+        "coco -p {prompt_file}",
+        "agent x task x variant x trial",
+        "Existing configs with a single `agent` field remain valid",
+        "unknown variables",
+        "must not publish an absolute coding-agent ranking",
+        "does not install Codex CLI",
+    ]:
+        assert term in text
+
+
+def test_local_app_workflow_spec_documents_full_visual_workflow() -> None:
+    text = Path("docs/local-app-workflow.md").read_text(encoding="utf-8")
+
+    for heading in [
+        "## User Contract",
+        "## Modes",
+        "## Installation And Startup",
+        "## Project And Configuration Workflow",
+        "## Evaluation Criteria Workflow",
+        "## Preflight Workflow",
+        "## Run Orchestration Workflow",
+        "## Results Workflow",
+        "## API Boundary",
+        "## Non-Goals",
+        "## Test Plan",
+    ]:
+        assert heading in text
+
+    for term in [
+        "non-technical user",
+        "Static UI",
+        "Local app mode",
+        "context-eval app",
+        "preflight",
+        "validation commands",
+        "run ID",
+        "stdout/stderr log tails",
+        "failed, timeout, low-confidence, and telemetry-gap cases",
+        "loopback",
+        "does not add a hosted service",
+    ]:
+        assert term in text
+
+
+def test_openspec_change_contains_required_artifacts_and_capabilities() -> None:
+    change_dir = Path("openspec/changes/agent-profiles-local-app")
+
+    expected_files = [
+        "proposal.md",
+        "design.md",
+        "tasks.md",
+        "specs/agent-profiles/spec.md",
+        "specs/local-app-workflow/spec.md",
+    ]
+    for relative in expected_files:
+        assert (change_dir / relative).exists()
+
+    proposal = (change_dir / "proposal.md").read_text(encoding="utf-8")
+    for term in [
+        "`agent-profiles`",
+        "`local-app-workflow`",
+        "Codex CLI",
+        "Claude Code",
+        "`coco -p {prompt_file}`",
+    ]:
+        assert term in proposal
+
+
+def test_openspec_specs_define_scenarios_for_agent_profiles_and_local_app() -> None:
+    agent_spec = Path(
+        "openspec/changes/agent-profiles-local-app/specs/agent-profiles/spec.md"
+    ).read_text(encoding="utf-8")
+    app_spec = Path(
+        "openspec/changes/agent-profiles-local-app/specs/local-app-workflow/spec.md"
+    ).read_text(encoding="utf-8")
+
+    for term in [
+        "### Requirement: Named local agent profiles",
+        "#### Scenario: Existing single-agent config remains valid",
+        "### Requirement: Noninteractive command template contract",
+        "#### Scenario: Custom agent command is supported",
+        "### Requirement: Agent matrix execution",
+        "agent x task x variant x trial",
+    ]:
+        assert term in agent_spec
+
+    for term in [
+        "### Requirement: Separate static UI and local app modes",
+        "#### Scenario: Static UI remains offline",
+        "### Requirement: Visual configuration workflow",
+        "### Requirement: Preflight before agent execution",
+        "### Requirement: Visual run orchestration",
+        "### Requirement: No-command-line product path",
+    ]:
+        assert term in app_spec
+
+
+def test_existing_docs_link_to_new_specs_without_claiming_implementation() -> None:
+    readme = Path("README.md").read_text(encoding="utf-8")
+    adapter = Path("docs/adapter-api.md").read_text(encoding="utf-8")
+    local_ui = Path("docs/local-ui-config-editor.md").read_text(encoding="utf-8")
+    configuration = Path("docs/configuration.md").read_text(encoding="utf-8")
+
+    assert "docs/local-app-workflow.md" in readme
+    assert "future explicit local server/app mode" in readme
+    assert "docs/agent-profiles.md" in adapter
+    assert "docs/agent-profiles.md" in configuration
+    assert "docs/local-app-workflow.md" in local_ui
+    assert "Static UI must stay safe" in local_ui

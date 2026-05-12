@@ -170,6 +170,16 @@ agent:
   command: "codex exec -C {workspace} - < {prompt_file}"
 ```
 
+The planned agent profile model in `docs/agent-profiles.md` will make this a
+single profile-aware run matrix:
+
+```text
+agent x task x variant x trial
+```
+
+Until that capability lands, keep using separate aligned configs or a single
+command-template agent per run.
+
 Use terminal inspection and exports against existing run directories:
 
 ```powershell

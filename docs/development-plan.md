@@ -22,11 +22,15 @@ package.
 - Multi-agent comparison must be based only on local `results.jsonl` and
   `run_metadata.json` artifacts, and must not claim absolute agent benchmark
   results.
-- Report, export, compare, and UI aggregation must read local run artifacts.
-  They must not rerun agents, scrape missing telemetry from logs, or call
-  hosted services.
+- Report, export, compare, and static UI aggregation must read local run
+  artifacts. They must not rerun agents, scrape missing telemetry from logs, or
+  call hosted services.
+- The active roadmap now includes an explicit local app mode for visual
+  configuration, preflight, run orchestration, and result review. This is a
+  local loopback app, not a hosted or multi-user dashboard.
 - The active roadmap does not include an LLM judge, hosted or multi-user web
-  dashboard, issue miner, real network isolation, or automatic commits.
+  dashboard, issue miner, real network isolation, automatic agent installation,
+  provider account management, or automatic commits.
 
 ## Development Cadence Policy
 
@@ -94,6 +98,15 @@ loss of SDD/TDD discipline.
    depends on stronger workflow-level regression confidence.
 7. PR G: Release Candidate Install Smoke And Changelog Finalization, before
    tagging or publishing the first 0.1.0 release candidate.
+8. PR H: Agent Profiles And Noninteractive Agent Matrix, before full Web UI
+   work. This unblocks Codex CLI, Claude Code, and custom commands such as
+   `coco -p {prompt_file}` as first-class local profiles.
+9. PR I: Local App Server And Run Orchestration, after agent profiles are
+   stable. This creates the explicit local server mode behind the visual app.
+10. PR J: Full Web UI Workflow For Non-Technical Users, after the server API is
+    stable enough to avoid duplicating runner logic in the frontend.
+11. PR K: No-CLI Launcher And Packaging, after the local app workflow is stable
+    and browser-verified.
 
 ## Capability Epic A: Config Diagnostics And Strict Validation Hardening
 
@@ -564,6 +577,271 @@ This is the final release-candidate gate. Splitting docs, package build,
 artifact inspection, installed-CLI smoke, changelog finalization, and CI wiring
 would make it too easy to tag a commit that has only partial release evidence.
 
+## Capability Epic H: Agent Profiles And Noninteractive Agent Matrix
+
+### Goal
+
+Make Codex CLI, Claude Code, and custom local commands first-class
+noninteractive agent profiles before building the full visual workflow.
+
+### Scope
+
+- Use `docs/agent-profiles.md` and the OpenSpec
+  `agent-profiles-local-app` change as the source specs.
+- Preserve the existing single `agent` config as a backwards-compatible
+  implicit profile.
+- Add a new `agents` profile map for `codex-cli`, `claude-code`, and `custom`
+  profile kinds.
+- Validate command template variables and provide rendered command previews
+  before an agent process starts.
+- Expand run planning to agent x task x variant x trial and keep row ordering
+  deterministic.
+- Record selected profile names in `agent_name` and keep artifacts case-local.
+- Keep reporting language scoped to local observations, not an absolute coding
+  agent benchmark.
+
+### Non-Goals
+
+- Do not install Codex CLI, Claude Code, coco, or any other coding agent.
+- Do not manage provider accounts, credentials, billing, or hosted APIs.
+- Do not add a local app server or frontend in this PR.
+- Do not add an LLM judge, automatic commits, or leaderboard language.
+
+### Merge Acceptance Criteria
+
+- The capability PR includes spec, tests, implementation, docs, verification.
+- Existing single-agent configs continue to work unchanged.
+- Mixed `agent` and `agents` config shapes fail with a clear diagnostic.
+- Custom commands such as `coco -p {prompt_file}` are supported through the
+  command-template adapter.
+- Multi-agent runs produce deterministic manifests, result rows, logs, patches,
+  and reports.
+
+### Suggested Ralph Stories
+
+- US-H1: Specify the agent profile schema, compatibility rules, and non-goals.
+- US-H2: Add tests for profile parsing, command templates, and invalid mixed
+  config shapes.
+- US-H3: Implement profile-aware planning and runner execution.
+- US-H4: Update reporting, export, UI, docs, and examples for profile-aware
+  artifacts.
+
+### Test Strategy
+
+- Spec tests for `docs/agent-profiles.md` and OpenSpec requirements.
+- Model tests for `agent` compatibility, `agents` validation, and profile kind
+  handling.
+- Adapter tests for supported and unknown command template variables.
+- Runner integration tests with fake local agents for multi-profile matrices.
+- Report/export/static UI tests proving agent summaries appear only when more
+  than one `agent_name` exists.
+- Full verification commands after each completed story and before the PR is
+  marked ready.
+
+### Why One Capability PR
+
+Agent profiles affect config loading, adapter validation, runner planning,
+artifact naming, reporting, exports, and UI data. Reviewing those changes
+together keeps the multi-agent contract coherent and gives the later Web UI a
+stable backend model.
+
+## Capability Epic I: Local App Server And Run Orchestration
+
+### Goal
+
+Add an explicit local app mode that can save local evaluation files, run
+side-effect-free preflight checks, start local evaluations, stream progress,
+and inspect artifacts without requiring direct CLI use for the main workflow.
+
+### Scope
+
+- Use `docs/local-app-workflow.md` and the OpenSpec
+  `agent-profiles-local-app` change as the source specs.
+- Add an explicit local app/server command separate from static HTML export.
+- Bind the local server to loopback by default and keep data file-based.
+- Expose API surfaces for config save/load, preflight, run planning, run
+  lifecycle, log streaming, artifact reads, and exports.
+- The API contract must name the run lifecycle explicitly, including planning,
+  start, active status, stop, completion, and artifact inspection.
+- Reuse existing config validation, runner, reporting, export, and artifact
+  modules instead of duplicating execution logic.
+- Preserve static UI mode as offline, self-contained, and unable to run agents
+  or write local files.
+
+### Non-Goals
+
+- Do not add the final polished frontend in this PR.
+- Do not add hosted services, remote databases, shared accounts, or remote run
+  orchestration.
+- Do not install coding agents or project dependencies automatically.
+- Do not run validation commands during side-effect-free preflight.
+- Do not create commits, tags, or package publishes.
+
+### Merge Acceptance Criteria
+
+- The capability PR includes spec, tests, implementation, docs, verification.
+- Static UI and local app mode have clear separate behavior in docs and code.
+- API endpoints validate local paths and reject traversal outside allowed
+  evaluation or artifact roots.
+- Preflight catches config, path, Git ref, overlay, prompt template, command
+  variable, optional executable, and output writability problems without
+  starting agents.
+- Run lifecycle endpoints write the same local artifacts as CLI runs.
+
+### Suggested Ralph Stories
+
+- US-I1: Specify local app API boundaries and path-safety rules.
+- US-I2: Add API contract tests for save/load, preflight, run plan, run
+  lifecycle, log streaming, artifacts, and exports.
+- US-I3: Implement the minimal local app server and loopback startup command.
+- US-I4: Add local-e2e coverage with the fixture repository and fake local
+  agent.
+- US-I5: Update README, local UI docs, and development verification guidance.
+
+### Test Strategy
+
+- Spec tests for `docs/local-app-workflow.md`.
+- Unit tests for path safety, config round-tripping, and run-plan generation.
+- API tests for every local app endpoint and failure path.
+- Local-e2e smoke using fake local agents and local artifacts only.
+- Browser verification only for any UI included in this PR.
+- Full verification commands after each completed story and before the PR is
+  marked ready.
+
+### Why One Capability PR
+
+Local app mode is a new execution boundary. Config writes, preflight,
+orchestration, log streaming, and artifact reads need to be reviewed as one
+local safety model rather than scattered across unrelated PRs.
+
+## Capability Epic J: Full Web UI Workflow For Non-Technical Users
+
+### Goal
+
+Build a complete browser workflow for non-technical users across installation
+handoff, startup, repo setup, task configuration, evaluation criteria,
+preflight, run control, validation review, and result exploration.
+
+### Scope
+
+- Use the local app API from Capability I as the only execution surface.
+- Provide first-run setup for evaluation workspace and target repo selection.
+- Provide visual editors for tasks, variants, overlays, agent profiles,
+  validation commands, timeouts, trials, jobs, cleanup policy, and output path.
+- Show matrix preview before runs and require explicit confirmation before
+  local agent execution.
+- Show run progress, active case identity, log tails, stop controls, timeout
+  status, and failure state.
+- Show results from local artifacts: matrix overview, variant summaries,
+  agent summaries, risk signals, validation output, patches, touched paths, and
+  exports.
+- Keep static UI export available for offline sharing of completed run views.
+
+### Non-Goals
+
+- Do not add a hosted service, multi-user collaboration, remote sharing, or
+  remote database.
+- Do not add real external coding-agent CI smoke in the first full UI PR.
+- Do not hide validation uncertainty or imply correctness without validation
+  commands and human review.
+- Do not add decorative marketing pages instead of the actual app workflow.
+
+### Merge Acceptance Criteria
+
+- The capability PR includes spec, tests, implementation, docs, verification.
+- A non-technical user can complete the workflow visually with the fixture repo
+  and fake local agent.
+- Text and controls fit across desktop and narrow browser viewports.
+- UI copy distinguishes local observations from benchmark claims.
+- Browser verification covers setup, config editing, preflight, run start/stop,
+  results, and exports.
+
+### Suggested Ralph Stories
+
+- US-J1: Specify UI information architecture and primary user flows.
+- US-J2: Implement setup, config, tasks, variants, and agent profile editors.
+- US-J3: Implement evaluation criteria, preflight, and run confirmation views.
+- US-J4: Implement progress, logs, stop controls, and failure-state views.
+- US-J5: Implement result review, risk signals, patch/log links, and exports.
+- US-J6: Update docs and browser verification artifacts.
+
+### Test Strategy
+
+- UI contract tests for view routing, controls, disabled states, and copy.
+- API-backed integration tests using local fixture data.
+- Browser tests across desktop and narrow viewports.
+- Pixel/screenshot checks for layout regressions where practical.
+- Local-e2e smoke with fake local agent through the visual flow.
+- Full verification commands after each completed story and before the PR is
+  marked ready.
+
+### Why One Capability PR
+
+The user-facing Web UI is one coherent workflow. Splitting setup, config,
+preflight, execution, and results into separate merge packages would create
+intermediate states where non-technical users still cannot complete the job.
+
+## Capability Epic K: No-CLI Launcher And Packaging
+
+### Goal
+
+Make the stable local app workflow startable without requiring users to type a
+command in a terminal.
+The launcher must work without requiring users to type a command after
+installation.
+
+### Scope
+
+- Decide the launcher and packaging approach after Capabilities H-J are stable.
+- Start the local app server and open the browser automatically.
+- The launcher starts the local app server and opens the browser for the user.
+- Show startup diagnostics and log location when launch fails.
+- Document installation, startup, upgrade, logs, and recovery for
+  non-technical users.
+- Keep release automation stopped at the existing manual tag and publish
+  boundary unless a later release spec changes that.
+
+### Non-Goals
+
+- Do not add auto-update infrastructure in the first launcher PR.
+- Do not package external coding agents.
+- Do not manage provider credentials or local agent login state.
+- Do not publish packages, create tags, or push releases automatically.
+
+### Merge Acceptance Criteria
+
+- The capability PR includes spec, tests, implementation, docs, verification.
+- A user can launch the local app without typing a command after installation.
+- Startup failures are visible with actionable local diagnostics.
+- Existing CLI and local app server entrypoints continue to work for technical
+  users.
+- Release docs make the manual publish boundary explicit.
+
+### Suggested Ralph Stories
+
+- US-K1: Decide launcher packaging constraints and write the spec.
+- US-K2: Add startup diagnostics and log-location tests where practical.
+- US-K3: Implement the launcher or packaged shortcut.
+- US-K4: Update install/start/recovery docs for non-technical users.
+- US-K5: Verify packaged startup against the fixture workflow.
+
+### Test Strategy
+
+- Spec tests for launcher boundaries and non-goals.
+- Scripted smoke tests for startup success and visible startup failure where
+  practical.
+- Manual verification for OS-specific launcher behavior until CI coverage is
+  available.
+- Local app browser verification after launcher startup.
+- Full verification commands after each completed story and before the PR is
+  marked ready.
+
+### Why One Capability PR
+
+The launcher is a product packaging layer over the local app. It should land
+only after the app workflow is stable, and it should be reviewed with its
+install, startup, diagnostics, and release-boundary docs together.
+
 ## Cross-Epic Quality Gates
 
 Every completed story should run the local gates requested for this repository:
@@ -587,3 +865,6 @@ before asking for review.
 - US-070: Replan `docs/development-plan.md` into capability epics with
   acceptance criteria.
 - US-071: Document the new Ralph/SDD/TDD batching policy and changelog handoff.
+- US-072: Specify agent profiles and noninteractive agent matrix planning.
+- US-073: Specify local app server mode and full Web UI workflow.
+- US-074: Replan post-release product expansion around non-CLI usage.

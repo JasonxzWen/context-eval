@@ -35,6 +35,17 @@ directory.
 
 `network` is recorded in results. The MVP does not implement network isolation.
 
+## Planned Agent Profiles
+
+The current released config uses a single `agent` mapping. The planned
+multi-agent config shape is documented in `docs/agent-profiles.md` and keeps
+the existing `agent` mapping backwards-compatible while adding a named `agents`
+map for Codex CLI, Claude Code, and custom noninteractive commands.
+
+That future profile model is still local-only. It will not install coding
+agents, manage provider credentials, or turn results into an absolute
+leaderboard.
+
 ## Agent Telemetry
 
 Agent telemetry is optional. Existing configs use the no-op collector by

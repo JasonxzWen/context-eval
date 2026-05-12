@@ -40,6 +40,12 @@ implementation. A server mode would need allowed local endpoints, destination
 paths, write-before validation, and explicit prohibitions on agent execution and
 validation command execution.
 
+The planned local app/server contract now lives in
+`docs/local-app-workflow.md`. That mode is intentionally separate from static
+UI mode: static HTML remains export-only and offline, while local app mode may
+write files and run agents only after explicit user actions.
+Static UI must stay safe even after local app mode exists.
+
 ## Editable Fields
 
 The editor should cover the fields users need before a run:
