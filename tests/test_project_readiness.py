@@ -29,7 +29,7 @@ def test_skill_validation_ci_job_installs_script_dependencies() -> None:
     )
 
 
-def test_ci_runs_package_build_with_dev_dependency() -> None:
+def test_ci_runs_prepare_release_for_package_build() -> None:
     pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
     workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
 
@@ -37,31 +37,18 @@ def test_ci_runs_package_build_with_dev_dependency() -> None:
     assert "  package-build:" in workflow
     package_job = workflow.split("  package-build:", maxsplit=1)[1]
 
-    assert 'python -m pip install -e ".[dev]"' in package_job
-    assert "python -m build" in package_job
-    assert package_job.index('python -m pip install -e ".[dev]"') < package_job.index(
-        "python -m build"
-    )
+    assert 'python -m pip install "build>=1"' in package_job
+    assert "python scripts/prepare-release.py --dist-dir dist" in package_job
+    assert 'python -m pip install -e ".[dev]"' not in package_job
 
 
-def test_ci_inspects_package_artifacts_after_build() -> None:
+def test_ci_uses_single_release_preparation_entrypoint() -> None:
     workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
     package_job = workflow.split("  package-build:", maxsplit=1)[1]
 
-    assert "python scripts/inspect-package-artifacts.py dist" in package_job
-    assert package_job.index("python -m build") < package_job.index(
-        "python scripts/inspect-package-artifacts.py dist"
-    )
-
-
-def test_ci_checks_release_state_before_package_install() -> None:
-    workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
-    package_job = workflow.split("  package-build:", maxsplit=1)[1]
-
-    assert "python scripts/check-release-state.py" in package_job
-    assert package_job.index("python scripts/check-release-state.py") < package_job.index(
-        'python -m pip install -e ".[dev]"'
-    )
+    assert "python scripts/check-release-state.py" not in package_job
+    assert "python -m build" not in package_job
+    assert "python scripts/inspect-package-artifacts.py dist" not in package_job
 
 
 def test_skill_validation_skip_external_does_not_require_home_tools() -> None:
@@ -121,6 +108,23 @@ def test_release_checklist_documents_artifact_inspection_command() -> None:
         "rejects `.codex/skills/`",
         "rejects `openspec/`",
         "rejects `scripts/`",
+    ]:
+        assert term in text
+
+
+def test_release_checklist_documents_prepare_release_boundaries() -> None:
+    text = Path("docs/release-checklist.md").read_text(encoding="utf-8")
+
+    for term in [
+        "## Automated Preparation Command",
+        "python scripts/prepare-release.py --dist-dir C:\\tmp\\context-eval-dist",
+        "checks CHANGELOG.md",
+        "runs the release-state check before package builds",
+        "builds wheel and sdist artifacts",
+        "inspects artifacts before publish",
+        "does not create Git tags",
+        "does not upload or publish packages",
+        "manual publish checkpoint",
     ]:
         assert term in text
 
@@ -205,6 +209,13 @@ def test_changelog_mentions_release_state_checking() -> None:
     assert "hidden local release blockers" in text
 
 
+def test_changelog_mentions_prepare_release_entrypoint() -> None:
+    text = Path("CHANGELOG.md").read_text(encoding="utf-8")
+
+    assert "release preparation entrypoint" in text
+    assert "manual tag and publish checkpoint" in text
+
+
 def test_pyproject_and_ci_matrix_match_supported_runtime_contract() -> None:
     pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
     workflow = yaml.safe_load(Path(".github/workflows/ci.yml").read_text(encoding="utf-8"))
@@ -260,5 +271,18 @@ def test_readme_documents_local_package_build_verification() -> None:
         "`context_eval/` is the runtime package",
         "maintainer capability library",
         "not runtime package modules",
+    ]:
+        assert term in text
+
+
+def test_readme_documents_prepare_release_entrypoint() -> None:
+    text = Path("README.md").read_text(encoding="utf-8")
+
+    for term in [
+        "python scripts/prepare-release.py --dist-dir C:\\tmp\\context-eval-dist",
+        "checks CHANGELOG.md",
+        "runs the release-state check",
+        "builds and inspects release artifacts",
+        "does not tag or publish",
     ]:
         assert term in text

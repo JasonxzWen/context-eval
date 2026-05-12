@@ -18,6 +18,21 @@ git diff --check
 
 Run `ruff check .` when the dev dependencies are installed.
 
+## Automated Preparation Command
+
+The release preparation entrypoint is:
+
+```bash
+python scripts/prepare-release.py --dist-dir C:\tmp\context-eval-dist
+```
+
+This command checks CHANGELOG.md, runs the release-state check before package builds, builds wheel and sdist artifacts, and inspects artifacts before publish.
+It is a preparation gate only. It does not create Git tags, and it does not upload or publish packages.
+
+The manual publish checkpoint remains after this command succeeds: confirm the
+reviewed commit, confirm CI, create the Git tag intentionally, and publish the
+already inspected artifacts with the selected package index tooling.
+
 ## Supported Runtime And Platforms
 
 The package supports Python 3.11 or newer through `requires-python = ">=3.11"`.

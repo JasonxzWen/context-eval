@@ -17,3 +17,4 @@
   `task.validation.timeout_seconds`.
 - Replan the development roadmap around larger capability PRs and replace the fine-grained active backlog with five capability epics.
 - Clarify that Ralph stories remain SDD/TDD units inside a capability PR.
+- Add a release preparation entrypoint with a manual tag and publish checkpoint.
