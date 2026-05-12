@@ -15,6 +15,8 @@
   names validation command timeout defaults as the next planned work.
 - Add validation command timeout defaults with `evaluation.timeout_seconds` and
   `task.validation.timeout_seconds`.
-- Replan the development roadmap around larger capability PRs and replace the fine-grained active backlog with five capability epics.
+- Replan the development roadmap around larger capability PRs and replace the fine-grained active backlog with six capability epics.
 - Clarify that Ralph stories remain SDD/TDD units inside a capability PR.
 - Add a release preparation entrypoint with a manual tag and publish checkpoint.
+- Specify a local-e2e CI smoke and test taxonomy as the next pre-feature
+  capability gate.
