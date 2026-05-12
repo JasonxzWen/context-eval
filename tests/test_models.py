@@ -186,6 +186,7 @@ def test_agent_command_template_validator_rejects_unknown_variables() -> None:
 
 
 def test_agent_command_preview_renders_supported_variables() -> None:
+    telemetry_file = Path("artifacts") / "telemetry.json"
     preview = render_agent_command_preview(
         "coco -p {prompt_file} --task {task_id} --variant {variant} "
         "--out {output_dir} --telemetry {telemetry_file}",
@@ -195,10 +196,10 @@ def test_agent_command_preview_renders_supported_variables() -> None:
         task_id="task-1",
         variant="baseline",
         output_dir=Path("artifacts"),
-        telemetry_file=Path("artifacts/telemetry.json"),
+        telemetry_file=telemetry_file,
     )
 
     assert preview == (
         "coco -p prompt.md --task task-1 --variant baseline "
-        "--out artifacts --telemetry artifacts\\telemetry.json"
+        f"--out artifacts --telemetry {telemetry_file}"
     )
