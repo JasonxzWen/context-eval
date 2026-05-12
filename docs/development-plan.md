@@ -594,6 +594,8 @@ noninteractive agent profiles before building the full visual workflow.
   and `custom` profile kinds.
 - Validate command template variables and provide rendered command previews
   before an agent process starts.
+- Add optional side-effect-free executable availability checks for configured
+  agent commands.
 - Expand run planning to agent x task x variant x trial and keep row ordering
   deterministic.
 - Record selected profile names in `agent_name` and keep artifacts case-local.
@@ -614,8 +616,12 @@ noninteractive agent profiles before building the full visual workflow.
 - Mixed `agent` and `agents` config shapes fail with a clear diagnostic.
 - traecli commands such as `traecli -p "{prompt}"` and custom commands such as
   `coco -p {prompt_file}` are supported through the command-template adapter.
+- `validate-config --check-agents` catches missing local agent executables
+  without running agents, installers, validation commands, or workspaces.
 - Multi-agent runs produce deterministic manifests, result rows, logs, patches,
   and reports.
+- Fixture-backed local-e2e coverage proves a profile-map config can run through
+  the installed CLI with a fake local agent.
 
 ### Suggested Ralph Stories
 
@@ -625,6 +631,8 @@ noninteractive agent profiles before building the full visual workflow.
 - US-H3: Implement profile-aware planning and runner execution.
 - US-H4: Update reporting, export, UI, docs, and examples for profile-aware
   artifacts.
+- US-H5: Add optional executable preflight and fixture-backed profile-map smoke
+  coverage.
 
 ### Test Strategy
 
@@ -633,6 +641,9 @@ noninteractive agent profiles before building the full visual workflow.
   handling.
 - Adapter tests for supported and unknown command template variables.
 - Runner integration tests with fake local agents for multi-profile matrices.
+- CLI tests for optional agent executable checks.
+- Local-e2e smoke for `init --agent-profiles` plus a selected fake custom
+  profile.
 - Report/export/static UI tests proving agent summaries appear only when more
   than one `agent_name` exists.
 - Full verification commands after each completed story and before the PR is

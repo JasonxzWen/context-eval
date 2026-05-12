@@ -29,3 +29,5 @@
 - Add named agent profiles, noninteractive agent x task x variant x trial
   matrix planning, and a fixture-backed agent-matrix example for Codex CLI,
   Claude Code, traecli, and custom local commands.
+- Add optional agent executable checks for `validate-config --check-agents`
+  and a profile-map local-e2e smoke using the fixture repository.

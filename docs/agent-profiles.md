@@ -111,6 +111,18 @@ The preset layer must not assume every machine has the agent installed. Prefligh
 checks should verify executable availability only when requested by the user or
 when the local app is running an explicit preflight.
 
+CLI users can request the same side-effect-free executable availability check
+with:
+
+```bash
+context-eval validate-config --strict --check-agents --config context-eval.yaml
+```
+
+`--check-agents` checks the first executable token from each configured command
+template, including profile-map entries such as `agents.trae.command`. It does
+not run agent commands, install coding agents, validate credentials, or call
+hosted services.
+
 ## Agent Matrix Execution
 
 When multiple profiles are selected, the case matrix becomes:
@@ -146,7 +158,8 @@ local observations. Agent summaries are shown only when more than one
 
 - Unknown command template variables fail during config validation or preflight.
 - Missing executables fail preflight in local app mode and fail at run time in
-  CLI mode if preflight was skipped.
+  CLI mode if preflight was skipped. `validate-config --check-agents` can catch
+  executable availability problems before a run without executing the agent.
 - Nonzero agent exit codes produce `agent_failed`.
 - Timeouts produce `timeout`.
 - Missing telemetry remains `unavailable`; token or tool counts must not be

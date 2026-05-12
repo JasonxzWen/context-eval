@@ -67,11 +67,20 @@ IDs checked before a run:
 context-eval validate-config --strict --config examples/basic/context-eval.yaml
 ```
 
+Check configured agent executables before a run when you want to catch missing
+local CLIs early:
+
+```bash
+context-eval validate-config --strict --check-agents --config examples/agent-matrix/context-eval.yaml
+```
+
 Validation uses field-specific diagnostics such as
 `context-eval.yaml: repo.path` and
 `tasks.yaml: tasks[task-1].validation.timeout_seconds`. Default validation stays
 lightweight. The strict mode also checks local Git refs and filename-safe task IDs
 without running agents, validation commands, or workspace setup.
+`--check-agents` checks configured command executables but still does not run agent commands
+and does not install coding agents, validate provider credentials, or create workspaces.
 
 Preview the task x variant matrix without creating workspaces or run artifacts:
 

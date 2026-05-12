@@ -129,6 +129,17 @@ Strict validation is intended to catch local setup errors early. It does not
 install dependencies, test target repository commands, check network access, or
 validate remote repository state.
 
+Add `--check-agents` when you also want to verify that the first executable in
+each configured agent command is available locally:
+
+```bash
+context-eval validate-config --strict --check-agents --config path/to/context-eval.yaml
+```
+
+This checks the configured command executables only. It does not run agent
+commands, log in to provider CLIs, install coding agents, run validation
+commands, or create workspaces.
+
 ### Validation Command Timeouts
 
 `evaluation.timeout_seconds` is an optional default timeout for validation

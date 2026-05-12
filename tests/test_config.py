@@ -1,4 +1,5 @@
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -595,6 +596,86 @@ tasks:
     validate_config_files(config_path, strict=True)
 
     assert not marker.exists()
+
+
+def test_agent_executable_check_is_optional(tmp_path: Path) -> None:
+    config_path = _write_config_fixture(tmp_path)
+    config_path.write_text(
+        config_path.read_text(encoding="utf-8").replace(
+            'command: "agent -p {prompt_file}"',
+            'command: "missing-context-eval-agent -p {prompt_file}"',
+        ),
+        encoding="utf-8",
+    )
+
+    config, tasks = validate_config_files(config_path)
+
+    assert config.agent.command == "missing-context-eval-agent -p {prompt_file}"
+    assert tasks.tasks[0].id == "task-1"
+
+
+def test_agent_executable_check_accepts_available_quoted_path(tmp_path: Path) -> None:
+    config_path = _write_config_fixture(tmp_path)
+    python_exe = Path(sys.executable).as_posix()
+    config_path.write_text(
+        config_path.read_text(encoding="utf-8").replace(
+            'command: "agent -p {prompt_file}"',
+            f'command: "\\"{python_exe}\\" -m context_eval --help"',
+        ),
+        encoding="utf-8",
+    )
+
+    config, tasks = validate_config_files(config_path, check_agents=True)
+
+    assert config.agent.command.startswith(f'"{python_exe}"')
+    assert tasks.tasks[0].id == "task-1"
+
+
+def test_agent_executable_check_reports_missing_legacy_agent(tmp_path: Path) -> None:
+    config_path = _write_config_fixture(tmp_path)
+    config_path.write_text(
+        config_path.read_text(encoding="utf-8").replace(
+            'command: "agent -p {prompt_file}"',
+            'command: "missing-context-eval-agent -p {prompt_file}"',
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigError) as excinfo:
+        validate_config_files(config_path, check_agents=True)
+
+    message = str(excinfo.value)
+    assert "context-eval.yaml: agent.command executable not found" in message
+    assert "missing-context-eval-agent" in message
+
+
+def test_agent_executable_check_reports_missing_named_profile(tmp_path: Path) -> None:
+    config_path = _write_config_fixture(tmp_path)
+    text = config_path.read_text(encoding="utf-8")
+    config_path.write_text(
+        text.replace(
+            """agent:
+  name: "test-agent"
+  command: "agent -p {prompt_file}"
+""",
+            """agents:
+  codex:
+    kind: "codex-cli"
+    command: "missing-codex-cli exec - < {prompt_file}"
+  trae:
+    kind: "traecli"
+    command: "missing-traecli -p \\"{prompt}\\""
+""",
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigError) as excinfo:
+        validate_config_files(config_path, check_agents=True)
+
+    message = str(excinfo.value)
+    assert "context-eval.yaml: agents.codex.command executable not found" in message
+    assert "missing-codex-cli" in message
 
 
 def test_filter_tasks_combines_dimensions_without_mutating_task_file() -> None:
