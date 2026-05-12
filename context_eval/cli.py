@@ -253,10 +253,22 @@ def validate_config(
             help="Verify local Git refs and filename-safe task IDs without side effects.",
         ),
     ] = False,
+    check_agents: Annotated[
+        bool,
+        typer.Option(
+            "--check-agents",
+            help="Verify agent command executables are available without running them.",
+        ),
+    ] = False,
 ) -> None:
     """Validate configuration and task YAML files."""
     try:
-        loaded_config, task_file = validate_config_files(config, tasks, strict=strict)
+        loaded_config, task_file = validate_config_files(
+            config,
+            tasks,
+            strict=strict,
+            check_agents=check_agents,
+        )
     except ConfigError as exc:
         console.print(f"[red]Invalid config:[/red] {exc}", soft_wrap=True)
         raise typer.Exit(code=1) from exc
@@ -266,6 +278,8 @@ def validate_config(
     console.print(f"Agents: {', '.join(loaded_config.agent_profiles().keys())}")
     console.print(f"Tasks: {len(task_file.tasks)}")
     console.print(f"Variants: {', '.join(loaded_config.variants.keys())}")
+    if check_agents:
+        console.print("Agent executables: checked")
 
 
 if __name__ == "__main__":

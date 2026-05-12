@@ -26,6 +26,8 @@ def test_agent_profiles_spec_documents_noninteractive_contract() -> None:
         'traecli -p "{prompt}"',
         "coco -p {prompt_file}",
         "agent x task x variant x trial",
+        "--check-agents",
+        "executable availability",
         "Existing configs with a single `agent` field remain valid",
         "unknown variables",
         "must not publish an absolute coding-agent ranking",
@@ -107,6 +109,7 @@ def test_openspec_specs_define_scenarios_for_agent_profiles_and_local_app() -> N
         "### Requirement: Noninteractive command template contract",
         "#### Scenario: Custom agent command is supported",
         "#### Scenario: traecli command is supported",
+        "#### Scenario: Optional executable check fails before execution",
         "### Requirement: Agent matrix execution",
         "agent x task x variant x trial",
     ]:

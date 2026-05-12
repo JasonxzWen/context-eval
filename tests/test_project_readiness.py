@@ -399,3 +399,15 @@ def test_readme_documents_agent_profile_matrix_example() -> None:
         "not an absolute agent leaderboard",
     ]:
         assert term in text
+
+
+def test_readme_documents_agent_executable_preflight() -> None:
+    text = Path("README.md").read_text(encoding="utf-8")
+
+    for term in [
+        "context-eval validate-config --strict --check-agents",
+        "checks configured command executables",
+        "does not run agent commands",
+        "does not install coding agents",
+    ]:
+        assert term in text

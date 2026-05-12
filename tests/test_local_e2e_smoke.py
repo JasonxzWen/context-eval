@@ -249,3 +249,69 @@ def test_installed_cli_local_e2e_smoke_uses_only_fixture_artifacts(tmp_path: Pat
         html,
     ]:
         _assert_no_network_calls(artifact_text)
+
+
+def test_installed_cli_profile_map_smoke_from_init_template(tmp_path: Path) -> None:
+    cli = _context_eval_command()
+    fixture = _copy_fixture_repo(tmp_path)
+    eval_dir = tmp_path / "profile-map-eval"
+    python_exe = Path(sys.executable).as_posix()
+
+    _run(
+        [
+            *cli,
+            "init",
+            "--directory",
+            str(eval_dir),
+            "--repo-path",
+            fixture.as_posix(),
+            "--agent-command",
+            f'"{python_exe}" scripts/example_agent.py "{{prompt_file}}"',
+            "--agent-profiles",
+        ],
+        cwd=tmp_path,
+    )
+
+    config_path = eval_dir / "context-eval.yaml"
+    config_data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    config_data["repo"]["base_ref"] = "main"
+    config_data["output_dir"] = (tmp_path / "profile-map-runs").as_posix()
+    config_data["evaluation"] = {"commands": [f'"{python_exe}" -m pytest']}
+    config_path.write_text(yaml.safe_dump(config_data, sort_keys=False), encoding="utf-8")
+
+    _run([*cli, "validate-config", "--config", str(config_path)], cwd=tmp_path)
+    _run(
+        [
+            *cli,
+            "run",
+            "--config",
+            str(config_path),
+            "--agent",
+            "custom",
+            "--variant",
+            "baseline",
+            "--cleanup-policy",
+            "successful",
+        ],
+        cwd=tmp_path,
+    )
+
+    run_dirs = sorted((tmp_path / "profile-map-runs").iterdir())
+    assert len(run_dirs) == 1
+    run_dir = run_dirs[0]
+
+    results = [
+        json.loads(line)
+        for line in (run_dir / "results.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert len(results) == 1
+    result = results[0]
+    assert result["agent_name"] == "custom"
+    assert result["case_id"] == "sample-task__baseline__custom"
+    assert result["status"] == "completed"
+    assert result["validation_status"] == "passed"
+    assert result["cleanup_status"] == "succeeded"
+
+    manifest = json.loads((run_dir / "run_manifest.json").read_text(encoding="utf-8"))
+    assert [agent["name"] for agent in manifest["agents"]] == ["custom"]
+    assert manifest["case_matrix"][0]["agent_name"] == "custom"

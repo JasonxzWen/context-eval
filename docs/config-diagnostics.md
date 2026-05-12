@@ -17,6 +17,10 @@ repository.
 Strict validation adds local Git and safety checks for users who want a stronger
 preflight before running an evaluation.
 
+`--check-agents` is an optional companion check for CLI users who want
+side-effect-free executable availability checks for configured agent commands.
+It may be combined with `--strict`.
+
 ## Error Taxonomy
 
 Diagnostics should fit one of these categories:
@@ -26,6 +30,8 @@ Diagnostics should fit one of these categories:
   records from the Pydantic models.
 - Missing file: paths such as `tasks`, `agent.prompt_template`, and overlay
   `source` values that cannot be found after path resolution.
+- Missing executable: optional `--check-agents` failures for `agent.command` or
+  `agents.<profile>.command` when the first executable token cannot be found.
 - Unsafe path: path-like fields that are absolute where a safe relative value is
   required, escape with `..`, or resolve outside the allowed base.
 - Duplicate task id: repeated task identifiers in `tasks.yaml`.
@@ -61,6 +67,11 @@ Strict validation checks:
 
 Default validation should keep the cheap checks that do not require Git state or
 target repository commands.
+
+`context-eval validate-config --check-agents` checks configured agent command
+executables without running the command. It must not create a workspace, run an
+agent, run validation commands, install coding agents, or contact hosted
+services.
 
 ## Non-Goals
 

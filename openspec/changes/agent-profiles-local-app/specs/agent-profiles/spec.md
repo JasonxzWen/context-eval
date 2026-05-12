@@ -41,6 +41,15 @@ template that is validated before agent execution.
 - **WHEN** a profile command references an unknown template variable
 - **THEN** validation or preflight fails before any agent command runs
 
+#### Scenario: Optional executable check fails before execution
+
+- **WHEN** a user runs `validate-config --check-agents` for a profile command
+  whose executable cannot be found
+- **THEN** validation fails with a profile-specific `agent.command` or
+  `agents.<profile>.command` diagnostic
+- **AND** no agent command, validation command, workspace setup, or installer
+  runs
+
 #### Scenario: Custom agent command is supported
 
 - **WHEN** a user configures a custom profile command such as

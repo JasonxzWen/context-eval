@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import re
+import shlex
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -134,6 +136,7 @@ def validate_config_files(
     tasks_override: Path | None = None,
     *,
     strict: bool = False,
+    check_agents: bool = False,
 ) -> tuple[ContextEvalConfig, TaskFile]:
     config = load_config(config_path)
     tasks_path = tasks_override.resolve() if tasks_override else config.tasks
@@ -157,6 +160,8 @@ def validate_config_files(
 
     if strict:
         _validate_strict_config(config, tasks, tasks_path)
+    if check_agents:
+        _validate_agent_executables(config)
 
     return config, tasks
 
@@ -214,6 +219,35 @@ def _validate_strict_config(config: ContextEvalConfig, tasks: TaskFile, tasks_pa
                 f"{tasks_path}: tasks[{task.id}].repo_ref does not resolve: "
                 f"{task.repo_ref}",
             )
+
+
+def _validate_agent_executables(config: ContextEvalConfig) -> None:
+    for field_path, profile in _iter_agent_profiles_for_diagnostics(config):
+        executable = _agent_command_executable(profile.command)
+        if not _agent_executable_available(executable, repo_path=config.repo.path):
+            raise ConfigError(
+                f"{config.config_path}: {field_path}.command executable not found: "
+                f"{executable}"
+            )
+
+
+def _agent_command_executable(command: str) -> str:
+    try:
+        parts = shlex.split(command, posix=False)
+    except ValueError as exc:
+        raise ConfigError(f"agent command executable could not be parsed: {exc}") from exc
+    if not parts:
+        raise ConfigError("agent command executable could not be parsed: empty command")
+    return parts[0].strip("\"'")
+
+
+def _agent_executable_available(executable: str, *, repo_path: Path) -> bool:
+    path = Path(executable)
+    if path.is_absolute():
+        return path.exists()
+    if "/" in executable or "\\" in executable:
+        return (repo_path / path).exists()
+    return shutil.which(executable) is not None
 
 
 def _require_git_ref(repo_path: Path, ref: str, message: str) -> None:

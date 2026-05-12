@@ -5,6 +5,7 @@
 - [x] 1.3 Implement profile parsing and rendered command preview helpers in `context_eval/models.py` and adapter-facing modules.
 - [x] 1.4 Expand runner planning to selected agent x task x variant x trial while preserving deterministic manifest and result row ordering.
 - [x] 1.5 Update report, export, compare, inspect, and static UI tests for multi-agent artifact semantics.
+- [x] 1.6 Add optional agent executable preflight and fixture-backed profile-map smoke coverage without implementing local app/server mode.
 
 ## 2. Local App Server
 
