@@ -357,7 +357,8 @@ run artifacts.
 
 Python 3.11 or newer is required. CI currently gates Python 3.11 and Python 3.12
 on pull requests. CI currently gates Ubuntu and Windows for the runtime test
-matrix. Windows PowerShell is required for vendored skill validation.
+matrix. A separate local-e2e CI smoke runs the installed CLI once on Ubuntu with
+Python 3.12. Windows PowerShell is required for vendored skill validation.
 
 Before opening release-oriented changes, run the local quality gates:
 
@@ -374,6 +375,20 @@ Run `ruff check .` and
 `powershell -ExecutionPolicy Bypass -File scripts\validate-skills.ps1 -SkipExternal`
 when the dev dependencies and Windows PowerShell are available. See
 `docs/release-checklist.md` for the full release packaging scope.
+
+The default pytest command covers unit and integration tests and excludes the
+installed CLI smoke marked `local_e2e`. Run the local-e2e layer explicitly when
+touching CLI orchestration, generated artifacts, or CI wiring:
+
+```bash
+python -m pytest tests/test_local_e2e_smoke.py -m local_e2e
+```
+
+That smoke uses only a fixture repository, a fake local agent, local config
+files, and local run artifacts. It does not call hosted services, install a real
+external coding agent, add an LLM judge, or require Playwright in the default PR
+gate.
+
 For release preparation, use the consolidated command:
 
 ```bash

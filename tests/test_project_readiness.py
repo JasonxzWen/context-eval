@@ -17,6 +17,36 @@ def test_ci_workflow_contains_required_quality_gates() -> None:
     assert "windows-latest" in text
 
 
+def test_pytest_declares_local_e2e_marker_outside_default_matrix() -> None:
+    pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+    pytest_options = pyproject["tool"]["pytest"]["ini_options"]
+
+    assert pytest_options["addopts"] == '-m "not local_e2e"'
+    assert any(
+        marker.startswith("local_e2e: installed CLI smoke")
+        for marker in pytest_options["markers"]
+    )
+
+
+def test_ci_exposes_dedicated_local_e2e_smoke_job() -> None:
+    workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
+
+    assert "  local-e2e:" in workflow
+    local_e2e_job = workflow.split("  local-e2e:", maxsplit=1)[1].split(
+        "  skill-validation:",
+        maxsplit=1,
+    )[0]
+
+    for term in [
+        "name: Local E2E smoke",
+        "runs-on: ubuntu-latest",
+        'python-version: "3.12"',
+        'python -m pip install -e ".[dev]"',
+        "python -m pytest tests/test_local_e2e_smoke.py -m local_e2e",
+    ]:
+        assert term in local_e2e_job
+
+
 def test_skill_validation_ci_job_installs_script_dependencies() -> None:
     workflow = Path(".github/workflows/ci.yml")
     text = workflow.read_text(encoding="utf-8")

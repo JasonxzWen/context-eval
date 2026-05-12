@@ -41,6 +41,25 @@ jobs:
       - name: Validate example config
         run: context-eval validate-config --config examples/basic/context-eval.yaml
 
+  local-e2e:
+    name: Local E2E smoke
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package
+        run: python -m pip install -e ".[dev]"
+
+      - name: Run local-e2e smoke
+        run: python -m pytest tests/test_local_e2e_smoke.py -m local_e2e
+
   skill-validation:
     name: Skill validation
     runs-on: windows-latest

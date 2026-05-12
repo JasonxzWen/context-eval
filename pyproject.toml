@@ -38,6 +38,10 @@ context_eval = ["reports/templates/*.j2"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "-m \"not local_e2e\""
+markers = [
+  "local_e2e: installed CLI smoke against local fixture artifacts",
+]
 
 [tool.ruff]
 line-length = 100
