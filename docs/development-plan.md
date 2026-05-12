@@ -350,6 +350,12 @@ workflow friction.
 
 ### Scope
 
+- Capability E keeps the command-template adapter as the only adapter for this
+  PR. The accepted expansion is optional telemetry from stable local artifacts,
+  not a new adapter family.
+- Accepted local artifact format: the generic JSON collector described in
+  `docs/agent-telemetry.md`, including documented status, source, error,
+  duration, token, and tool-call fields.
 - Reassess whether a thin Python entrypoint adapter solves real repeated
   command-template friction.
 - Use `docs/agent-telemetry.md` as the source spec for runner-guaranteed and

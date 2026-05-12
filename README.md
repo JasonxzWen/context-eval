@@ -138,6 +138,11 @@ Compact JSON export metadata includes:
 - `case_count`, `agent_count`, `variant_count`, and `task_count`: counts
   derived only from parsed `results.jsonl` rows.
 
+CSV and compact JSON case rows include telemetry status fields such as
+`telemetry_status`, `telemetry_source`, and `telemetry_error`, plus available
+duration, token, and tool-call counts. Missing telemetry remains empty in CSV
+and `null` in JSON.
+
 These fields describe the exported local observation. They do not make the
 output an absolute agent benchmark.
 
@@ -266,6 +271,34 @@ Prompt templates can use variables such as `{task_id}`, `{task_title}`,
 `{task_prompt}`, `{variant}`, and `{repo_ref}`. The template path is resolved
 relative to the config file. A missing prompt template file fails config
 validation, and an unknown template variable fails before the agent command runs.
+
+## Optional Local Agent Telemetry
+
+Agent telemetry is optional and comes from local artifacts only. The default
+collector records `telemetry_status="unavailable"` and
+`telemetry_source="none"`. It does not call hosted services, install agents, or
+estimate provider billing.
+
+Enable the generic JSON file collector only when your local agent command writes
+a telemetry file:
+
+```yaml
+agent:
+  name: "myAgent"
+  command: "myAgent -p {prompt_file} --telemetry {telemetry_file}"
+  telemetry:
+    collector: "json-file"
+    file: "telemetry.json"
+```
+
+`{telemetry_file}` is an absolute case-local artifact path. context-eval also
+sets `CONTEXT_EVAL_TELEMETRY_FILE` to that path unless
+`environment_variable: null` is configured.
+
+The JSON object may include `agent_duration_seconds`, `prompt_tokens`,
+`completion_tokens`, `total_tokens`, `reasoning_tokens`, `tool_call_count`, and
+`tool_calls_by_name`. Invalid or missing fields become `partial`, `error`, or
+`unavailable` telemetry states instead of guessed values.
 
 ## Context Variants
 

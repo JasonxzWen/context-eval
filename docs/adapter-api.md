@@ -67,6 +67,7 @@ write JSON like:
 
 ```json
 {
+  "agent_duration_seconds": 12.5,
   "prompt_tokens": 100,
   "completion_tokens": 25,
   "total_tokens": 125,

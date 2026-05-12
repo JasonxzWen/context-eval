@@ -57,8 +57,9 @@ The `{telemetry_file}` variable is an absolute path for the current case under
 the run artifact directory. context-eval also sets
 `CONTEXT_EVAL_TELEMETRY_FILE` to that path unless
 `environment_variable: null` is configured. The JSON file may include
-`prompt_tokens`, `completion_tokens`, `total_tokens`, `reasoning_tokens`,
-`tool_call_count`, and `tool_calls_by_name`.
+`agent_duration_seconds`, `prompt_tokens`, `completion_tokens`,
+`total_tokens`, `reasoning_tokens`, `tool_call_count`, and
+`tool_calls_by_name`.
 
 ## Validation
 

@@ -44,6 +44,7 @@ def test_export_run_csv_is_deterministic_and_preserves_missing_telemetry(
                 validation_status="failed",
                 confidence="medium",
                 duration_seconds=5.0,
+                telemetry_error="telemetry file not found: artifacts/telemetry.json",
             ),
             CaseResult(
                 run_id="run-1",
@@ -76,17 +77,20 @@ def test_export_run_csv_is_deterministic_and_preserves_missing_telemetry(
     lines = csv_text.splitlines()
     assert lines[0] == (
         "run_id,case_id,agent_name,task_id,variant,trial_index,status,"
-        "validation_status,confidence,duration_seconds,agent_duration_seconds,"
+        "validation_status,confidence,telemetry_status,telemetry_source,telemetry_error,"
+        "duration_seconds,agent_duration_seconds,"
         "prompt_tokens,completion_tokens,total_tokens,reasoning_tokens,"
         "tool_call_count,tool_calls_by_name"
     )
     assert lines[1] == (
         'run-1,task-a__baseline__trial-1,agent-a,task-a,baseline,1,completed,'
-        'passed,high,3.00,2.50,10,20,30,4,2,"{""read"":1,""write"":1}"'
+        'passed,high,collected,json-file,,3.00,2.50,10,20,30,4,2,'
+        '"{""read"":1,""write"":1}"'
     )
     assert lines[2] == (
         'run-1,task-b__experiment__trial-2,agent-b,task-b,experiment,2,timeout,'
-        "failed,medium,5.00,,,,,,,"
+        'failed,medium,unavailable,none,telemetry file not found: artifacts/telemetry.json,'
+        "5.00,,,,,,,"
     )
 
 
@@ -112,6 +116,7 @@ def test_export_run_json_contains_sorted_cases_and_agent_summaries(tmp_path: Pat
                 tool_call_count=3,
                 telemetry_status="partial",
                 telemetry_source="json-file",
+                telemetry_error="completion_tokens must be a non-negative integer",
             ),
             CaseResult(
                 run_id="run-1",
@@ -172,7 +177,16 @@ def test_export_run_json_contains_sorted_cases_and_agent_summaries(tmp_path: Pat
     ]
     assert payload["cases"][0]["trial_index"] == 1
     assert payload["cases"][0]["agent_duration_seconds"] == 1.5
+    assert payload["cases"][1]["telemetry_status"] == "partial"
+    assert payload["cases"][1]["telemetry_source"] == "json-file"
+    assert (
+        payload["cases"][1]["telemetry_error"]
+        == "completion_tokens must be a non-negative integer"
+    )
     assert payload["cases"][2]["total_tokens"] is None
+    assert payload["cases"][2]["telemetry_status"] == "unavailable"
+    assert payload["cases"][2]["telemetry_source"] == "none"
+    assert payload["cases"][2]["telemetry_error"] is None
     assert payload["cases"][2]["tool_calls_by_name"] == {}
     assert payload["agent_summaries"] == [
         {

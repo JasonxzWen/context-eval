@@ -51,6 +51,7 @@ def _large_local_matrix_results() -> list[CaseResult]:
             duration_seconds=3.0,
             telemetry_status="partial",
             telemetry_source="json-file",
+            telemetry_error="completion_tokens must be a non-negative integer",
             total_tokens=120,
         ),
         CaseResult(
@@ -918,8 +919,11 @@ def test_report_polishes_large_multi_axis_local_matrix(tmp_path: Path) -> None:
     assert "### Low Confidence Cases" in report
     assert "| `task-a` | `experiment` | `agent-a` | 1 | `validation_failed` | `failed` |" in report
     assert "### Telemetry Gap Cases" in report
-    assert "| `task-a` | `baseline` | `agent-a` | 2 | `partial` | `json-file` |" in report
-    assert "| `task-a` | `baseline` | `agent-b` | 1 | `unavailable` | `none` |" in report
+    assert (
+        "| `task-a` | `baseline` | `agent-a` | 2 | `partial` | `json-file` | "
+        "completion_tokens must be a non-negative integer |"
+    ) in report
+    assert "| `task-a` | `baseline` | `agent-b` | 1 | `unavailable` | `none` | - |" in report
 
 
 def test_compare_fails_for_missing_results(tmp_path: Path) -> None:

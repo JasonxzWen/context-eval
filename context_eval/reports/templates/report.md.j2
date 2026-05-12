@@ -101,10 +101,10 @@ No low-confidence cases recorded.
 
 ### Telemetry Gap Cases
 {% if telemetry_gaps -%}
-| Task | Variant | Agent | Trial | Telemetry status | Telemetry source |
-| --- | --- | --- | ---: | --- | --- |
+| Task | Variant | Agent | Trial | Telemetry status | Telemetry source | Telemetry error |
+| --- | --- | --- | ---: | --- | --- | --- |
 {% for item in telemetry_gaps -%}
-| `{{ item.task_id }}` | `{{ item.variant }}` | `{{ item.agent_name }}` | {{ item.trial_index }} | `{{ item.telemetry_status }}` | `{{ item.telemetry_source }}` |
+| `{{ item.task_id }}` | `{{ item.variant }}` | `{{ item.agent_name }}` | {{ item.trial_index }} | `{{ item.telemetry_status }}` | `{{ item.telemetry_source }}` | {{ item.telemetry_error or "-" }} |
 {% endfor %}
 {% else -%}
 No telemetry-gap cases recorded.

@@ -96,6 +96,7 @@ class JsonFileTelemetryCollector(TelemetryCollector):
         has_metrics = any(
             metrics[field] is not None
             for field in [
+                "agent_duration_seconds",
                 "prompt_tokens",
                 "completion_tokens",
                 "total_tokens",
@@ -138,6 +139,11 @@ class JsonFileTelemetryCollector(TelemetryCollector):
     def _normalize_metrics(cls, data: dict) -> tuple[dict[str, object], list[str]]:
         errors: list[str] = []
         metrics: dict[str, object] = {
+            "agent_duration_seconds": cls._optional_nonnegative_number(
+                data,
+                "agent_duration_seconds",
+                errors,
+            ),
             "prompt_tokens": cls._optional_nonnegative_int(data, "prompt_tokens", errors),
             "completion_tokens": cls._optional_nonnegative_int(
                 data,
@@ -156,6 +162,23 @@ class JsonFileTelemetryCollector(TelemetryCollector):
         if metrics["tool_call_count"] is None and metrics["tool_calls_by_name"]:
             metrics["tool_call_count"] = sum(metrics["tool_calls_by_name"].values())
         return metrics, errors
+
+    @staticmethod
+    def _optional_nonnegative_number(
+        data: dict,
+        field: str,
+        errors: list[str],
+    ) -> float | None:
+        if field not in data:
+            return None
+        value = data[field]
+        if isinstance(value, bool) or not isinstance(value, int | float):
+            errors.append(f"{field} must be a non-negative number")
+            return None
+        if value < 0:
+            errors.append(f"{field} must be a non-negative number")
+            return None
+        return float(value)
 
     @staticmethod
     def _optional_nonnegative_int(
