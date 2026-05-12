@@ -131,6 +131,11 @@ names. Profile-map runs include the profile key in case-local artifact names so
 multiple agents cannot overwrite prompt, log, patch, workspace, or telemetry
 files for the same task and variant.
 
+`context-eval init --agent-profiles` writes starter files with a named profile
+map for `codex-cli`, `claude-code`, `traecli`, and a custom command. The default
+`context-eval init` output still uses the legacy single `agent` shape for full
+backward compatibility.
+
 ## Reporting Behavior
 
 Reports, exports, terminal summaries, and UI views continue to frame results as

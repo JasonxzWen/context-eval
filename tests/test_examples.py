@@ -24,6 +24,38 @@ def test_basic_example_targets_fixture_repo() -> None:
     assert task_file.tasks[0].id == "fix-greeting-punctuation"
 
 
+def test_agent_matrix_example_validates_profiles_and_cli_filter() -> None:
+    config, task_file = validate_config_files(Path("examples/agent-matrix/context-eval.yaml"))
+
+    assert config.repo.path == Path("examples/fixture-repo").resolve()
+    assert list(config.agents) == ["codex", "claude", "trae", "coco"]
+    assert config.agents["trae"].kind == "traecli"
+    assert config.agents["trae"].command == 'traecli -p "{prompt}"'
+    assert task_file.tasks[0].id == "fix-greeting-punctuation"
+
+    result = _run(
+        [
+            sys.executable,
+            "-m",
+            "context_eval",
+            "run",
+            "--config",
+            "examples/agent-matrix/context-eval.yaml",
+            "--dry-run",
+            "--agent",
+            "trae",
+            "--variant",
+            "experiment",
+        ],
+        cwd=Path("."),
+    )
+
+    assert "Agents: trae" in result.stdout
+    assert 'trae (traecli): traecli -p "{prompt}"' in result.stdout
+    assert "agent=trae task=fix-greeting-punctuation variant=experiment" in result.stdout
+    assert "agent=codex" not in result.stdout
+
+
 def test_fixture_repo_setup_initializes_local_git_history(tmp_path: Path) -> None:
     source = Path("examples/fixture-repo")
     fixture = tmp_path / "fixture-repo"

@@ -34,6 +34,13 @@ def init_command(
         str,
         typer.Option("--agent-command", help="Agent command template to write."),
     ] = "agent -p {prompt_file}",
+    agent_profiles: Annotated[
+        bool,
+        typer.Option(
+            "--agent-profiles",
+            help="Write a named agents profile map instead of a legacy single agent.",
+        ),
+    ] = False,
     force: Annotated[
         bool,
         typer.Option("--force", help="Overwrite starter files if they already exist."),
@@ -45,6 +52,7 @@ def init_command(
             directory=directory,
             repo_path=repo_path,
             agent_command=agent_command,
+            agent_profiles=agent_profiles,
             force=force,
         )
     except ConfigError as exc:

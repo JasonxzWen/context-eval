@@ -12,6 +12,7 @@ def test_ci_workflow_contains_required_quality_gates() -> None:
     assert "python -m pytest" in text
     assert "ruff check" in text
     assert "context-eval validate-config --config examples/basic/context-eval.yaml" in text
+    assert "context-eval validate-config --config examples/agent-matrix/context-eval.yaml" in text
     assert "scripts\\validate-skills.ps1 -SkipExternal" in text
     assert "3.11" in text
     assert "windows-latest" in text
@@ -379,5 +380,22 @@ def test_readme_documents_optional_local_telemetry_workflow() -> None:
         "telemetry_error",
         "local artifacts only",
         "does not call hosted services",
+    ]:
+        assert term in text
+
+
+def test_readme_documents_agent_profile_matrix_example() -> None:
+    text = Path("README.md").read_text(encoding="utf-8")
+
+    for term in [
+        "## Agent Profile Matrix Example",
+        "examples/agent-matrix/context-eval.yaml",
+        "codex-cli",
+        "claude-code",
+        "traecli",
+        "coco -p {prompt_file}",
+        "context-eval run --config examples/agent-matrix/context-eval.yaml --dry-run --agent trae",
+        "local observations",
+        "not an absolute agent leaderboard",
     ]:
         assert term in text

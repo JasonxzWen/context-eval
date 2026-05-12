@@ -26,6 +26,9 @@ def render_dry_run(
     console.print(f"Repo: {config.repo.path}")
     console.print(f"Output dir: {config.output_dir}")
     console.print(f"Agents: {', '.join(profile.name for profile in agent_profiles)}")
+    console.print("Agent commands:")
+    for profile in agent_profiles:
+        console.print(f"  - {profile.name} ({profile.kind}): {profile.command}")
     console.print(f"Tasks: {', '.join(task.id for task in selected_tasks)}")
     console.print(f"Variants: {', '.join(variant_names)}")
     console.print(f"Trials: {trials}")

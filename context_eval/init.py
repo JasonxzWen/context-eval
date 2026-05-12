@@ -13,10 +13,15 @@ def create_starter_files(
     directory: Path,
     repo_path: str,
     agent_command: str,
+    agent_profiles: bool = False,
     force: bool = False,
 ) -> list[Path]:
     targets = {
-        directory / "context-eval.yaml": _config_yaml(repo_path, agent_command),
+        directory / "context-eval.yaml": _config_yaml(
+            repo_path,
+            agent_command,
+            agent_profiles=agent_profiles,
+        ),
         directory / "tasks.yaml": _tasks_yaml(),
         directory / "contexts" / "baseline" / "AGENTS.md": _baseline_agents(),
         directory / "contexts" / "experiment" / "AGENTS.md": _experiment_agents(),
@@ -34,19 +39,46 @@ def create_starter_files(
     return list(targets)
 
 
-def _config_yaml(repo_path: str, agent_command: str) -> str:
+def _agent_profile(kind: str, command: str) -> dict[str, object]:
+    return {
+        "kind": kind,
+        "command": command,
+        "timeout_minutes": 60,
+        "network": "disabled",
+    }
+
+
+def _config_yaml(repo_path: str, agent_command: str, *, agent_profiles: bool) -> str:
+    agent_section: dict[str, object]
+    if agent_profiles:
+        agent_section = {
+            "agents": {
+                "codex": _agent_profile(
+                    "codex-cli",
+                    "codex exec -C {workspace} - < {prompt_file}",
+                ),
+                "claude": _agent_profile("claude-code", "claude -p {prompt_file}"),
+                "trae": _agent_profile("traecli", 'traecli -p "{prompt}"'),
+                "custom": _agent_profile("custom", agent_command),
+            }
+        }
+    else:
+        agent_section = {
+            "agent": {
+                "name": "local-agent",
+                "command": agent_command,
+                "timeout_minutes": 60,
+                "network": "disabled",
+            }
+        }
+
     return yaml.safe_dump(
         {
             "repo": {
                 "path": repo_path,
                 "base_ref": "HEAD",
             },
-            "agent": {
-                "name": "local-agent",
-                "command": agent_command,
-                "timeout_minutes": 60,
-                "network": "disabled",
-            },
+            **agent_section,
             "tasks": "./tasks.yaml",
             "variants": {
                 "baseline": {

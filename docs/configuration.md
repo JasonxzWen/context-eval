@@ -71,6 +71,10 @@ manage provider credentials, or turn results into an absolute leaderboard.
 `context-eval run` runs every configured profile by default; repeat `--agent
 <profile>` to select specific profiles.
 
+Use `context-eval init --agent-profiles` when you want starter files that use
+the `agents` map. The default `context-eval init` command still writes the
+legacy single `agent` mapping.
+
 ## Agent Telemetry
 
 Agent telemetry is optional. Existing configs use the no-op collector by

@@ -1,0 +1,48 @@
+repo:
+  path: "../fixture-repo"
+  base_ref: "main"
+
+agents:
+  codex:
+    kind: "codex-cli"
+    command: "codex exec -C {workspace} - < {prompt_file}"
+    timeout_minutes: 60
+    network: "disabled"
+
+  claude:
+    kind: "claude-code"
+    command: "claude -p {prompt_file}"
+    timeout_minutes: 60
+    network: "disabled"
+
+  trae:
+    kind: "traecli"
+    command: "traecli -p \"{prompt}\""
+    timeout_minutes: 60
+    network: "disabled"
+
+  coco:
+    kind: "custom"
+    command: "coco -p {prompt_file}"
+    timeout_minutes: 60
+    network: "disabled"
+
+tasks: "./tasks.yaml"
+
+variants:
+  baseline:
+    description: "Original AGENTS.md"
+    overlays:
+      - source: "./contexts/baseline/AGENTS.md"
+        target: "AGENTS.md"
+
+  experiment:
+    description: "Optimized AGENTS.md for matrix comparison"
+    overlays:
+      - source: "./contexts/experiment/AGENTS.md"
+        target: "AGENTS.md"
+
+evaluation:
+  timeout_seconds: 30
+  commands:
+    - "python -m pytest"
