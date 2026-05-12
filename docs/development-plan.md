@@ -90,6 +90,8 @@ loss of SDD/TDD discipline.
 4. PR D: Release Automation And Packaging Workflow Polish.
 5. PR E: Optional Adapter And Telemetry Expansion, only if justified by stable
    local artifact formats or repeated command-template friction.
+6. PR F: Local E2E CI Smoke And Test Taxonomy, before later feature work that
+   depends on stronger workflow-level regression confidence.
 
 ## Capability Epic A: Config Diagnostics And Strict Validation Hardening
 
@@ -408,6 +410,76 @@ Adapters and telemetry collectors affect schema, runner behavior, reports, and
 docs together. Shipping them as isolated micro-PRs would make it hard to verify
 that a new local artifact format is documented, parsed, reported, and exported
 consistently.
+
+## Capability Epic F: Local E2E CI Smoke And Test Taxonomy
+
+### Goal
+
+Add a clearly named local-e2e smoke layer before later feature work so CI proves
+that the installed CLI can complete the main local artifact workflow, not only
+unit-level behavior.
+
+### Scope
+
+- Use `docs/local-e2e-ci.md` as the source spec for the local-e2e smoke
+  workflow and test taxonomy.
+- Keep the smoke local artifact-based: fixture repository, fake local agent,
+  local config files, local run artifacts, and no hosted services.
+- Use no real external coding agent; the smoke must use a fake local agent
+  controlled by the test fixture.
+- Exercise the installed CLI through `context-eval run`, `context-eval report`,
+  `context-eval export`, and `context-eval ui`.
+- Verify generated `results.jsonl`, `run_manifest.json`, `report.md`,
+  `summary.csv`, `summary.json`, and `context-eval-ui.html`.
+- Decide whether the local-e2e smoke belongs in a separate CI job or a marked
+  pytest path, then document that choice.
+- Keep existing unit, integration, skill validation, and package-build gates.
+
+### Non-Goals
+
+- Do not run a real external coding agent.
+- Do not install agents automatically.
+- Do not call network services or hosted services.
+- Do not add an LLM judge.
+- Do not turn the smoke into a benchmark or leaderboard.
+- Do not make Playwright browser automation required in the first local-e2e PR;
+  keep it as an optional follow-up for UI-heavy changes.
+
+### Merge Acceptance Criteria
+
+- The capability PR includes spec, tests, implementation, docs, verification.
+- The PR starts from `docs/local-e2e-ci.md` and failing contract tests.
+- CI exposes a clearly named local-e2e smoke path.
+- The smoke validates the installed CLI against a fixture repository and fake
+  local agent.
+- The smoke records and inspects local artifacts only.
+- Existing CI jobs remain green on Windows and Linux.
+
+### Suggested Ralph Stories
+
+- US-F1: Specify local-e2e CI smoke boundaries and test taxonomy.
+- US-F2: Add failing tests for the installed CLI smoke workflow.
+- US-F3: Implement the minimal local-e2e smoke using a fixture repository and
+  fake local agent.
+- US-F4: Wire the smoke into CI with a clear job or marker boundary.
+- US-F5: Update README and development verification docs with the new test
+  layers.
+
+### Test Strategy
+
+- Spec tests for `docs/local-e2e-ci.md` and this development-plan epic.
+- Subprocess CLI smoke tests using a temporary fixture repository.
+- Artifact assertions for results, manifest, report, export, and static UI.
+- CI workflow tests proving the local-e2e smoke is named and wired.
+- Full verification commands after each completed story and before the PR is
+  marked ready.
+
+### Why One Capability PR
+
+This change cuts across test taxonomy, CLI workflow, generated artifacts, CI
+configuration, and developer documentation. Keeping those pieces together makes
+the new gate reviewable and prevents a half-wired smoke test from becoming a
+silent maintenance burden.
 
 ## Cross-Epic Quality Gates
 
