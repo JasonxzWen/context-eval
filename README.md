@@ -79,6 +79,12 @@ Preview the task x variant matrix without creating workspaces or run artifacts:
 context-eval run --config examples/basic/context-eval.yaml --dry-run
 ```
 
+Preview a named agent profile from the multi-agent example:
+
+```bash
+context-eval run --config examples/agent-matrix/context-eval.yaml --dry-run --agent trae
+```
+
 Run an evaluation:
 
 ```bash
@@ -259,14 +265,33 @@ Supported variables:
 - `{task_id}`
 - `{variant}`
 - `{output_dir}`
+- `{telemetry_file}` when JSON file telemetry is enabled
 
 The command runs from the isolated workspace. The agent can modify files and run
 commands, but context-eval never commits automatically.
 
-The planned agent profile model is documented in `docs/agent-profiles.md`. It
-will keep this single-agent shape compatible while adding named Codex CLI,
-Claude Code, and custom noninteractive profiles such as
+The agent profile model is documented in `docs/agent-profiles.md`. It keeps
+this single-agent shape compatible while adding named `codex-cli`,
+`claude-code`, `traecli`, and custom noninteractive profiles such as
 `coco -p {prompt_file}`.
+
+## Agent Profile Matrix Example
+
+`examples/agent-matrix/context-eval.yaml` shows the named `agents` map for
+Codex CLI, Claude Code, traecli, and a custom `coco -p {prompt_file}` command.
+It targets the same local fixture repository as the basic example and is meant
+to make profile-map validation and dry-run planning easy to inspect before any
+real coding agent is executed.
+
+```bash
+context-eval validate-config --config examples/agent-matrix/context-eval.yaml
+context-eval run --config examples/agent-matrix/context-eval.yaml --dry-run --agent trae
+```
+
+Run it with `--agent <profile>` for only the local agent you have configured, or
+edit the command templates before running the full matrix. Results remain local
+observations for the selected repo, tasks, variants, profiles, and validation
+commands; they are not an absolute agent leaderboard.
 
 Customize the prompt text with a local template file:
 

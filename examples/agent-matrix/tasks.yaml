@@ -1,0 +1,8 @@
+tasks:
+  - id: "fix-greeting-punctuation"
+    title: "Fix greeting punctuation"
+    prompt: |
+      Fix the fixture greeting so it matches the existing tests.
+      Keep the change minimal and do not rewrite unrelated files.
+    category: "runtime"
+    difficulty: "easy"

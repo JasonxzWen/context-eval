@@ -39,7 +39,9 @@ jobs:
         run: ruff check .
 
       - name: Validate example config
-        run: context-eval validate-config --config examples/basic/context-eval.yaml
+        run: |
+          context-eval validate-config --config examples/basic/context-eval.yaml
+          context-eval validate-config --config examples/agent-matrix/context-eval.yaml
 
   local-e2e:
     name: Local E2E smoke

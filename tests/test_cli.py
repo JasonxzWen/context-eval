@@ -439,9 +439,11 @@ variants:
 
     assert result.exit_code == 0
     assert "Agents: trae" in result.output
+    assert 'trae (traecli): traecli -p "{prompt}"' in result.output
     assert "agent=trae task=docs-easy variant=baseline trial=2" in result.output
     assert "docs-easy__baseline__trae__trial-2" in result.output
     assert "agent=codex" not in result.output
+    assert "codex (codex-cli)" not in result.output
     assert "agent=coco" not in result.output
     assert not output_dir.exists()
 
@@ -469,6 +471,36 @@ def test_init_generates_valid_starter_files(tmp_path: Path) -> None:
     config, task_file = validate_config_files(tmp_path / "context-eval.yaml")
     assert config.repo.path == tmp_path.resolve()
     assert config.agent.command == "agent -p {prompt_file}"
+    assert task_file.tasks[0].id == "sample-task"
+
+
+def test_init_can_generate_named_agent_profiles(tmp_path: Path) -> None:
+    result = CliRunner().invoke(
+        app,
+        [
+            "init",
+            "--directory",
+            str(tmp_path),
+            "--repo-path",
+            ".",
+            "--agent-command",
+            "coco -p {prompt_file}",
+            "--agent-profiles",
+        ],
+    )
+
+    assert result.exit_code == 0
+    config_text = (tmp_path / "context-eval.yaml").read_text(encoding="utf-8")
+    assert "\nagents:\n" in f"\n{config_text}"
+    assert "\nagent:\n" not in f"\n{config_text}"
+
+    config, task_file = validate_config_files(tmp_path / "context-eval.yaml")
+    assert config.agent is None
+    assert list(config.agents) == ["codex", "claude", "trae", "custom"]
+    assert config.agents["codex"].kind == "codex-cli"
+    assert config.agents["claude"].kind == "claude-code"
+    assert config.agents["trae"].command == 'traecli -p "{prompt}"'
+    assert config.agents["custom"].command == "coco -p {prompt_file}"
     assert task_file.tasks[0].id == "sample-task"
 
 
