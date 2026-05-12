@@ -32,6 +32,7 @@ def test_prepare_release_dry_run_checks_changelog_and_prints_plan(tmp_path: Path
     assert "DRY RUN: would run" in result.stdout
     assert "python -m build --outdir" in result.stdout
     assert "python scripts/inspect-package-artifacts.py" in result.stdout
+    assert "python scripts/install-smoke-artifacts.py" in result.stdout
     assert "Manual publish checkpoint: create tags and upload packages outside this script." in (
         result.stdout
     )

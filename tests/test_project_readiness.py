@@ -68,6 +68,14 @@ def test_ci_runs_prepare_release_for_package_build() -> None:
     package_job = workflow.split("  package-build:", maxsplit=1)[1]
 
     assert 'python -m pip install "build>=1"' in package_job
+    for dependency in [
+        '"typer>=0.12"',
+        '"pydantic>=2"',
+        '"PyYAML>=6"',
+        '"rich>=13"',
+        '"Jinja2>=3"',
+    ]:
+        assert dependency in package_job
     assert "python scripts/prepare-release.py --dist-dir dist" in package_job
     assert 'python -m pip install -e ".[dev]"' not in package_job
 
@@ -159,6 +167,23 @@ def test_release_checklist_documents_prepare_release_boundaries() -> None:
         assert term in text
 
 
+def test_release_checklist_documents_release_candidate_install_smoke() -> None:
+    text = Path("docs/release-checklist.md").read_text(encoding="utf-8")
+
+    for term in [
+        "## Release Candidate Install Smoke",
+        "python scripts/install-smoke-artifacts.py --dist-dir C:\\tmp\\context-eval-dist",
+        "installs the built wheel",
+        "temporary Python environment",
+        "local fixture repository",
+        "fake local agent",
+        "does not call hosted services",
+        "does not create Git tags",
+        "does not upload or publish packages",
+    ]:
+        assert term in text
+
+
 def test_release_checklist_documents_hidden_release_state_check() -> None:
     text = Path("docs/release-checklist.md").read_text(encoding="utf-8")
 
@@ -246,6 +271,13 @@ def test_changelog_mentions_prepare_release_entrypoint() -> None:
     assert "manual tag and publish checkpoint" in text
 
 
+def test_changelog_mentions_release_candidate_install_smoke() -> None:
+    text = Path("CHANGELOG.md").read_text(encoding="utf-8")
+
+    assert "release candidate install smoke" in text
+    assert "built package artifacts" in text
+
+
 def test_pyproject_and_ci_matrix_match_supported_runtime_contract() -> None:
     pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
     workflow = yaml.safe_load(Path(".github/workflows/ci.yml").read_text(encoding="utf-8"))
@@ -314,6 +346,21 @@ def test_readme_documents_prepare_release_entrypoint() -> None:
         "runs the release-state check",
         "builds and inspects release artifacts",
         "does not tag or publish",
+    ]:
+        assert term in text
+
+
+def test_readme_documents_release_candidate_install_smoke() -> None:
+    text = Path("README.md").read_text(encoding="utf-8")
+
+    for term in [
+        "release candidate install smoke",
+        "python scripts/install-smoke-artifacts.py --dist-dir C:\\tmp\\context-eval-dist",
+        "built wheel",
+        "temporary Python environment",
+        "fixture repository",
+        "fake local agent",
+        "does not call hosted services",
     ]:
         assert term in text
 

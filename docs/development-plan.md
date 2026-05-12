@@ -92,6 +92,8 @@ loss of SDD/TDD discipline.
    local artifact formats or repeated command-template friction.
 6. PR F: Local E2E CI Smoke And Test Taxonomy, before later feature work that
    depends on stronger workflow-level regression confidence.
+7. PR G: Release Candidate Install Smoke And Changelog Finalization, before
+   tagging or publishing the first 0.1.0 release candidate.
 
 ## Capability Epic A: Config Diagnostics And Strict Validation Hardening
 
@@ -484,6 +486,84 @@ configuration, and developer documentation. Keeping those pieces together makes
 the new gate reviewable and prevents a half-wired smoke test from becoming a
 silent maintenance burden.
 
+## Capability Epic G: Release Candidate Install Smoke And Changelog Finalization
+
+### Goal
+
+Prove the 0.1.0 release candidate can be installed from built package artifacts
+and used through the installed CLI before maintainers tag or publish anything.
+
+### Scope
+
+- Use `docs/release-candidate-install-smoke.md` as the source spec for the
+  release candidate install smoke.
+- Run release validation from a clean archive or clean checkout when live local
+  artifacts such as `.context-eval/`, `dist/`, or `context_eval.egg-info/` would
+  block release-state checks.
+- Build local wheel and sdist artifacts, inspect their runtime package scope,
+  install the built wheel into a temporary Python environment, and run one local
+  fixture repository workflow with a fake local agent.
+- Keep the smoke local artifact-based: built package artifacts, local fixture
+  repository, local config files, generated local run artifacts, and no hosted
+  service calls.
+- Finalize README, release checklist, development-plan, and changelog language
+  for the 0.1.0 release candidate path.
+- Stop at the manual publish checkpoint after CI and local smoke pass.
+
+### Non-Goals
+
+- Do not create Git tags automatically.
+- Do not publish or upload packages automatically.
+- Do not run against a live user repository.
+- Do not install or run a real external coding agent.
+- Do not call hosted services from the smoke workflow.
+- Do not add an LLM judge or benchmark/leaderboard language.
+
+### Merge Acceptance Criteria
+
+- The capability PR includes spec, tests, implementation, docs, verification.
+- `prepare-release.py` builds artifacts, inspects them, runs the release
+  candidate install smoke, and then prints the manual publish checkpoint.
+- CI package-build runs the same consolidated preparation path.
+- The smoke installs the built package artifacts and exercises the installed CLI
+  against a local fixture repository and fake local agent.
+- Generated smoke artifacts are local, parseable, and self-contained.
+- CHANGELOG and release docs name the release candidate path without implying
+  automatic tag or publish behavior.
+
+### Suggested Ralph Stories
+
+- US-G1: Specify release candidate/install smoke contract and manual publish
+  boundary.
+- US-G2: Add failing tests for release install smoke coverage in docs, scripts,
+  and CI.
+- US-G3: Implement a minimal local install smoke from built package artifacts.
+- US-G4: Wire the smoke into package-build and prepare-release without
+  auto-publish.
+- US-G5: Update README, release checklist, development plan, and CHANGELOG for
+  the 0.1.0 release candidate path.
+
+### Test Strategy
+
+- Spec tests for `docs/release-candidate-install-smoke.md` and this development
+  plan epic.
+- Script tests for dry-run planning, missing wheel failures, and
+  prepare-release wiring.
+- CI workflow tests proving package-build uses the consolidated release
+  preparation entrypoint and prepares runtime dependencies for the install
+  smoke without editable-installing the project first.
+- Manual clean-archive verification before release: run
+  `python scripts/prepare-release.py --dist-dir <empty-dist>` from the clean
+  tree and confirm the manual publish checkpoint.
+- Full verification commands after each completed story and before the PR is
+  marked ready.
+
+### Why One Capability PR
+
+This is the final release-candidate gate. Splitting docs, package build,
+artifact inspection, installed-CLI smoke, changelog finalization, and CI wiring
+would make it too easy to tag a commit that has only partial release evidence.
+
 ## Cross-Epic Quality Gates
 
 Every completed story should run the local gates requested for this repository:
@@ -493,6 +573,7 @@ Every completed story should run the local gates requested for this repository:
 .\.venv\Scripts\python -m pytest --basetemp C:\tmp\context-eval-pytest
 .\.venv\Scripts\context-eval validate-config --config examples/basic/context-eval.yaml
 powershell -ExecutionPolicy Bypass -File scripts\validate-skills.ps1 -SkipExternal
+.\.venv\Scripts\python -m pytest tests\test_local_e2e_smoke.py -m local_e2e -q --basetemp C:\tmp\context-eval-local-e2e-pytest
 git diff --check
 ```
 

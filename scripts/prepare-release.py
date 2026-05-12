@@ -65,6 +65,8 @@ def _display_command(command: list[str]) -> str:
             continue
         if path == script_dir / "inspect-package-artifacts.py":
             normalized.append("scripts/inspect-package-artifacts.py")
+        elif path == script_dir / "install-smoke-artifacts.py":
+            normalized.append("scripts/install-smoke-artifacts.py")
         elif path == repo_root:
             normalized.append(".")
         else:
@@ -103,9 +105,18 @@ def prepare_release(root: Path, dist_dir: Path, *, dry_run: bool) -> int:
 
     script_dir = Path(__file__).resolve().parent
     inspector = script_dir / "inspect-package-artifacts.py"
+    install_smoke = script_dir / "install-smoke-artifacts.py"
     commands = [
         [sys.executable, "-m", "build", "--outdir", str(dist_dir)],
         [sys.executable, str(inspector), str(dist_dir)],
+        [
+            sys.executable,
+            str(install_smoke),
+            "--root",
+            str(root),
+            "--dist-dir",
+            str(dist_dir),
+        ],
     ]
 
     for command in commands:
