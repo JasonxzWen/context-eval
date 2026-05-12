@@ -368,6 +368,7 @@ context-eval validate-config --config examples/basic/context-eval.yaml
 python scripts/check-release-state.py
 python -m build --outdir C:\tmp\context-eval-dist
 python scripts/inspect-package-artifacts.py C:\tmp\context-eval-dist
+python scripts/install-smoke-artifacts.py --dist-dir C:\tmp\context-eval-dist
 git diff --check
 ```
 
@@ -395,7 +396,18 @@ For release preparation, use the consolidated command:
 python scripts/prepare-release.py --dist-dir C:\tmp\context-eval-dist
 ```
 
-It checks CHANGELOG.md, runs the release-state check, builds and inspects release artifacts, and does not tag or publish.
+It checks CHANGELOG.md, runs the release-state check, builds and inspects release artifacts, runs the release candidate install smoke, and does not tag or publish.
+
+The release candidate install smoke can also be run directly:
+
+```bash
+python scripts/install-smoke-artifacts.py --dist-dir C:\tmp\context-eval-dist
+```
+
+It installs the built wheel into a temporary Python environment and runs the
+installed CLI against a fixture repository, fake local agent, local config files,
+and local run artifacts. It does not call hosted services, run a real external
+coding agent, create tags, or publish packages.
 
 The artifact inspection command checks the built wheel and sdist against the
 runtime package scope documented there.

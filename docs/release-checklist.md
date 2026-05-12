@@ -13,6 +13,7 @@ powershell -ExecutionPolicy Bypass -File scripts\validate-skills.ps1 -SkipExtern
 python scripts/check-release-state.py
 python -m build --outdir C:\tmp\context-eval-dist
 python scripts/inspect-package-artifacts.py C:\tmp\context-eval-dist
+python scripts/install-smoke-artifacts.py --dist-dir C:\tmp\context-eval-dist
 git diff --check
 ```
 
@@ -26,12 +27,31 @@ The release preparation entrypoint is:
 python scripts/prepare-release.py --dist-dir C:\tmp\context-eval-dist
 ```
 
-This command checks CHANGELOG.md, runs the release-state check before package builds, builds wheel and sdist artifacts, and inspects artifacts before publish.
+This command checks CHANGELOG.md, runs the release-state check before package builds, builds wheel and sdist artifacts, inspects artifacts before publish, and runs the release candidate install smoke.
 It is a preparation gate only. It does not create Git tags, and it does not upload or publish packages.
 
 The manual publish checkpoint remains after this command succeeds: confirm the
 reviewed commit, confirm CI, create the Git tag intentionally, and publish the
 already inspected artifacts with the selected package index tooling.
+
+## Release Candidate Install Smoke
+
+Run the install smoke after package artifact inspection:
+
+```bash
+python scripts/install-smoke-artifacts.py --dist-dir C:\tmp\context-eval-dist
+```
+
+The smoke installs the built wheel into a temporary Python environment, then
+runs the installed `context-eval` console script against a local fixture repository,
+a fake local agent, temporary local config files, and local run
+artifacts. It runs `validate-config`, `run`, `report`, CSV/JSON `export`, and
+`ui`, then verifies the generated artifacts are parseable and self-contained.
+
+The smoke does not call hosted services, does not install or run a real external
+coding agent, does not create Git tags, and does not upload or publish packages.
+It is still a release candidate gate only; the publish boundary remains a
+manual checkpoint.
 
 ## Supported Runtime And Platforms
 
@@ -89,4 +109,4 @@ Inspect package configuration before release:
 3. Run the local verification commands above.
 4. Confirm CI passes on the release branch or pull request.
 5. Tag the release from the reviewed commit.
-6. Build and inspect artifacts before publishing.
+6. Build, inspect, and install-smoke artifacts before publishing.
