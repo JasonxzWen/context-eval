@@ -431,8 +431,8 @@ unit-level behavior.
   `context-eval export`, and `context-eval ui`.
 - Verify generated `results.jsonl`, `run_manifest.json`, `report.md`,
   `summary.csv`, `summary.json`, and `context-eval-ui.html`.
-- Decide whether the local-e2e smoke belongs in a separate CI job or a marked
-  pytest path, then document that choice.
+- Run the smoke as a separate `local-e2e` CI job using the `local_e2e` pytest
+  marker; keep that marker excluded from the default pytest matrix.
 - Keep existing unit, integration, skill validation, and package-build gates.
 
 ### Non-Goals
@@ -471,6 +471,9 @@ unit-level behavior.
 - Subprocess CLI smoke tests using a temporary fixture repository.
 - Artifact assertions for results, manifest, report, export, and static UI.
 - CI workflow tests proving the local-e2e smoke is named and wired.
+- Default pytest excludes `local_e2e`; run
+  `python -m pytest tests/test_local_e2e_smoke.py -m local_e2e` for the
+  installed CLI smoke path.
 - Full verification commands after each completed story and before the PR is
   marked ready.
 

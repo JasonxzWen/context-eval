@@ -64,17 +64,21 @@ than trying to benchmark an agent.
 ## CI Contract
 
 CI should keep the existing pytest matrix, ruff check, example config
-validation, skill validation, and package build jobs. The local-e2e smoke can be
-added in one of two maintainable forms:
+validation, skill validation, and package build jobs.
 
-- preferred: a separate `local-e2e` job on one Python version and one OS after
-  package installation;
-- acceptable: a pytest-marked local-e2e test included in the main pytest suite
-  only if it stays fast and stable.
+The first implementation uses a separate `local-e2e` job after package
+installation. The smoke runs on one Python version and one OS. It is marked with
+the `local_e2e` pytest marker and excluded from the default pytest matrix, so
+routine unit and integration tests do not silently absorb the higher-level
+workflow cost. CI runs the smoke with:
 
-If the smoke becomes slower or flaky, it should move to its own job instead of
-being silently weakened. The job name should make clear that it is local-e2e,
-not only unit tests.
+```bash
+python -m pytest tests/test_local_e2e_smoke.py -m local_e2e
+```
+
+If the smoke becomes slower or flaky, keep the separate job boundary and fix the
+fixture or orchestration issue rather than weakening the smoke. The job name
+should make clear that it is local-e2e, not only unit tests.
 
 ## Non-Goals
 
@@ -94,8 +98,8 @@ not only unit tests.
 - `docs/development-plan.md` lists the local-e2e CI smoke as a capability epic
   before later feature work.
 - Tests define the local-e2e smoke contract before implementation.
-- CI has a clearly named local-e2e check or a clearly marked local-e2e pytest
-  path.
+- CI has a clearly named local-e2e check through the separate `local-e2e` job
+  and the `local_e2e` pytest marker.
 - The smoke runs only against local artifacts and fixture repositories.
 - The smoke verifies `context-eval run`, `report`, `export`, and `ui` through
   the installed CLI.

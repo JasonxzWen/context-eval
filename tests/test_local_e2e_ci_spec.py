@@ -48,3 +48,16 @@ def test_local_e2e_ci_spec_preserves_product_boundaries() -> None:
         "optional follow-up",
     ]:
         assert term in text
+
+
+def test_local_e2e_ci_spec_selects_separate_ci_job_boundary() -> None:
+    text = Path("docs/local-e2e-ci.md").read_text(encoding="utf-8")
+
+    for term in [
+        "separate `local-e2e` job",
+        "one Python version and one OS",
+        "`local_e2e` pytest marker",
+        "excluded from the default pytest matrix",
+        "python -m pytest tests/test_local_e2e_smoke.py -m local_e2e",
+    ]:
+        assert term in text
