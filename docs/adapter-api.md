@@ -24,16 +24,43 @@ The command runs with the prepared workspace as the current working directory.
 The agent may modify files and run commands, but context-eval never commits
 changes automatically.
 
-## Planned Agent Profiles
+## Agent Profiles
 
-The next adapter expansion is named local agent profiles, specified in
-`docs/agent-profiles.md`. Profiles keep the command-template adapter as the
-baseline while making Codex CLI, Claude Code, and custom commands such as
-`coco -p {prompt_file}` first-class noninteractive configurations.
+Named local agent profiles are specified in `docs/agent-profiles.md`. Profiles
+keep the command-template adapter as the baseline while making Codex CLI,
+Claude Code, traecli, and custom commands such as `coco -p {prompt_file}`
+first-class noninteractive configurations.
 
 Existing configs with a single `agent` mapping remain the compatibility shape.
-The planned `agents` map is for multi-agent matrices and should not install or
-manage coding agents automatically.
+The `agents` map is for multi-agent matrices and does not install or manage
+coding agents automatically.
+
+```yaml
+agents:
+  codex:
+    kind: "codex-cli"
+    command: "codex exec -C {workspace} - < {prompt_file}"
+    timeout_minutes: 60
+
+  claude:
+    kind: "claude-code"
+    command: "claude -p {prompt_file}"
+    timeout_minutes: 60
+
+  trae:
+    kind: "traecli"
+    command: "traecli -p \"{prompt}\""
+    timeout_minutes: 60
+
+  coco:
+    kind: "custom"
+    command: "coco -p {prompt_file}"
+    timeout_minutes: 60
+```
+
+`context-eval run` runs every configured profile by default. Repeat `--agent
+<profile>` to select a subset from the map. Unknown template variables fail
+during config validation, before an agent process starts.
 
 ## Prompt Templates
 

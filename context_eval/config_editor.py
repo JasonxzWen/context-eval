@@ -17,6 +17,7 @@ class EditableRepo(BaseModel):
 
 class EditableAgent(BaseModel):
     name: str
+    kind: str = "custom"
     command: str
     timeout_minutes: int
     network: str
@@ -47,6 +48,8 @@ class EditableTask(BaseModel):
 class EditableConfigModel(BaseModel):
     repo: EditableRepo
     agent: EditableAgent
+    agent_shape: str = "agent"
+    agents: list[EditableAgent] = Field(default_factory=list)
     tasks_path: str
     variants: list[EditableVariant]
     tasks: list[EditableTask]
@@ -68,6 +71,18 @@ def build_editable_model(
 
     config_dir = config.config_path.parent if config.config_path else None
     source = _read_source_mapping(config.config_path)
+    profiles = config.agent_profiles()
+    profile_models = [
+        EditableAgent(
+            name=profile.name,
+            kind=profile.kind,
+            command=profile.command,
+            timeout_minutes=profile.timeout_minutes,
+            network=profile.network,
+        )
+        for profile in profiles.values()
+    ]
+    primary_agent = profile_models[0]
 
     return EditableConfigModel(
         repo=EditableRepo(
@@ -75,11 +90,14 @@ def build_editable_model(
             base_ref=config.repo.base_ref,
         ),
         agent=EditableAgent(
-            name=config.agent.name,
-            command=config.agent.command,
-            timeout_minutes=config.agent.timeout_minutes,
-            network=config.agent.network,
+            name=primary_agent.name,
+            kind=primary_agent.kind,
+            command=primary_agent.command,
+            timeout_minutes=primary_agent.timeout_minutes,
+            network=primary_agent.network,
         ),
+        agent_shape="agents" if config.uses_agent_profile_map() else "agent",
+        agents=profile_models,
         tasks_path=_source_path(source, ("tasks",), config.tasks, config_dir),
         output_dir=_optional_source_path(source, "output_dir", config.output_dir, config_dir),
         variants=[
@@ -123,17 +141,16 @@ def export_editable_yaml(model: EditableConfigModel) -> EditableYamlExport:
 
     _require_unique("variant names", [variant.name for variant in model.variants])
     _require_unique("task ids", [task.id for task in model.tasks])
+    if model.agent_shape == "agents":
+        _require_unique(
+            "agent profile names",
+            [agent.name for agent in _agent_export_models(model)],
+        )
 
     config_data: dict[str, Any] = {
         "repo": {
             "path": model.repo.path,
             "base_ref": model.repo.base_ref,
-        },
-        "agent": {
-            "name": model.agent.name,
-            "command": model.agent.command,
-            "timeout_minutes": model.agent.timeout_minutes,
-            "network": model.agent.network,
         },
         "tasks": model.tasks_path,
         "variants": {
@@ -151,6 +168,23 @@ def export_editable_yaml(model: EditableConfigModel) -> EditableYamlExport:
         },
         "evaluation": _evaluation_to_yaml_data(model),
     }
+    if model.agent_shape == "agents":
+        config_data["agents"] = {
+            agent.name: {
+                "kind": agent.kind,
+                "command": agent.command,
+                "timeout_minutes": agent.timeout_minutes,
+                "network": agent.network,
+            }
+            for agent in _agent_export_models(model)
+        }
+    else:
+        config_data["agent"] = {
+            "name": model.agent.name,
+            "command": model.agent.command,
+            "timeout_minutes": model.agent.timeout_minutes,
+            "network": model.agent.network,
+        }
     if model.output_dir is not None:
         config_data["output_dir"] = model.output_dir
 
@@ -164,6 +198,14 @@ def export_editable_yaml(model: EditableConfigModel) -> EditableYamlExport:
     )
 
 
+def _agent_export_models(model: EditableConfigModel) -> list[EditableAgent]:
+    agents = [agent.model_copy(deep=True) for agent in model.agents]
+    if agents:
+        agents[0] = model.agent.model_copy(deep=True)
+        return agents
+    return [model.agent.model_copy(deep=True)]
+
+
 def validate_editable_model(model: EditableConfigModel) -> list[str]:
     """Return persistence blockers for an edited local UI model."""
 
@@ -173,11 +215,31 @@ def validate_editable_model(model: EditableConfigModel) -> list[str]:
     _require_text(model.agent.name, "agent.name", issues)
     _require_text(model.agent.command, "agent.command", issues)
     _require_text(model.tasks_path, "tasks path", issues)
+    if model.agent_shape not in {"agent", "agents"}:
+        issues.append("agent_shape must be agent or agents")
 
     if model.agent.timeout_minutes < 1:
         issues.append("agent.timeout_minutes must be a positive integer")
     if model.agent.network not in {"disabled", "enabled"}:
         issues.append("agent.network must be disabled or enabled")
+    if model.agent_shape == "agents":
+        agents = _agent_export_models(model)
+        if not agents:
+            issues.append("at least one agent profile is required")
+        for index, agent in enumerate(agents, start=1):
+            _require_text(agent.name, f"agent profile {index} name", issues)
+            _require_text(agent.command, f"agent profile {index} command", issues)
+            if agent.kind not in {"codex-cli", "claude-code", "traecli", "custom"}:
+                issues.append(
+                    f"agent profile {index} kind must be codex-cli, "
+                    "claude-code, traecli, or custom"
+                )
+            if agent.timeout_minutes < 1:
+                issues.append(
+                    f"agent profile {index} timeout_minutes must be a positive integer"
+                )
+            if agent.network not in {"disabled", "enabled"}:
+                issues.append(f"agent profile {index} network must be disabled or enabled")
     if (
         model.evaluation_timeout_seconds is not None
         and model.evaluation_timeout_seconds < 1

@@ -85,6 +85,10 @@ def run(
         list[str] | None,
         typer.Option("--variant", help="Variant to run. Repeatable."),
     ] = None,
+    agent: Annotated[
+        list[str] | None,
+        typer.Option("--agent", help="Agent profile to run. Repeatable."),
+    ] = None,
     task_id: Annotated[
         list[str] | None,
         typer.Option("--task-id", help="Task ID to run. Repeatable."),
@@ -116,6 +120,7 @@ def run(
                 config=loaded_config,
                 tasks=task_file,
                 variants=variant,
+                agents=agent,
                 max_tasks=max_tasks,
                 trials=trials,
                 jobs=jobs,
@@ -128,6 +133,7 @@ def run(
             tasks=task_file,
             cleanup_policy=resolved_cleanup_policy,
             max_tasks=max_tasks,
+            agents=agent,
             variants=variant,
             trials=trials,
             jobs=jobs,
@@ -249,6 +255,7 @@ def validate_config(
 
     console.print("[green]Config valid[/green]")
     console.print(f"Repo: {loaded_config.repo.path}")
+    console.print(f"Agents: {', '.join(loaded_config.agent_profiles().keys())}")
     console.print(f"Tasks: {len(task_file.tasks)}")
     console.print(f"Variants: {', '.join(loaded_config.variants.keys())}")
 

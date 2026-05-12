@@ -11,6 +11,9 @@ context-eval evaluates the effect of context variants, not the absolute capabili
 - Created at: `{{ metadata.get("created_at", "unknown") }}`
 - Results: {{ results|length }}
 - Agent: `{{ metadata.get("agent", {}).get("name", "unknown") }}`
+{% if metadata_agent_names|length > 1 %}
+- Agent profiles: `{{ metadata_agent_names | join("`, `") }}`
+{% endif %}
 - Repo: `{{ metadata.get("repo", {}).get("path", "unknown") }}`
 - Base ref: `{{ metadata.get("repo", {}).get("base_ref", "unknown") }}`
 

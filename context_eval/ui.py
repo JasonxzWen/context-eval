@@ -322,6 +322,12 @@ def _config_section(
     {_input("Repo path", editor.repo.path, "repo.path")}
     {_input("Base ref", editor.repo.base_ref, "repo.base_ref")}
     {_input("Agent name", editor.agent.name, "agent.name")}
+    {_select(
+        "Agent kind",
+        editor.agent.kind,
+        "agent.kind",
+        ["custom", "codex-cli", "claude-code", "traecli"],
+    )}
     {_input("Agent command", editor.agent.command, "agent.command")}
     {_input(
         "Agent timeout minutes",
@@ -355,13 +361,15 @@ def _config_section(
 
 def _matrix_section(editor: EditableConfigModel | None) -> str:
     if editor is None:
-        return _empty_section("Task x Variant Matrix", "No matrix available.")
+        return _empty_section("Agent x Task x Variant Matrix", "No matrix available.")
 
     return f"""
 <section>
-  <h2>Task x Variant Matrix</h2>
+  <h2>Agent x Task x Variant Matrix</h2>
   <table>
-    <thead><tr><th>Task</th><th>Variant</th><th>Repo ref</th><th>Prompt path</th></tr></thead>
+    <thead>
+      <tr><th>Agent</th><th>Task</th><th>Variant</th><th>Repo ref</th><th>Prompt path</th></tr>
+    </thead>
     <tbody id="matrix-body">{_matrix_rows(editor)}</tbody>
   </table>
 </section>
@@ -487,18 +495,23 @@ def _validate_config_command(config: ContextEvalConfig) -> str:
 
 def _matrix_rows(editor: EditableConfigModel) -> str:
     rows = []
-    for task in editor.tasks:
-        for variant in editor.variants:
-            repo_ref = task.repo_ref or editor.repo.base_ref
-            case_id = f"{slugify(task.id)}__{slugify(variant.name)}"
-            rows.append(
-                "<tr>"
-                f"<td><code>{escape(task.id)}</code></td>"
-                f"<td><code>{escape(variant.name)}</code></td>"
-                f"<td><code>{escape(repo_ref)}</code></td>"
-                f"<td><code>prompts/{escape(case_id)}.md</code></td>"
-                "</tr>"
-            )
+    agents = editor.agents if editor.agent_shape == "agents" else [editor.agent]
+    for agent in agents:
+        for task in editor.tasks:
+            for variant in editor.variants:
+                repo_ref = task.repo_ref or editor.repo.base_ref
+                case_id = f"{slugify(task.id)}__{slugify(variant.name)}"
+                if editor.agent_shape == "agents":
+                    case_id = f"{case_id}__{slugify(agent.name)}"
+                rows.append(
+                    "<tr>"
+                    f"<td><code>{escape(agent.name)}</code></td>"
+                    f"<td><code>{escape(task.id)}</code></td>"
+                    f"<td><code>{escape(variant.name)}</code></td>"
+                    f"<td><code>{escape(repo_ref)}</code></td>"
+                    f"<td><code>prompts/{escape(case_id)}.md</code></td>"
+                    "</tr>"
+                )
     return "".join(rows)
 
 
@@ -889,13 +902,32 @@ def _editor_script(editor: EditableConfigModel | None) -> str:
     lines.push("repo:");
     appendYamlField(lines, 2, "path", editableModel.repo.path);
     appendYamlField(lines, 2, "base_ref", editableModel.repo.base_ref);
-    lines.push("agent:");
-    appendYamlField(lines, 2, "name", editableModel.agent.name);
-    appendYamlField(lines, 2, "command", editableModel.agent.command);
-    lines.push(
-      "  timeout_minutes: " + String(Number.parseInt(editableModel.agent.timeout_minutes, 10) || 1)
-    );
-    appendYamlField(lines, 2, "network", editableModel.agent.network);
+    if (editableModel.agent_shape === "agents") {{
+      lines.push("agents:");
+      const agents = Array.isArray(editableModel.agents) && editableModel.agents.length > 0
+        ? editableModel.agents
+        : [editableModel.agent];
+      agents.forEach((agent, index) => {{
+        const profile = index === 0 ? editableModel.agent : agent;
+        lines.push("  " + yamlKey(profile.name) + ":");
+        appendYamlField(lines, 4, "kind", profile.kind || "custom");
+        appendYamlField(lines, 4, "command", profile.command);
+        lines.push(
+          "    timeout_minutes: " +
+            String(Number.parseInt(profile.timeout_minutes, 10) || 1)
+        );
+        appendYamlField(lines, 4, "network", profile.network);
+      }});
+    }} else {{
+      lines.push("agent:");
+      appendYamlField(lines, 2, "name", editableModel.agent.name);
+      appendYamlField(lines, 2, "command", editableModel.agent.command);
+      lines.push(
+        "  timeout_minutes: " +
+          String(Number.parseInt(editableModel.agent.timeout_minutes, 10) || 1)
+      );
+      appendYamlField(lines, 2, "network", editableModel.agent.network);
+    }}
     appendYamlField(lines, 0, "tasks", editableModel.tasks_path);
     if (editableModel.output_dir !== null && editableModel.output_dir !== undefined) {{
       appendYamlField(lines, 0, "output_dir", editableModel.output_dir);
@@ -978,6 +1010,12 @@ def _editor_script(editor: EditableConfigModel | None) -> str:
     requireText(editableModel.repo.base_ref, "repo.base_ref");
     requireText(editableModel.agent.name, "agent.name");
     requireText(editableModel.agent.command, "agent.command");
+    if (
+      !["custom", "codex-cli", "claude-code", "traecli"]
+        .includes(String(editableModel.agent.kind))
+    ) {{
+      issues.push("agent.kind must be custom, codex-cli, claude-code, or traecli");
+    }}
     requireText(editableModel.tasks_path, "tasks path");
 
     const timeout = Number.parseInt(editableModel.agent.timeout_minutes, 10);
@@ -986,6 +1024,33 @@ def _editor_script(editor: EditableConfigModel | None) -> str:
     }}
     if (!["disabled", "enabled"].includes(String(editableModel.agent.network))) {{
       issues.push("agent.network must be disabled or enabled");
+    }}
+    if (editableModel.agent_shape === "agents") {{
+      const agents = Array.isArray(editableModel.agents) && editableModel.agents.length > 0
+        ? editableModel.agents
+        : [editableModel.agent];
+      const agentNames = new Set();
+      agents.forEach((agent, index) => {{
+        const profile = index === 0 ? editableModel.agent : agent;
+        const name = String(profile.name ?? "").trim();
+        if (name.length === 0) {{
+          issues.push("agent profile " + String(index + 1) + " name is required");
+        }} else if (agentNames.has(name)) {{
+          issues.push("duplicate agent profile: " + name);
+        }} else {{
+          agentNames.add(name);
+        }}
+        requireText(profile.command, "agent profile " + String(index + 1) + " command");
+        if (
+          !["custom", "codex-cli", "claude-code", "traecli"]
+            .includes(String(profile.kind))
+        ) {{
+          issues.push(
+            "agent profile " + String(index + 1) +
+              " kind must be custom, codex-cli, claude-code, or traecli"
+          );
+        }}
+      }});
     }}
     if (
       editableModel.evaluation_timeout_seconds !== null &&
@@ -1070,7 +1135,16 @@ def _editor_script(editor: EditableConfigModel | None) -> str:
   function validateGeneratedYaml(configYaml, tasksYaml) {{
     const issues = [];
     [
-      [configYaml, "config export", ["repo:", "agent:", "tasks:", "variants:"]],
+      [
+        configYaml,
+        "config export",
+        [
+          "repo:",
+          editableModel.agent_shape === "agents" ? "agents:" : "agent:",
+          "tasks:",
+          "variants:",
+        ]
+      ],
       [tasksYaml, "tasks export", ["tasks:"]],
     ].forEach(([content, label, requiredMarkers]) => {{
       requiredMarkers.forEach((marker) => {{
@@ -1232,12 +1306,29 @@ def _editor_script(editor: EditableConfigModel | None) -> str:
           editableModel.repo.base_ref = value;
         }} else if (field === "agent.name") {{
           editableModel.agent.name = value;
+          if (editableModel.agent_shape === "agents" && editableModel.agents?.[0]) {{
+            editableModel.agents[0].name = value;
+          }}
+        }} else if (field === "agent.kind") {{
+          editableModel.agent.kind = value;
+          if (editableModel.agent_shape === "agents" && editableModel.agents?.[0]) {{
+            editableModel.agents[0].kind = value;
+          }}
         }} else if (field === "agent.command") {{
           editableModel.agent.command = value;
+          if (editableModel.agent_shape === "agents" && editableModel.agents?.[0]) {{
+            editableModel.agents[0].command = value;
+          }}
         }} else if (field === "agent.timeout_minutes") {{
           editableModel.agent.timeout_minutes = Number.parseInt(value, 10) || 1;
+          if (editableModel.agent_shape === "agents" && editableModel.agents?.[0]) {{
+            editableModel.agents[0].timeout_minutes = editableModel.agent.timeout_minutes;
+          }}
         }} else if (field === "agent.network") {{
           editableModel.agent.network = value;
+          if (editableModel.agent_shape === "agents" && editableModel.agents?.[0]) {{
+            editableModel.agents[0].network = value;
+          }}
         }} else if (field === "tasks_path") {{
           editableModel.tasks_path = value;
         }} else if (field === "evaluation_commands") {{
@@ -1293,19 +1384,29 @@ def _editor_script(editor: EditableConfigModel | None) -> str:
     }}
 
     body.textContent = "";
-    editableModel.tasks.forEach((task) => {{
-      editableModel.variants.forEach((variant) => {{
-        const taskId = task.id || "task";
-        const variantName = variant.name || "variant";
-        const repoRef = task.repo_ref || editableModel.repo.base_ref;
-        const caseId = `${{slugify(taskId)}}__${{slugify(variantName)}}`;
+    const agents = editableModel.agent_shape === "agents"
+      ? (editableModel.agents || [editableModel.agent])
+      : [editableModel.agent];
+    agents.forEach((agent) => {{
+      editableModel.tasks.forEach((task) => {{
+        editableModel.variants.forEach((variant) => {{
+          const agentName = agent.name || "agent";
+          const taskId = task.id || "task";
+          const variantName = variant.name || "variant";
+          const repoRef = task.repo_ref || editableModel.repo.base_ref;
+          let caseId = `${{slugify(taskId)}}__${{slugify(variantName)}}`;
+          if (editableModel.agent_shape === "agents") {{
+            caseId = `${{caseId}}__${{slugify(agentName)}}`;
+          }}
         const row = document.createElement("tr");
+        appendCell(row, agentName);
         appendCell(row, taskId);
         appendCell(row, variantName);
         appendCell(row, repoRef);
         appendCell(row, `prompts/${{caseId}}.md`);
         body.appendChild(row);
       }});
+    }});
     }});
   }}
 

@@ -380,6 +380,72 @@ evaluation:
     assert not output_dir.exists()
 
 
+def test_run_dry_run_expands_agents_map_and_filters_agent(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    context_dir = tmp_path / "contexts" / "baseline"
+    context_dir.mkdir(parents=True)
+    (context_dir / "AGENTS.md").write_text("# Baseline\n", encoding="utf-8")
+    (tmp_path / "tasks.yaml").write_text(
+        """
+tasks:
+  - id: "docs-easy"
+    prompt: "Fix docs."
+""",
+        encoding="utf-8",
+    )
+    config_path = tmp_path / "context-eval.yaml"
+    output_dir = tmp_path / "runs"
+    config_path.write_text(
+        f"""
+repo:
+  path: "./repo"
+  base_ref: "main"
+agents:
+  codex:
+    kind: "codex-cli"
+    command: "codex exec - < {{prompt_file}}"
+  coco:
+    kind: "custom"
+    command: "coco -p {{prompt_file}}"
+  trae:
+    kind: "traecli"
+    command: "traecli -p \\"{{prompt}}\\""
+tasks: "./tasks.yaml"
+output_dir: "{output_dir.as_posix()}"
+variants:
+  baseline:
+    description: "Baseline"
+    overlays:
+      - source: "./contexts/baseline/AGENTS.md"
+        target: "AGENTS.md"
+""",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "run",
+            "--config",
+            str(config_path),
+            "--dry-run",
+            "--agent",
+            "trae",
+            "--trials",
+            "2",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Agents: trae" in result.output
+    assert "agent=trae task=docs-easy variant=baseline trial=2" in result.output
+    assert "docs-easy__baseline__trae__trial-2" in result.output
+    assert "agent=codex" not in result.output
+    assert "agent=coco" not in result.output
+    assert not output_dir.exists()
+
+
 def test_init_generates_valid_starter_files(tmp_path: Path) -> None:
     result = CliRunner().invoke(
         app,
@@ -597,6 +663,17 @@ def test_compare_prints_variant_metrics_from_jsonl(tmp_path: Path) -> None:
 def test_inspect_run_prints_agent_summary_for_multiple_agents(tmp_path: Path) -> None:
     run_dir = tmp_path / "run"
     run_dir.mkdir()
+    (run_dir / "run_metadata.json").write_text(
+        """
+{
+  "run_id": "run-1",
+  "agent": {"name": "agent-a"},
+  "agents": [{"name": "agent-a"}, {"name": "agent-b"}],
+  "repo": {"base_ref": "main"}
+}
+""",
+        encoding="utf-8",
+    )
     results = [
         CaseResult(
             run_id="run-1",
@@ -638,6 +715,7 @@ def test_inspect_run_prints_agent_summary_for_multiple_agents(tmp_path: Path) ->
     output = CliRunner().invoke(app, ["inspect-run", str(run_dir)])
 
     assert output.exit_code == 0
+    assert "Agent profiles: agent-a, agent-b" in output.output
     assert "Agents:" in output.output
     assert "agent=agent-a cases=1 pass_rate=100.0%" in output.output
     assert "avg_agent_duration=1.50" in output.output
@@ -1119,6 +1197,7 @@ evaluation:
         "repo.path",
         "repo.base_ref",
         "agent.name",
+        "agent.kind",
         "agent.command",
         "agent.timeout_minutes",
         "agent.network",
@@ -1170,6 +1249,7 @@ evaluation:
     assert " is required" in html
     assert '" prompt"' in html
     assert "agent.network must be disabled or enabled" in html
+    assert "agent.kind must be custom, codex-cli, claude-code, or traecli" in html
     assert "target must be a safe relative path" in html
     assert "function renderMatrix" in html
     assert "function validateEditedConfiguration" in html
@@ -1193,6 +1273,65 @@ evaluation:
     assert "showSaveFilePicker" not in html
     assert "showOpenFilePicker" not in html
     assert "data-save-target" not in html
+
+
+def test_ui_config_preview_preserves_agents_map_semantics(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    context_dir = tmp_path / "contexts" / "baseline"
+    context_dir.mkdir(parents=True)
+    (context_dir / "AGENTS.md").write_text("# Baseline\n", encoding="utf-8")
+    (tmp_path / "tasks.yaml").write_text(
+        """
+tasks:
+  - id: "task-1"
+    prompt: "Fix docs."
+""",
+        encoding="utf-8",
+    )
+    config_path = tmp_path / "context-eval.yaml"
+    config_path.write_text(
+        """
+repo:
+  path: "./repo"
+  base_ref: "main"
+agents:
+  codex:
+    kind: "codex-cli"
+    command: "codex exec - < {prompt_file}"
+  coco:
+    kind: "custom"
+    command: "coco -p {prompt_file}"
+  trae:
+    kind: "traecli"
+    command: "traecli -p \\"{prompt}\\""
+tasks: "./tasks.yaml"
+variants:
+  baseline:
+    description: "Baseline"
+    overlays:
+      - source: "./contexts/baseline/AGENTS.md"
+        target: "AGENTS.md"
+""",
+        encoding="utf-8",
+    )
+    output_path = tmp_path / "context-eval-ui.html"
+
+    output = CliRunner().invoke(
+        app,
+        ["ui", "--config", str(config_path), "--output", str(output_path)],
+    )
+
+    assert output.exit_code == 0
+    html = output_path.read_text(encoding="utf-8")
+    assert "Agent x Task x Variant Matrix" in html
+    assert "task-1__baseline__codex" in html
+    assert "task-1__baseline__coco" in html
+    assert "task-1__baseline__trae" in html
+    assert '"agent_shape": "agents"' in html
+    assert '"kind": "codex-cli"' in html
+    assert '"kind": "traecli"' in html
+    assert 'editableModel.agent_shape === "agents" ? "agents:" : "agent:"' in html
 
 
 def test_ui_shows_agent_summary_from_run_artifacts(tmp_path: Path) -> None:

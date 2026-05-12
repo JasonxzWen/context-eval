@@ -18,6 +18,7 @@ from context_eval.evaluators.diff import collect_git_diff, create_diff_baseline
 from context_eval.hashing import stable_hash
 from context_eval.models import (
     RESULT_SCHEMA_VERSION,
+    AgentConfig,
     CaseResult,
     CleanupPolicy,
     ContextEvalConfig,
@@ -41,6 +42,7 @@ class ContextEvalRunner:
         cleanup: bool = False,
         cleanup_policy: CleanupPolicy | str | None = None,
         max_tasks: int | None = None,
+        agents: list[str] | None = None,
         variants: list[str] | None = None,
         trials: int = 1,
         jobs: int = 1,
@@ -57,6 +59,7 @@ class ContextEvalRunner:
         )
         self.tasks = tasks or load_tasks(tasks_path or config.tasks)
         self.max_tasks = max_tasks
+        self.selected_agents = agents or []
         self.selected_variants = variants or []
         self.trials = trials
         self.jobs = jobs
@@ -68,18 +71,20 @@ class ContextEvalRunner:
     def run(self) -> Path:
         run_id, run_dir = self._allocate_run_dir(datetime.now().strftime("%Y%m%d-%H%M%S"))
         self._prepare_run_dir(run_dir)
-        self._write_metadata(run_id, run_dir)
+        agent_profiles = self._agent_profiles()
+        self._write_metadata(run_id, run_dir, agent_profiles)
 
         results_path = run_dir / "results.jsonl"
         tasks = self.tasks.tasks[: self.max_tasks] if self.max_tasks else self.tasks.tasks
         variant_names = self._variant_names()
         case_plan = [
-            (task, variant_name, trial_index)
+            (agent_profile, task, variant_name, trial_index)
+            for agent_profile in agent_profiles
             for task in tasks
             for variant_name in variant_names
             for trial_index in range(1, self.trials + 1)
         ]
-        self._write_manifest(run_id, run_dir, tasks, variant_names, case_plan)
+        self._write_manifest(run_id, run_dir, agent_profiles, tasks, variant_names, case_plan)
 
         for result in self._run_case_plan(run_id, run_dir, case_plan):
             with results_path.open("a", encoding="utf-8") as handle:
@@ -92,18 +97,17 @@ class ContextEvalRunner:
         self,
         run_id: str,
         run_dir: Path,
-        case_plan: list[tuple[TaskConfig, str, int]],
+        case_plan: list[tuple[AgentConfig, TaskConfig, str, int]],
     ) -> list[CaseResult]:
         if self.jobs == 1:
-            agent = CommandTemplateAgent(self.config.agent)
             results = []
-            for task, variant_name, trial_index in case_plan:
-                self._print_case_start(task, variant_name, trial_index)
+            for agent_profile, task, variant_name, trial_index in case_plan:
+                self._print_case_start(agent_profile, task, variant_name, trial_index)
                 results.append(
                     self._run_case(
                         run_id,
                         run_dir,
-                        agent,
+                        CommandTemplateAgent(agent_profile),
                         task,
                         variant_name,
                         trial_index,
@@ -113,9 +117,9 @@ class ContextEvalRunner:
 
         futures = []
         with ThreadPoolExecutor(max_workers=self.jobs) as executor:
-            for task, variant_name, trial_index in case_plan:
-                self._print_case_start(task, variant_name, trial_index)
-                agent = CommandTemplateAgent(self.config.agent)
+            for agent_profile, task, variant_name, trial_index in case_plan:
+                self._print_case_start(agent_profile, task, variant_name, trial_index)
+                agent = CommandTemplateAgent(agent_profile)
                 futures.append(
                     executor.submit(
                         self._run_case,
@@ -131,11 +135,24 @@ class ContextEvalRunner:
 
     def _print_case_start(
         self,
+        agent_profile: AgentConfig,
         task: TaskConfig,
         variant_name: str,
         trial_index: int,
     ) -> None:
-        self.console.print(f"Running task={task.id} variant={variant_name} trial={trial_index}")
+        self.console.print(
+            f"Running agent={agent_profile.name} "
+            f"task={task.id} variant={variant_name} trial={trial_index}"
+        )
+
+    def _agent_profiles(self) -> list[AgentConfig]:
+        profiles = self.config.agent_profiles()
+        if not self.selected_agents:
+            return list(profiles.values())
+        unknown = [name for name in self.selected_agents if name not in profiles]
+        if unknown:
+            raise ValueError(f"unknown agent profile(s): {', '.join(unknown)}")
+        return [profiles[name] for name in self.selected_agents]
 
     def _variant_names(self) -> list[str]:
         if not self.selected_variants:
@@ -160,7 +177,13 @@ class ContextEvalRunner:
         for child in ["logs", "patches", "prompts", "artifacts", "workspaces"]:
             (run_dir / child).mkdir(parents=True, exist_ok=True)
 
-    def _write_metadata(self, run_id: str, run_dir: Path) -> None:
+    def _write_metadata(
+        self,
+        run_id: str,
+        run_dir: Path,
+        agent_profiles: list[AgentConfig],
+    ) -> None:
+        primary_agent = agent_profiles[0]
         metadata = {
             "schema_version": RESULT_SCHEMA_VERSION,
             "context_eval_version": __version__,
@@ -172,13 +195,8 @@ class ContextEvalRunner:
                 "path": str(self.config.repo.path),
                 "base_ref": self.config.repo.base_ref,
             },
-            "agent": {
-                "name": self.config.agent.name,
-                "command": self.config.agent.command,
-                "timeout_minutes": self.config.agent.timeout_minutes,
-                "network": self.config.agent.network,
-                "telemetry": self.config.agent.telemetry.model_dump(mode="json"),
-            },
+            "agent": self._agent_metadata(primary_agent),
+            "agents": [self._agent_metadata(profile) for profile in agent_profiles],
             "variants": {
                 name: {
                     "description": variant.description,
@@ -196,9 +214,10 @@ class ContextEvalRunner:
         self,
         run_id: str,
         run_dir: Path,
+        agent_profiles: list[AgentConfig],
         tasks: list[TaskConfig],
         variant_names: list[str],
-        case_plan: list[tuple[TaskConfig, str, int]],
+        case_plan: list[tuple[AgentConfig, TaskConfig, str, int]],
     ) -> None:
         manifest = {
             "manifest_schema_version": RUN_MANIFEST_SCHEMA_VERSION,
@@ -230,7 +249,17 @@ class ContextEvalRunner:
             ],
             "case_matrix": [
                 {
-                    "case_id": self._case_id(task.id, variant_name, trial_index),
+                    "case_id": self._case_id(
+                        task.id,
+                        variant_name,
+                        trial_index,
+                        agent_name=(
+                            agent_profile.name
+                            if self.config.uses_agent_profile_map()
+                            else None
+                        ),
+                    ),
+                    "agent_name": agent_profile.name,
                     "task_id": task.id,
                     "variant": variant_name,
                     "trial_index": trial_index,
@@ -238,9 +267,21 @@ class ContextEvalRunner:
                     "task_hash": self._task_hash(task),
                     "variant_hash": self._variant_hash(variant_name),
                 }
-                for task, variant_name, trial_index in case_plan
+                for agent_profile, task, variant_name, trial_index in case_plan
             ],
         }
+        if self.config.uses_agent_profile_map():
+            manifest["agents"] = [
+                {
+                    "name": profile.name,
+                    "kind": profile.kind,
+                    "command": profile.command,
+                    "timeout_minutes": profile.timeout_minutes,
+                    "network": profile.network,
+                    "telemetry": profile.telemetry.model_dump(mode="json"),
+                }
+                for profile in agent_profiles
+            ]
         (run_dir / "run_manifest.json").write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
@@ -256,8 +297,15 @@ class ContextEvalRunner:
         trial_index: int,
     ) -> CaseResult:
         started = time.monotonic()
+        agent_profile = agent.config
+        case_agent_name = agent_profile.name if self.config.uses_agent_profile_map() else None
         repo_ref = task.repo_ref or self.config.repo.base_ref
-        case_name = self._case_id(task.id, variant_name, trial_index)
+        case_name = self._case_id(
+            task.id,
+            variant_name,
+            trial_index,
+            agent_name=case_agent_name,
+        )
         prompt_path = run_dir / "prompts" / f"{case_name}.md"
         patch_path = run_dir / "patches" / f"{case_name}.patch"
         stdout_path = run_dir / "logs" / f"{case_name}.agent.stdout.log"
@@ -278,8 +326,8 @@ class ContextEvalRunner:
             task_id=task.id,
             variant=variant_name,
             repo_ref=repo_ref,
-            agent_name=self.config.agent.name,
-            network=self.config.agent.network,
+            agent_name=agent_profile.name,
+            network=agent_profile.network,
             status="internal_error",
         )
 
@@ -311,14 +359,14 @@ class ContextEvalRunner:
             prompt = render_prompt(
                 task,
                 variant_name,
-                prompt_template=self.config.agent.prompt_template,
+                prompt_template=agent_profile.prompt_template,
                 repo_ref=repo_ref,
             )
             write_prompt_file(
                 prompt_path,
                 task,
                 variant_name,
-                prompt_template=self.config.agent.prompt_template,
+                prompt_template=agent_profile.prompt_template,
                 repo_ref=repo_ref,
             )
             result.prompt_path = self._rel(run_dir, prompt_path)
@@ -330,7 +378,7 @@ class ContextEvalRunner:
                 task=task,
                 variant=variant_name,
                 output_dir=output_dir,
-                timeout_seconds=self.config.agent.timeout_minutes * 60,
+                timeout_seconds=agent_profile.timeout_minutes * 60,
             )
             result.agent_duration_seconds = agent_result.duration_seconds
             try:
@@ -419,8 +467,17 @@ class ContextEvalRunner:
                 result.patch_path = self._rel(run_dir, patch_path)
         return result
 
-    def _case_id(self, task_id: str, variant_name: str, trial_index: int) -> str:
+    def _case_id(
+        self,
+        task_id: str,
+        variant_name: str,
+        trial_index: int,
+        *,
+        agent_name: str | None = None,
+    ) -> str:
         base = f"{slugify(task_id)}__{slugify(variant_name)}"
+        if agent_name:
+            base = f"{base}__{slugify(agent_name)}"
         if self.trials == 1:
             return base
         return f"{base}__trial-{trial_index}"
@@ -436,6 +493,17 @@ class ContextEvalRunner:
 
     def _variant_hash(self, variant_name: str) -> str:
         return stable_hash(self.config.variants[variant_name].model_dump(mode="json"))
+
+    @staticmethod
+    def _agent_metadata(profile: AgentConfig) -> dict[str, object]:
+        return {
+            "name": profile.name,
+            "kind": profile.kind,
+            "command": profile.command,
+            "timeout_minutes": profile.timeout_minutes,
+            "network": profile.network,
+            "telemetry": profile.telemetry.model_dump(mode="json"),
+        }
 
     @staticmethod
     def _record_telemetry(

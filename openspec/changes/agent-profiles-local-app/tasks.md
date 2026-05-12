@@ -1,10 +1,10 @@
 ## 1. Agent Profiles
 
-- [ ] 1.1 Update `docs/agent-profiles.md`, `docs/adapter-api.md`, and `docs/configuration.md` with the accepted profile schema and compatibility rules.
-- [ ] 1.2 Add model tests for single `agent` compatibility, `agents` validation, mixed-shape rejection, supported profile kinds, and command template variables.
-- [ ] 1.3 Implement profile parsing and rendered command preview helpers in `context_eval/models.py` and adapter-facing modules.
-- [ ] 1.4 Expand runner planning to selected agent x task x variant x trial while preserving deterministic manifest and result row ordering.
-- [ ] 1.5 Update report, export, compare, inspect, and static UI tests for multi-agent artifact semantics.
+- [x] 1.1 Update `docs/agent-profiles.md`, `docs/adapter-api.md`, and `docs/configuration.md` with the accepted profile schema and compatibility rules.
+- [x] 1.2 Add model tests for single `agent` compatibility, `agents` validation, mixed-shape rejection, supported profile kinds, and command template variables.
+- [x] 1.3 Implement profile parsing and rendered command preview helpers in `context_eval/models.py` and adapter-facing modules.
+- [x] 1.4 Expand runner planning to selected agent x task x variant x trial while preserving deterministic manifest and result row ordering.
+- [x] 1.5 Update report, export, compare, inspect, and static UI tests for multi-agent artifact semantics.
 
 ## 2. Local App Server
 
@@ -28,4 +28,3 @@
 - [ ] 4.2 Add tests or scripted checks for launcher startup and visible startup failures where practical.
 - [ ] 4.3 Document installation, startup, logs, and recovery without assuming terminal use.
 - [ ] 4.4 Keep package release automation stopped at the existing manual tag and publish boundary.
-

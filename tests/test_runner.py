@@ -14,6 +14,7 @@ from context_eval import __version__
 from context_eval.models import (
     RESULT_SCHEMA_VERSION,
     AgentConfig,
+    AgentProfileConfig,
     AgentTelemetryConfig,
     CaseResult,
     ContextEvalConfig,
@@ -938,6 +939,113 @@ def test_runner_writes_run_manifest_for_selected_case_matrix(tmp_path: Path) -> 
         assert case["task_id"] == result["task_id"]
         assert case["variant"] == result["variant"]
         assert case["trial_index"] == result["trial_index"]
+
+
+def test_runner_expands_agents_map_before_tasks_variants_and_trials(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    task_file = TaskFile(
+        tasks=[
+            TaskConfig(id="task-1", prompt="First."),
+            TaskConfig(id="task-2", prompt="Second."),
+            TaskConfig(id="task-3", prompt="Excluded."),
+        ]
+    )
+    config = ContextEvalConfig(
+        repo=RepoConfig(path=repo, base_ref="HEAD"),
+        agents={
+            "agent-a": AgentProfileConfig(kind="custom", command="agent-a -p {prompt_file}"),
+            "agent-b": AgentProfileConfig(kind="custom", command="agent-b -p {prompt_file}"),
+        },
+        variants={
+            "baseline": VariantConfig(description="Baseline"),
+            "experiment": VariantConfig(description="Experiment"),
+        },
+        output_dir=tmp_path / "runs",
+    )
+
+    def fake_run_case(
+        self: ContextEvalRunner,
+        run_id: str,
+        run_dir: Path,
+        agent,
+        task: TaskConfig,
+        variant_name: str,
+        trial_index: int,
+    ) -> CaseResult:
+        return CaseResult(
+            run_id=run_id,
+            case_id=self._case_id(
+                task.id,
+                variant_name,
+                trial_index,
+                agent_name=agent.config.name,
+            ),
+            task_id=task.id,
+            variant=variant_name,
+            trial_index=trial_index,
+            repo_ref="HEAD",
+            agent_name=agent.config.name,
+            network=agent.config.network,
+            status="completed",
+            validation_status="passed",
+            confidence="high",
+        )
+
+    monkeypatch.setattr(ContextEvalRunner, "_run_case", fake_run_case)
+
+    run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        max_tasks=2,
+        variants=["experiment", "baseline"],
+        trials=2,
+        jobs=2,
+        cleanup=True,
+        console=_quiet_console(),
+    ).run()
+
+    manifest = json.loads((run_dir / "run_manifest.json").read_text(encoding="utf-8"))
+    metadata = json.loads((run_dir / "run_metadata.json").read_text(encoding="utf-8"))
+    results = [
+        json.loads(line)
+        for line in (run_dir / "results.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+
+    assert manifest["case_count"] == 16
+    assert [agent["name"] for agent in manifest["agents"]] == ["agent-a", "agent-b"]
+    assert [agent["name"] for agent in metadata["agents"]] == ["agent-a", "agent-b"]
+    assert [case["case_id"] for case in manifest["case_matrix"]] == [
+        "task-1__experiment__agent-a__trial-1",
+        "task-1__experiment__agent-a__trial-2",
+        "task-1__baseline__agent-a__trial-1",
+        "task-1__baseline__agent-a__trial-2",
+        "task-2__experiment__agent-a__trial-1",
+        "task-2__experiment__agent-a__trial-2",
+        "task-2__baseline__agent-a__trial-1",
+        "task-2__baseline__agent-a__trial-2",
+        "task-1__experiment__agent-b__trial-1",
+        "task-1__experiment__agent-b__trial-2",
+        "task-1__baseline__agent-b__trial-1",
+        "task-1__baseline__agent-b__trial-2",
+        "task-2__experiment__agent-b__trial-1",
+        "task-2__experiment__agent-b__trial-2",
+        "task-2__baseline__agent-b__trial-1",
+        "task-2__baseline__agent-b__trial-2",
+    ]
+    assert [result["case_id"] for result in results] == [
+        case["case_id"] for case in manifest["case_matrix"]
+    ]
+    assert [case["agent_name"] for case in manifest["case_matrix"][:8]] == ["agent-a"] * 8
+    assert [case["agent_name"] for case in manifest["case_matrix"][8:]] == ["agent-b"] * 8
+    assert [result["agent_name"] for result in results[:8]] == ["agent-a"] * 8
+    assert [result["agent_name"] for result in results[8:]] == ["agent-b"] * 8
+    report = (run_dir / "report.md").read_text(encoding="utf-8")
+    assert "- Agent profiles: `agent-a`, `agent-b`" in report
+    assert "## Agent Summary" in report
 
 
 def test_runner_rejects_jobs_less_than_one(tmp_path: Path) -> None:

@@ -21,7 +21,9 @@ def test_agent_profiles_spec_documents_noninteractive_contract() -> None:
     for term in [
         "Codex CLI",
         "Claude Code",
+        "traecli",
         "custom",
+        'traecli -p "{prompt}"',
         "coco -p {prompt_file}",
         "agent x task x variant x trial",
         "Existing configs with a single `agent` field remain valid",
@@ -85,6 +87,7 @@ def test_openspec_change_contains_required_artifacts_and_capabilities() -> None:
         "`local-app-workflow`",
         "Codex CLI",
         "Claude Code",
+        "traecli",
         "`coco -p {prompt_file}`",
     ]:
         assert term in proposal
@@ -103,6 +106,7 @@ def test_openspec_specs_define_scenarios_for_agent_profiles_and_local_app() -> N
         "#### Scenario: Existing single-agent config remains valid",
         "### Requirement: Noninteractive command template contract",
         "#### Scenario: Custom agent command is supported",
+        "#### Scenario: traecli command is supported",
         "### Requirement: Agent matrix execution",
         "agent x task x variant x trial",
     ]:

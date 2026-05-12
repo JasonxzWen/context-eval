@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path, PurePosixPath
+from string import Formatter
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -23,6 +24,78 @@ CleanupStatus = Literal["skipped", "succeeded", "failed"]
 CleanupPolicy = Literal["never", "always", "successful", "failed"]
 TelemetryStatus = Literal["unavailable", "collected", "partial", "error"]
 TelemetryCollectorKind = Literal["none", "json-file"]
+AgentProfileKind = Literal["codex-cli", "claude-code", "traecli", "custom"]
+
+SUPPORTED_AGENT_COMMAND_VARIABLES = frozenset(
+    {
+        "workspace",
+        "prompt",
+        "prompt_file",
+        "task_id",
+        "variant",
+        "output_dir",
+        "telemetry_file",
+    }
+)
+
+
+def command_template_variables(template: str) -> set[str]:
+    variables: set[str] = set()
+    try:
+        parsed = list(Formatter().parse(template))
+    except ValueError as exc:
+        raise ValueError(f"invalid agent command template: {exc}") from exc
+
+    for _, field_name, format_spec, _ in parsed:
+        if field_name is None:
+            continue
+        if not field_name:
+            raise ValueError("agent command template references empty variable")
+        variables.add(field_name)
+        if format_spec:
+            variables.update(command_template_variables(format_spec))
+    return variables
+
+
+def validate_agent_command_template(
+    template: str,
+    *,
+    allowed_variables: set[str] | frozenset[str] | None = None,
+) -> None:
+    allowed = set(allowed_variables or SUPPORTED_AGENT_COMMAND_VARIABLES)
+    unknown = sorted(command_template_variables(template) - allowed)
+    if unknown:
+        raise ValueError(
+            f"agent command template references unknown variable: {unknown[0]}"
+        )
+
+
+def render_agent_command_preview(
+    template: str,
+    *,
+    workspace: Path,
+    prompt: str,
+    prompt_file: Path,
+    task_id: str,
+    variant: str,
+    output_dir: Path,
+    telemetry_file: Path | None = None,
+    extra_variables: dict[str, str] | None = None,
+) -> str:
+    variables = {
+        "workspace": str(workspace),
+        "prompt": prompt,
+        "prompt_file": str(prompt_file),
+        "task_id": task_id,
+        "variant": variant,
+        "output_dir": str(output_dir),
+    }
+    if telemetry_file is not None:
+        variables["telemetry_file"] = str(telemetry_file)
+    if extra_variables:
+        variables.update(extra_variables)
+    validate_agent_command_template(template, allowed_variables=set(variables))
+    return template.format(**variables)
 
 
 class RepoConfig(BaseModel):
@@ -57,13 +130,48 @@ class AgentTelemetryConfig(BaseModel):
         return stripped
 
 
-class AgentConfig(BaseModel):
-    name: str
+class AgentProfileFields(BaseModel):
     command: str
     prompt_template: Path | None = None
     timeout_minutes: int = Field(default=60, ge=1)
     network: str = "disabled"
     telemetry: AgentTelemetryConfig = Field(default_factory=AgentTelemetryConfig)
+
+    @field_validator("command")
+    @classmethod
+    def validate_command(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("agent command must not be empty")
+        command_template_variables(value)
+        return value
+
+
+class AgentProfileConfig(AgentProfileFields):
+    kind: AgentProfileKind
+
+    def to_agent_config(self, name: str) -> AgentConfig:
+        return AgentConfig(
+            name=name,
+            kind=self.kind,
+            command=self.command,
+            prompt_template=self.prompt_template,
+            timeout_minutes=self.timeout_minutes,
+            network=self.network,
+            telemetry=self.telemetry,
+        )
+
+
+class AgentConfig(AgentProfileFields):
+    name: str
+    kind: AgentProfileKind = "custom"
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("agent name must not be empty")
+        return stripped
 
 
 class OverlayConfig(BaseModel):
@@ -94,18 +202,55 @@ class EvaluationConfig(BaseModel):
 
 class ContextEvalConfig(BaseModel):
     repo: RepoConfig
-    agent: AgentConfig
+    agent: AgentConfig | None = None
+    agents: dict[str, AgentProfileConfig] = Field(default_factory=dict)
     variants: dict[str, VariantConfig]
     tasks: Path = Path("tasks.yaml")
     evaluation: EvaluationConfig = Field(default_factory=EvaluationConfig)
     output_dir: Path = Path(".context-eval/runs")
     config_path: Path | None = Field(default=None, exclude=True)
 
+    @field_validator("agents")
+    @classmethod
+    def validate_agent_profile_names(
+        cls,
+        value: dict[str, AgentProfileConfig],
+    ) -> dict[str, AgentProfileConfig]:
+        for name in value:
+            if not name.strip():
+                raise ValueError("agent profile names must not be empty")
+            if name != name.strip():
+                raise ValueError("agent profile names must not have surrounding whitespace")
+        return value
+
     @model_validator(mode="after")
-    def validate_variants(self) -> ContextEvalConfig:
+    def validate_config_shape(self) -> ContextEvalConfig:
+        if self.agent is not None and self.agents:
+            raise ValueError("cannot set both top-level agent and agents")
+        if self.agent is None and not self.agents:
+            raise ValueError("either agent or agents is required")
         if not self.variants:
             raise ValueError("at least one context variant is required")
         return self
+
+    def uses_agent_profile_map(self) -> bool:
+        return bool(self.agents)
+
+    def agent_profiles(self) -> dict[str, AgentConfig]:
+        if self.agents:
+            return {
+                name: profile.to_agent_config(name)
+                for name, profile in self.agents.items()
+            }
+        if self.agent is not None:
+            return {self.agent.name: self.agent}
+        return {}
+
+    def primary_agent(self) -> AgentConfig:
+        profiles = self.agent_profiles()
+        if not profiles:
+            raise ValueError("no agent profiles configured")
+        return next(iter(profiles.values()))
 
 
 class ValidationConfig(BaseModel):

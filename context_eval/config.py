@@ -8,7 +8,13 @@ import yaml
 from pydantic import ValidationError
 
 from context_eval.logging import run_command
-from context_eval.models import ContextEvalConfig, TaskFile
+from context_eval.models import (
+    SUPPORTED_AGENT_COMMAND_VARIABLES,
+    AgentConfig,
+    ContextEvalConfig,
+    TaskFile,
+    validate_agent_command_template,
+)
 
 _TASK_ID_FILENAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 _WINDOWS_RESERVED_FILENAMES = {
@@ -46,6 +52,10 @@ def _resolve_path(value: Path, base_dir: Path) -> Path:
 def load_config(path: Path) -> ContextEvalConfig:
     config_path = path.resolve()
     data = _read_yaml(config_path)
+    if "agent" in data and "agents" in data:
+        raise ConfigError(
+            f"{config_path}: agents: cannot set both top-level agent and agents"
+        )
     try:
         config = ContextEvalConfig.model_validate(data)
     except ValidationError as exc:
@@ -55,8 +65,11 @@ def load_config(path: Path) -> ContextEvalConfig:
     config.config_path = config_path
     config.repo.path = _resolve_path(config.repo.path, base_dir)
     config.tasks = _resolve_path(config.tasks, base_dir)
-    if config.agent.prompt_template:
+    if config.agent and config.agent.prompt_template:
         config.agent.prompt_template = _resolve_path(config.agent.prompt_template, base_dir)
+    for profile in config.agents.values():
+        if profile.prompt_template:
+            profile.prompt_template = _resolve_path(profile.prompt_template, base_dir)
 
     if "output_dir" in data:
         config.output_dir = _resolve_path(config.output_dir, base_dir)
@@ -67,6 +80,7 @@ def load_config(path: Path) -> ContextEvalConfig:
         for overlay in variant.overlays:
             overlay.source = _resolve_path(overlay.source, base_dir)
 
+    _validate_agent_command_templates(config, config_path)
     return config
 
 
@@ -127,11 +141,12 @@ def validate_config_files(
 
     if not config.repo.path.exists():
         raise ConfigError(f"{config.config_path}: repo.path does not exist: {config.repo.path}")
-    if config.agent.prompt_template and not config.agent.prompt_template.exists():
-        raise ConfigError(
-            f"{config.config_path}: agent.prompt_template does not exist: "
-            f"{config.agent.prompt_template}"
-        )
+    for field_path, profile in _iter_agent_profiles_for_diagnostics(config):
+        if profile.prompt_template and not profile.prompt_template.exists():
+            raise ConfigError(
+                f"{config.config_path}: {field_path}.prompt_template does not exist: "
+                f"{profile.prompt_template}"
+            )
     for name, variant in config.variants.items():
         for index, overlay in enumerate(variant.overlays):
             if not overlay.source.exists():
@@ -144,6 +159,33 @@ def validate_config_files(
         _validate_strict_config(config, tasks, tasks_path)
 
     return config, tasks
+
+
+def _validate_agent_command_templates(config: ContextEvalConfig, config_path: Path) -> None:
+    for field_path, profile in _iter_agent_profiles_for_diagnostics(config):
+        allowed_variables = set(SUPPORTED_AGENT_COMMAND_VARIABLES)
+        if profile.telemetry.collector != "json-file":
+            allowed_variables.discard("telemetry_file")
+        try:
+            validate_agent_command_template(
+                profile.command,
+                allowed_variables=allowed_variables,
+            )
+        except ValueError as exc:
+            raise ConfigError(f"{config_path}: {field_path}.command: {exc}") from exc
+
+
+def _iter_agent_profiles_for_diagnostics(
+    config: ContextEvalConfig,
+) -> list[tuple[str, AgentConfig]]:
+    if config.agents:
+        return [
+            (f"agents.{name}", profile.to_agent_config(name))
+            for name, profile in config.agents.items()
+        ]
+    if config.agent is not None:
+        return [("agent", config.agent)]
+    return []
 
 
 def _validate_strict_config(config: ContextEvalConfig, tasks: TaskFile, tasks_path: Path) -> None:

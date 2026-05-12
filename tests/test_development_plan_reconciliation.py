@@ -159,8 +159,10 @@ def test_development_plan_prioritizes_agent_profiles_before_full_web_ui() -> Non
     for term in [
         "Codex CLI",
         "Claude Code",
+        "traecli",
         "custom local commands",
         "`coco -p {prompt_file}`",
+        '`traecli -p "{prompt}"`',
         "agent x task x variant x trial",
         "Existing single-agent configs continue to work unchanged",
         "Do not install Codex CLI",
