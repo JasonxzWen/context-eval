@@ -59,6 +59,9 @@ def test_local_app_workflow_spec_documents_full_visual_workflow() -> None:
         "Static UI",
         "Local app mode",
         "context-eval app",
+        "context-eval-app",
+        "opens the browser automatically",
+        "local app launcher log",
         "preflight",
         "validation commands",
         "run ID",
@@ -129,6 +132,8 @@ def test_openspec_specs_define_scenarios_for_agent_profiles_and_local_app() -> N
         "### Requirement: Preflight before agent execution",
         "### Requirement: Visual run orchestration",
         "### Requirement: No-command-line product path",
+        "#### Scenario: Packaged launcher starts the loopback app",
+        "#### Scenario: Startup failures show diagnostics",
         "### Requirement: Harness readiness reference",
     ]:
         assert term in app_spec

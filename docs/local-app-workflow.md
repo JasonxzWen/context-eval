@@ -49,15 +49,54 @@ The development implementation starts with:
 context-eval app
 ```
 
-The later no-command-line product target should add a launcher or packaged shortcut
-that starts the local server and opens the browser automatically. The launcher
-must not hide errors that prevent the server from starting; it should show a
-local diagnostics page or log location.
+The packaged startup entry point is:
+
+```powershell
+context-eval-app --workspace my-eval --config context-eval.yaml
+```
+
+`context-eval-app` is the shortcut target for installers or a pinned desktop
+shortcut. It starts the local server, opens the browser automatically, and
+writes a local app launcher log under
+`my-eval/.context-eval/logs/local-app-launcher.log`. The launcher must not hide
+errors that prevent the server from starting; it should show startup diagnostics
+and the log location.
 
 The frontend build, test, and browser acceptance workflow for this app is
 documented in `docs/frontend-workflow.md`. Maintainers should run
 `python scripts\validate-frontend.py --install --install-browsers` when working
 on the local app frontend.
+
+## Launcher Packaging
+
+The first launcher packaging step stays inside the existing Python package. It
+adds the `context-eval-app` console script as the target that a future Windows
+shortcut, Start Menu entry, or lightweight installer can call. The launcher is
+not a hosted dashboard and not a separate desktop runtime.
+
+Startup behavior:
+
+- resolve the evaluation workspace and optional config path before starting the
+  server;
+- keep the default host on loopback;
+- write startup diagnostics to the local app launcher log;
+- start the same local app server used by `context-eval app`;
+- open the browser automatically unless `--no-browser` is supplied.
+
+Recovery:
+
+- if startup fails, read the local app launcher log at
+  `.context-eval/logs/local-app-launcher.log` inside the selected workspace;
+- check that the selected config path is inside the workspace and exists;
+- retry with `--no-browser` if the browser handoff is the only failing step;
+- retry with `--port 0` if the default port is already in use.
+
+Packaging boundaries:
+
+- the launcher does not install external coding agents;
+- the launcher does not install target repository dependencies;
+- the launcher does not create commits, tags, releases, or published packages;
+- release automation stays stopped at the existing manual tag and publish boundary.
 
 ## Project And Configuration Workflow
 

@@ -29,6 +29,7 @@ dev = [
 
 [project.scripts]
 context-eval = "context_eval.cli:app"
+context-eval-app = "context_eval.launcher:main"
 
 [tool.setuptools.packages.find]
 include = ["context_eval*"]

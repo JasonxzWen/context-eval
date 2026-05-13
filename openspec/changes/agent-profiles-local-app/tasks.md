@@ -25,10 +25,10 @@
 
 ## 4. No-CLI Packaging
 
-- [ ] 4.1 Deferred: decide the launcher packaging approach after local app mode is stable; this PR intentionally does not implement a no-CLI launcher.
-- [ ] 4.2 Deferred: add launcher startup checks in a later packaging change.
-- [ ] 4.3 Deferred: document packaged installation/startup/recovery in the later launcher change.
-- [ ] 4.4 Keep package release automation stopped at the existing manual tag and publish boundary.
+- [x] 4.1 Decide the launcher packaging approach after local app mode is stable: use the installed `context-eval-app` script as the shortcut target for future OS packaging.
+- [x] 4.2 Add launcher startup checks and diagnostics for workspace/config paths, loopback startup, browser handoff, and local log location.
+- [x] 4.3 Document packaged installation/startup/recovery for non-technical users.
+- [x] 4.4 Keep package release automation stopped at the existing manual tag and publish boundary.
 
 ## 5. Chinese Web Config Editor And Harness Readiness
 

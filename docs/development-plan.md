@@ -895,6 +895,8 @@ installation.
 - Decide the launcher and packaging approach after Capabilities H-K are stable.
 - Start the local app server and open the browser automatically.
 - The launcher starts the local app server and opens the browser for the user.
+- Use the installed `context-eval-app` script as the shortcut target for the
+  first packaged startup path.
 - Show startup diagnostics and log location when launch fails.
 - Document installation, startup, upgrade, logs, and recovery for
   non-technical users.
@@ -911,7 +913,8 @@ installation.
 ### Merge Acceptance Criteria
 
 - The capability PR includes spec, tests, implementation, docs, verification.
-- A user can launch the local app without typing a command after installation.
+- A user can launch the local app from a packaged shortcut target without
+  typing a command after installation.
 - Startup failures are visible with actionable local diagnostics.
 - Existing CLI and local app server entrypoints continue to work for technical
   users.
