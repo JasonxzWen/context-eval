@@ -180,6 +180,20 @@ log, result, and export workflows:
 context-eval app --workspace my-eval --config context-eval.yaml
 ```
 
+After installation, the packaged local app launcher entry point is:
+
+```bash
+context-eval-app --workspace my-eval --config context-eval.yaml
+```
+
+This entry point is intended as the shortcut target for installers or desktop
+shortcuts. It starts the same loopback local app server and opens the browser automatically.
+It writes a local app launcher log to
+`my-eval/.context-eval/logs/local-app-launcher.log`. If startup fails, rerun
+with `--no-browser` or `--port 0` and inspect that log. The launcher does not
+install coding agents. It does not install target-repo dependencies.
+The launcher does not create tags or publish packages.
+
 The local app binds to loopback by default and confines config writes, output
 directories, and artifact reads to the selected evaluation workspace. It reuses
 the same local config validation, runner, reporting, and export modules as the

@@ -351,6 +351,35 @@ def test_readme_documents_prepare_release_entrypoint() -> None:
         assert term in text
 
 
+def test_readme_documents_packaged_local_app_launcher() -> None:
+    text = Path("README.md").read_text(encoding="utf-8")
+
+    for term in [
+        "context-eval-app",
+        "opens the browser automatically",
+        "local app launcher log",
+        "does not install coding agents",
+        "does not create tags or publish packages",
+    ]:
+        assert term in text
+
+
+def test_local_app_workflow_documents_launcher_install_start_recovery() -> None:
+    text = Path("docs/local-app-workflow.md").read_text(encoding="utf-8")
+
+    for term in [
+        "## Launcher Packaging",
+        "`context-eval-app`",
+        "shortcut target",
+        "startup diagnostics",
+        "local app launcher log",
+        "Recovery",
+        "does not install external coding agents",
+        "manual tag and publish boundary",
+    ]:
+        assert term in text
+
+
 def test_readme_documents_release_candidate_install_smoke() -> None:
     text = Path("README.md").read_text(encoding="utf-8")
 

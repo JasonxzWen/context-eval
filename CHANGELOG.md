@@ -31,3 +31,5 @@
   Claude Code, traecli, and custom local commands.
 - Add optional agent executable checks for `validate-config --check-agents`
   and a profile-map local-e2e smoke using the fixture repository.
+- Add the packaged local app launcher entry point, startup diagnostics, and
+  local launcher log path for the no-command-line app startup path.

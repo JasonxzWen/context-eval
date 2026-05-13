@@ -163,16 +163,24 @@ views for non-technical users.
 The system SHALL plan a launcher or packaged startup path so non-technical users
 do not need to operate the command line after installation.
 
-#### Scenario: Launcher starts the app
+#### Scenario: Packaged launcher starts the loopback app
 
 - **WHEN** the packaged launcher is available and the user opens it
-- **THEN** it starts the local app server and opens the browser to the local UI
+- **THEN** it starts the loopback local app server, opens the browser to the
+  local UI, and writes a local app launcher log
 
-#### Scenario: Startup failure is visible
+#### Scenario: Startup failures show diagnostics
 
 - **WHEN** the local app cannot start
 - **THEN** the launcher or diagnostics view shows a local error message and log
   location instead of silently failing
+
+#### Scenario: Launcher stays inside local packaging boundaries
+
+- **WHEN** the launcher starts or fails
+- **THEN** it does not install external coding agents, install target
+  repository dependencies, create commits, publish packages, create tags, or
+  cross the manual publish checkpoint
 
 ### Requirement: Harness readiness reference
 
