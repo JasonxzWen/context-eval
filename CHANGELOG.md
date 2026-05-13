@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+- No unreleased changes.
+
+## v0.1.1 - 2026-05-13
+
+- Add named agent profiles, noninteractive agent x task x variant x trial
+  matrix planning, and a fixture-backed agent-matrix example for Codex CLI,
+  Claude Code, traecli, and custom local commands.
+- Add optional agent executable checks for `validate-config --check-agents`
+  and a profile-map local-e2e smoke using the fixture repository.
+- Add the frontend tooling foundation, API-backed loopback local app workflow,
+  and Chinese-first config/tasks editing path with safe save/reload behavior.
+- Add the packaged local app launcher entry point, startup diagnostics, and
+  local launcher log path for the no-command-line app startup path.
+- Add installed package smoke coverage for the `context-eval-app` launcher
+  startup preflight without opening a browser or crossing the manual publish
+  checkpoint.
+- Archive completed OpenSpec changes into main specs for agent profiles,
+  frontend tooling, local app workflow, and launcher install smoke.
+
+## v0.1.0 - 2026-05-12
+
 - Add the initial SDD/TDD development roadmap.
 - Add runner correctness improvements, strict validation, task filters, fixture
   examples, dry-run previews, init, trials, inspect/compare commands, and a
@@ -26,13 +47,3 @@
 - Add specs and a development plan for agent profiles, noninteractive
   multi-agent matrices, local app/server mode, full Web UI workflows, and a
   no-command-line launcher path.
-- Add named agent profiles, noninteractive agent x task x variant x trial
-  matrix planning, and a fixture-backed agent-matrix example for Codex CLI,
-  Claude Code, traecli, and custom local commands.
-- Add optional agent executable checks for `validate-config --check-agents`
-  and a profile-map local-e2e smoke using the fixture repository.
-- Add the packaged local app launcher entry point, startup diagnostics, and
-  local launcher log path for the no-command-line app startup path.
-- Add installed package smoke coverage for the `context-eval-app` launcher
-  startup preflight without opening a browser or crossing the manual publish
-  checkpoint.
