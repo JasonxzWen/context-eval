@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pathlib import Path, PurePosixPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from string import Formatter
 from typing import Literal
 
@@ -115,7 +115,11 @@ class AgentTelemetryConfig(BaseModel):
         if not normalized:
             raise ValueError("telemetry file must not be empty")
         path = PurePosixPath(normalized)
-        if path.is_absolute() or ".." in path.parts:
+        if (
+            path.is_absolute()
+            or PureWindowsPath(normalized).is_absolute()
+            or ".." in path.parts
+        ):
             raise ValueError("telemetry file must be a safe relative path")
         return path.as_posix()
 
@@ -185,7 +189,11 @@ class OverlayConfig(BaseModel):
         if not normalized:
             raise ValueError("overlay target must not be empty")
         path = PurePosixPath(normalized)
-        if path.is_absolute() or ".." in path.parts:
+        if (
+            path.is_absolute()
+            or PureWindowsPath(normalized).is_absolute()
+            or ".." in path.parts
+        ):
             raise ValueError("overlay target must be a safe relative path")
         return path.as_posix()
 

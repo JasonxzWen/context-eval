@@ -218,8 +218,11 @@ def test_development_plan_defines_local_app_and_no_cli_followups() -> None:
     for term in [
         "non-technical users",
         "first-run setup",
+        "Chinese",
+        "save-reload proof",
         "evaluation criteria",
         "run progress",
+        "preserves unknown fields",
         "risk signals",
         "Browser verification",
     ]:

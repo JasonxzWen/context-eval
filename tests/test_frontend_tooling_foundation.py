@@ -82,6 +82,8 @@ def test_frontend_workflow_doc_defines_build_test_acceptance_commands() -> None:
         "frontend/dist",
         "loopback local app API",
         "fixture fallback",
+        "Chinese-first",
+        "prefers-reduced-motion",
         "does not make Node or npm a runtime requirement",
     ]:
         assert term in text

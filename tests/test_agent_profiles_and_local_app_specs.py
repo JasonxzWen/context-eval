@@ -122,9 +122,14 @@ def test_openspec_specs_define_scenarios_for_agent_profiles_and_local_app() -> N
         "### Requirement: Separate static UI and local app modes",
         "#### Scenario: Static UI remains offline",
         "### Requirement: Visual configuration workflow",
+        "#### Scenario: Save reloads from disk",
+        "#### Scenario: Safe task YAML editing is available",
+        "### Requirement: Chinese local app experience",
+        "### Requirement: Edited path safety",
         "### Requirement: Preflight before agent execution",
         "### Requirement: Visual run orchestration",
         "### Requirement: No-command-line product path",
+        "### Requirement: Harness readiness reference",
     ]:
         assert term in app_spec
 

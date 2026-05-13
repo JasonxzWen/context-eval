@@ -51,6 +51,12 @@ type LoadedConfig = {
   };
 };
 
+type SaveResponse = {
+  config_path: string;
+  tasks_path: string;
+  reloaded?: LoadedConfig;
+};
+
 type RunPlan = {
   case_count: number;
   cleanup_policy: string;
@@ -115,7 +121,7 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   });
   const data = await response.json();
   if (!response.ok || data.ok === false) {
-    throw new Error(data.error || `Request failed: ${response.status}`);
+    throw new Error(data.error || `请求失败：${response.status}`);
   }
   return data as T;
 }
@@ -205,14 +211,64 @@ function splitLines(value: string) {
     .filter(Boolean);
 }
 
+const checkLabels: Record<string, string> = {
+  schema: '配置结构',
+  repo: '仓库路径',
+  git_refs: 'Git 引用',
+  overlay_paths: '上下文覆盖路径',
+  task_ids: '任务 ID',
+  prompt_templates: '提示模板',
+  agent_command_variables: '本地代理命令变量',
+  agent_executables: '本地代理可执行文件',
+  agent_executables_skipped: '跳过本地代理可执行文件检查',
+  output_dir_writable: '输出目录可写',
+  side_effect_free: '无执行副作用',
+};
+
+const runStatusLabels: Record<string, string> = {
+  queued: '排队中',
+  running: '运行中',
+  stop_requested: '正在停止',
+  completed: '已完成',
+  failed: '失败',
+  internal_error: '内部错误',
+};
+
+const resultStatusLabels: Record<string, string> = {
+  completed: '已完成',
+  agent_failed: '本地代理失败',
+  timeout: '超时',
+  overlay_failed: '覆盖失败',
+  workspace_failed: '工作区失败',
+  validation_failed: '验收失败',
+  internal_error: '内部错误',
+};
+
+const validationLabels: Record<string, string> = {
+  passed: '通过',
+  failed: '失败',
+  skipped: '跳过',
+};
+
+const confidenceLabels: Record<string, string> = {
+  high: '高',
+  medium: '中',
+  low: '低',
+};
+
+function labelFor(labels: Record<string, string>, value: string | undefined | null) {
+  if (!value) return '未知';
+  return labels[value] ?? value;
+}
+
 export function App() {
   const [serverMode, setServerMode] = useState<'checking' | 'connected' | 'fixture'>('checking');
   const [configPath, setConfigPath] = useState('context-eval.yaml');
   const [loaded, setLoaded] = useState<LoadedConfig>(() => fallbackConfig());
   const [configYaml, setConfigYaml] = useState(() => fallbackConfig().config_yaml);
   const [tasksYaml, setTasksYaml] = useState(() => fallbackConfig().tasks_yaml);
-  const [saveStatus, setSaveStatus] = useState('No save yet');
-  const [preflightStatus, setPreflightStatus] = useState('Preflight pending');
+  const [saveStatus, setSaveStatus] = useState('尚未保存');
+  const [preflightStatus, setPreflightStatus] = useState('等待预检');
   const [preflightChecks, setPreflightChecks] = useState<string[]>([]);
   const [plan, setPlan] = useState<RunPlan | null>(null);
   const [run, setRun] = useState<RunStatus | null>(null);
@@ -228,29 +284,31 @@ export function App() {
     ? loaded.editable.agents
     : [loaded.editable.agent];
 
+  function applyLoadedConfig(payload: LoadedConfig) {
+    setLoaded(payload);
+    setConfigPath(payload.config_path);
+    setConfigYaml(payload.config_yaml);
+    setTasksYaml(payload.tasks_yaml);
+  }
+
   async function loadConfig(path = configPath) {
     setError('');
     if (serverMode === 'fixture') {
-      const fallback = fallbackConfig();
-      setLoaded(fallback);
-      setConfigYaml(fallback.config_yaml);
-      setTasksYaml(fallback.tasks_yaml);
+      applyLoadedConfig(fallbackConfig());
+      setSaveStatus('fixture 配置已加载');
       return;
     }
     const payload = await apiRequest<LoadedConfig>('/api/config/load', {
       method: 'POST',
       body: JSON.stringify({ config_path: path }),
     });
-    setLoaded(payload);
-    setConfigPath(payload.config_path);
-    setConfigYaml(payload.config_yaml);
-    setTasksYaml(payload.tasks_yaml);
-    setSaveStatus('Loaded local config');
+    applyLoadedConfig(payload);
+    setSaveStatus('已加载本地配置');
   }
 
   async function saveConfig() {
     setError('');
-    const saved = await apiRequest<{ config_path: string; tasks_path: string }>('/api/config/save', {
+    const saved = await apiRequest<SaveResponse>('/api/config/save', {
       method: 'POST',
       body: JSON.stringify({
         config_path: loaded.config_path || configPath,
@@ -259,7 +317,12 @@ export function App() {
         tasks_yaml: tasksYaml,
       }),
     });
-    setSaveStatus(`Saved ${saved.config_path} and ${saved.tasks_path}`);
+    if (saved.reloaded) {
+      applyLoadedConfig(saved.reloaded);
+    } else {
+      await loadConfig(saved.config_path);
+    }
+    setSaveStatus(`已保存并从磁盘重载：${saved.config_path} / ${saved.tasks_path}`);
   }
 
   async function runPreflight() {
@@ -269,7 +332,7 @@ export function App() {
       body: JSON.stringify({ config_path: loaded.config_path || configPath, check_agents: true }),
     });
     setPreflightChecks(payload.checks);
-    setPreflightStatus('Preflight passed');
+    setPreflightStatus('预检通过');
   }
 
   async function planRun() {
@@ -346,7 +409,7 @@ export function App() {
       } catch {
         if (!cancelled) {
           setServerMode('fixture');
-          setLoaded(fallbackConfig());
+          applyLoadedConfig(fallbackConfig());
         }
       }
     }
@@ -374,27 +437,34 @@ export function App() {
     }
   }
 
+  const modeLabel = {
+    checking: '检测中',
+    connected: '本地回环服务',
+    fixture: '示例模式',
+  }[serverMode];
+  const runLabel = run ? labelFor(runStatusLabels, run.status) : '待运行';
+
   return (
     <main className="app-shell" data-testid="local-app-shell">
       <header className="topbar">
         <div>
-          <p className="eyebrow">Local artifacts only</p>
-          <h1>Context Eval Local App</h1>
+          <p className="eyebrow">仅使用本地产物</p>
+          <h1>context-eval 本地工作台</h1>
         </div>
-        <div className="status-pill" aria-label="Local app mode">
-          {serverMode === 'connected' ? 'Loopback server' : 'Validation shell'}
+        <div className="status-pill" aria-label="本地应用模式">
+          {modeLabel}
         </div>
       </header>
 
-      {error && <div className="notice error">{error}</div>}
+      {error && <div className="notice error">错误：{error}</div>}
 
-      <section className="workflow-band" aria-label="Workflow state">
+      <section className="workflow-band" aria-label="工作流状态">
         {[
-          ['Project', loaded.resolved.repo_path],
-          ['Profiles', String(agents.length)],
-          ['Preflight', preflightStatus.includes('passed') ? 'Passed' : 'Pending'],
-          ['Run', run?.status ?? 'Idle'],
-          ['Results', results ? 'Loaded' : 'Local'],
+          ['项目', loaded.resolved.repo_path],
+          ['本地代理', String(agents.length)],
+          ['预检', preflightStatus === '预检通过' ? '通过' : '等待'],
+          ['运行', runLabel],
+          ['结果', results ? '已加载' : '本地'],
         ].map(([label, state]) => (
           <div className="workflow-step" key={label}>
             <span>{label}</span>
@@ -406,12 +476,12 @@ export function App() {
       <section className="content-grid">
         <section className="panel project-panel">
           <div className="panel-heading">
-            <h2>Project Setup</h2>
-            <span>{serverMode}</span>
+            <h2>项目设置</h2>
+            <span>{modeLabel}</span>
           </div>
           <div className="form-grid">
             <label htmlFor="config-path">
-              Config path
+              配置路径
               <input
                 id="config-path"
                 value={configPath}
@@ -419,24 +489,24 @@ export function App() {
               />
             </label>
             <label htmlFor="repo-path">
-              Repo path
+              仓库路径
               <input id="repo-path" value={loaded.editable.repo.path} readOnly />
             </label>
             <label htmlFor="tasks-path">
-              Tasks path
+              任务路径
               <input id="tasks-path" value={loaded.editable.tasks_path} readOnly />
             </label>
             <label htmlFor="output-dir">
-              Output dir
+              输出目录
               <input id="output-dir" value={loaded.editable.output_dir || './runs'} readOnly />
             </label>
           </div>
           <div className="button-row">
             <button type="button" onClick={() => guarded(() => loadConfig())}>
-              Load config
+              加载配置
             </button>
             <button type="button" onClick={() => guarded(saveConfig)} disabled={serverMode !== 'connected'}>
-              Save config
+              保存并重载
             </button>
           </div>
           <p className="status-line" data-testid="save-status">
@@ -446,24 +516,24 @@ export function App() {
 
         <section className="panel matrix-panel">
           <div className="panel-heading">
-            <h2>Run Matrix</h2>
+            <h2>运行矩阵</h2>
             <span data-testid="matrix-count">{visibleCaseCount}</span>
           </div>
           <dl className="metric-grid">
             <div>
-              <dt>Agents</dt>
+              <dt>本地代理</dt>
               <dd>{agents.length}</dd>
             </div>
             <div>
-              <dt>Tasks</dt>
+              <dt>任务</dt>
               <dd>{loaded.editable.tasks.length}</dd>
             </div>
             <div>
-              <dt>Variants</dt>
+              <dt>变体</dt>
               <dd>{loaded.editable.variants.length}</dd>
             </div>
             <div>
-              <dt>Trials</dt>
+              <dt>轮次</dt>
               <dd>{plan?.trials ?? localAppFixture.trials}</dd>
             </div>
           </dl>
@@ -471,7 +541,7 @@ export function App() {
 
         <section className="panel">
           <div className="panel-heading">
-            <h2>Agent Profiles</h2>
+            <h2>本地代理配置</h2>
           </div>
           <ul className="profile-list">
             {agents.map((profile) => (
@@ -488,7 +558,7 @@ export function App() {
 
         <section className="panel">
           <div className="panel-heading">
-            <h2>Tasks And Variants</h2>
+            <h2>任务与变体</h2>
           </div>
           <div className="two-column-list">
             <ul>
@@ -496,6 +566,9 @@ export function App() {
                 <li key={task.id}>
                   <strong>{task.id}</strong>
                   <span>{task.title || task.prompt}</span>
+                  {(task.category || task.difficulty) && (
+                    <small>{[task.category, task.difficulty].filter(Boolean).join(' / ')}</small>
+                  )}
                 </li>
               ))}
             </ul>
@@ -503,7 +576,7 @@ export function App() {
               {loaded.editable.variants.map((variant) => (
                 <li key={variant.name}>
                   <strong>{variant.name}</strong>
-                  <span>{variant.description || 'Variant'}</span>
+                  <span>{variant.description || '变体'}</span>
                 </li>
               ))}
             </ul>
@@ -512,7 +585,7 @@ export function App() {
 
         <section className="panel yaml-panel">
           <div className="panel-heading">
-            <h2>Config Files</h2>
+            <h2>配置文件</h2>
           </div>
           <label htmlFor="config-yaml">
             context-eval.yaml
@@ -536,7 +609,7 @@ export function App() {
 
         <section className="panel">
           <div className="panel-heading">
-            <h2>Evaluation Criteria</h2>
+            <h2>验收命令</h2>
           </div>
           <ul className="command-list">
             {(loaded.editable.evaluation_commands.length > 0
@@ -547,64 +620,68 @@ export function App() {
                 <code>{command}</code>
               </li>
             ))}
+            {loaded.editable.evaluation_commands.length === 0
+              && !splitLines(configYaml).some((line) => line.includes('pytest'))
+              && <li>未配置验收命令</li>}
           </ul>
         </section>
 
         <section className="panel">
           <div className="panel-heading">
-            <h2>Preflight And Run</h2>
+            <h2>预检与运行</h2>
           </div>
           <label htmlFor="cleanup-policy">
-            Cleanup policy
+            清理策略
             <select
               id="cleanup-policy"
               value={cleanupPolicy}
               onChange={(event) => setCleanupPolicy(event.target.value)}
             >
-              <option value="never">never</option>
-              <option value="always">always</option>
-              <option value="successful">successful</option>
-              <option value="failed">failed</option>
+              <option value="never">保留所有工作区</option>
+              <option value="always">总是清理</option>
+              <option value="successful">成功后清理</option>
+              <option value="failed">失败后清理</option>
             </select>
           </label>
           <div className="button-row">
             <button type="button" onClick={() => guarded(runPreflight)} disabled={serverMode !== 'connected'}>
-              Run preflight
+              运行预检
             </button>
             <button type="button" onClick={() => guarded(planRun)} disabled={serverMode !== 'connected'}>
-              Plan run
+              生成计划
             </button>
             <button type="button" onClick={() => guarded(startRun)} disabled={serverMode !== 'connected'}>
-              Start run
+              开始运行
             </button>
             <button type="button" className="secondary" onClick={() => guarded(stopRun)} disabled={!run}>
-              Stop
+              停止
             </button>
           </div>
           <p className="status-line" data-testid="preflight-status">
             {preflightStatus}
           </p>
           <p className="status-line">
-            Planned cases: <strong data-testid="planned-case-count">{plan?.case_count ?? 0}</strong>
+            计划用例：<strong data-testid="planned-case-count">{plan?.case_count ?? 0}</strong>
           </p>
           <ul className="check-list">
             {preflightChecks.map((check) => (
-              <li key={check}>{check}</li>
+              <li key={check}>{labelFor(checkLabels, check)}</li>
             ))}
           </ul>
         </section>
 
         <section className="panel run-panel">
           <div className="panel-heading">
-            <h2>Run Progress</h2>
+            <h2>运行进度</h2>
           </div>
           <p className="run-status" data-testid="run-status">
-            {run ? `${run.status} ${run.completed_cases}/${run.case_count}` : 'Idle'}
+            {run ? `${labelFor(runStatusLabels, run.status)} ${run.completed_cases}/${run.case_count}` : '待运行'}
           </p>
-          <div className="log-box">
+          <div className="log-box" aria-live="polite">
             {(logs?.console || []).map((line) => (
               <code key={line}>{line}</code>
             ))}
+            {(!logs || logs.console.length === 0) && <span>暂无日志</span>}
           </div>
           <div className="log-files">
             {(logs?.files || []).slice(0, 4).map((file) => (
@@ -618,37 +695,37 @@ export function App() {
 
         <section className="panel results-panel">
           <div className="panel-heading">
-            <h2>Results And Exports</h2>
+            <h2>结果与导出</h2>
             <span>{results?.overview.case_count ?? 0}</span>
           </div>
-          {results && (
+          {results ? (
             <>
               <dl className="metric-grid">
                 <div>
-                  <dt>Failed</dt>
+                  <dt>失败</dt>
                   <dd>{results.overview.failed_count}</dd>
                 </div>
                 <div>
-                  <dt>Timeouts</dt>
+                  <dt>超时</dt>
                   <dd>{results.overview.timeout_count}</dd>
                 </div>
                 <div>
-                  <dt>Low confidence</dt>
+                  <dt>低置信度</dt>
                   <dd>{results.overview.low_confidence_count}</dd>
                 </div>
                 <div>
-                  <dt>Telemetry gaps</dt>
+                  <dt>遥测缺口</dt>
                   <dd>{results.overview.telemetry_gap_count}</dd>
                 </div>
               </dl>
               <table>
                 <thead>
                   <tr>
-                    <th>Case</th>
-                    <th>Agent</th>
-                    <th>Status</th>
-                    <th>Validation</th>
-                    <th>Confidence</th>
+                    <th>用例</th>
+                    <th>本地代理</th>
+                    <th>状态</th>
+                    <th>验收</th>
+                    <th>置信度</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -656,27 +733,29 @@ export function App() {
                     <tr key={result.case_id}>
                       <td>{result.task_id}</td>
                       <td>{result.agent_name}</td>
-                      <td>{result.status}</td>
-                      <td>{result.validation_status}</td>
-                      <td>{result.confidence}</td>
+                      <td>{labelFor(resultStatusLabels, result.status)}</td>
+                      <td>{labelFor(validationLabels, result.validation_status)}</td>
+                      <td>{labelFor(confidenceLabels, result.confidence)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </>
+          ) : (
+            <p className="status-line">运行完成后显示本地结果。</p>
           )}
           <div className="button-row">
             <button type="button" onClick={() => guarded(() => exportRun('json'))} disabled={!run?.run_dir}>
-              Export JSON
+              导出 JSON
             </button>
             <button type="button" onClick={() => guarded(() => exportRun('csv'))} disabled={!run?.run_dir}>
-              Export CSV
+              导出 CSV
             </button>
             <button type="button" onClick={() => guarded(() => exportRun('markdown'))} disabled={!run?.run_dir}>
-              Export Markdown
+              导出 Markdown
             </button>
             <button type="button" onClick={() => guarded(() => exportRun('html'))} disabled={!run?.run_dir}>
-              Export HTML
+              导出 HTML
             </button>
           </div>
           <pre className="export-output" data-testid="export-output">
