@@ -80,7 +80,8 @@ def test_frontend_workflow_doc_defines_build_test_acceptance_commands() -> None:
         "npm run validate",
         "python scripts\\validate-frontend.py --install --install-browsers",
         "frontend/dist",
-        "does not implement the local app server",
+        "loopback local app API",
+        "fixture fallback",
         "does not make Node or npm a runtime requirement",
     ]:
         assert term in text

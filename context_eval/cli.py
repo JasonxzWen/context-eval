@@ -12,6 +12,7 @@ from context_eval.dry_run import render_dry_run
 from context_eval.export import export_run_csv, export_run_json
 from context_eval.init import create_starter_files
 from context_eval.inspect_run import inspect_run
+from context_eval.local_app import LocalAppError, serve_local_app
 from context_eval.reports.markdown import render_markdown_report
 from context_eval.runner import ContextEvalRunner
 from context_eval.ui import render_local_ui
@@ -240,6 +241,46 @@ def ui_command(
         console.print(f"[red]Error:[/red] {exc}")
         raise typer.Exit(code=1) from exc
     console.print(f"[green]UI written:[/green] {output_path}")
+
+
+@app.command("app")
+def app_command(
+    workspace: Annotated[
+        Path,
+        typer.Option(
+            "--workspace",
+            "-w",
+            file_okay=False,
+            help="Evaluation workspace root for config writes and local artifacts.",
+        ),
+    ] = Path("."),
+    config: Annotated[
+        Path | None,
+        typer.Option("--config", "-c", dir_okay=False, help="Initial config path to load."),
+    ] = None,
+    host: Annotated[
+        str,
+        typer.Option("--host", help="Host interface. Defaults to loopback."),
+    ] = "127.0.0.1",
+    port: Annotated[
+        int,
+        typer.Option("--port", min=0, help="Local app port. Use 0 to choose a free port."),
+    ] = 8765,
+) -> None:
+    """Start the explicit local app server."""
+    try:
+        repo_root = Path(__file__).resolve().parents[1]
+        frontend_dist = repo_root / "frontend" / "dist"
+        serve_local_app(
+            workspace_root=workspace,
+            host=host,
+            port=port,
+            config_path=config,
+            frontend_dist=frontend_dist,
+        )
+    except (ConfigError, LocalAppError, OSError) as exc:
+        console.print(f"[red]Error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
 
 
 @app.command("validate-config")

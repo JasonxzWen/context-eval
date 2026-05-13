@@ -173,13 +173,24 @@ matrix and validation feedback, then copy or download both generated YAML
 documents. The static page does not save back to the original files. It does
 not run agents and does not run validation commands.
 
-The planned full local app workflow is documented in
-`docs/local-app-workflow.md`. It is a future explicit local server/app mode for
-visual configuration, preflight, run orchestration, and result review. Static
-HTML remains the safe offline mode.
-Frontend build, test, and browser acceptance tooling for that future app is
-documented in `docs/frontend-workflow.md`; maintainers can run it with
-`python scripts\validate-frontend.py --install --install-browsers`.
+Start the explicit local app when you want browser-based save, preflight, run,
+log, result, and export workflows:
+
+```bash
+context-eval app --workspace my-eval --config context-eval.yaml
+```
+
+The local app binds to loopback by default and confines config writes, output
+directories, and artifact reads to the selected evaluation workspace. It reuses
+the same local config validation, runner, reporting, and export modules as the
+CLI. Preflight checks remain side-effect-free: they do not run agents, run
+validation commands, install dependencies, create commits, or create run
+workspaces. Runs still require explicit confirmation from the browser.
+
+The full local app workflow is documented in `docs/local-app-workflow.md`.
+Static HTML remains the safe offline mode. Frontend build, test, and browser
+acceptance tooling is documented in `docs/frontend-workflow.md`; maintainers can
+run it with `python scripts\validate-frontend.py --install --install-browsers`.
 
 After placing the exported `context-eval.yaml` and `tasks.yaml` where you want
 them, run:
