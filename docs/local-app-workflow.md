@@ -43,19 +43,19 @@ explicit before they happen.
 
 ## Installation And Startup
 
-The development implementation may start with:
+The development implementation starts with:
 
 ```powershell
 context-eval app
 ```
 
-The no-command-line product target should add a launcher or packaged shortcut
+The later no-command-line product target should add a launcher or packaged shortcut
 that starts the local server and opens the browser automatically. The launcher
 must not hide errors that prevent the server from starting; it should show a
 local diagnostics page or log location.
 
-The frontend build, test, and browser acceptance foundation for this future app
-is documented in `docs/frontend-workflow.md`. Maintainers should run
+The frontend build, test, and browser acceptance workflow for this app is
+documented in `docs/frontend-workflow.md`. Maintainers should run
 `python scripts\validate-frontend.py --install --install-browsers` when working
 on the local app frontend.
 
@@ -139,18 +139,47 @@ absolute coding-agent leaderboard.
 ## API Boundary
 
 The local server API should be private to the local app and bind to loopback by
-default. Endpoints should be grouped around:
+default. The first implementation exposes JSON endpoints under `/api/` and
+serves the built frontend from `frontend/dist` when it is available. The server
+has one evaluation workspace root. Config writes, output directories, run
+artifact roots, and artifact-relative reads must resolve inside that workspace
+root and must reject path traversal such as `..`.
 
-- project files and config save/load;
-- side-effect-free preflight;
-- run planning;
-- run lifecycle;
-- log streaming;
-- artifact and export reading.
+The local app API endpoints are:
 
-Endpoints must validate local paths, reject traversal outside the selected
-evaluation workspace where applicable, and avoid running shell commands except
-through the existing runner and explicit preflight checks.
+- `GET /api/health`: report loopback mode, workspace root, frontend mode, and
+  optional startup config path.
+- `POST /api/config/load`: load `context-eval.yaml` plus its task file and
+  return raw YAML, editable model data, resolved paths, and destination paths.
+- `POST /api/config/save`: validate and save `context-eval.yaml` and
+  `tasks.yaml` to explicit destinations inside the workspace root while
+  preserving raw YAML fields that the UI does not edit.
+- `POST /api/preflight`: run side-effect-free validation for schema, task IDs,
+  Git refs, overlay paths, prompt templates, command variables, optional agent
+  executable availability, and output directory writability.
+- `POST /api/run-plan`: return the selected agent x task x variant x trial
+  matrix, command previews, cleanup policy, jobs, and output directory before
+  any agent command can run.
+- `POST /api/runs`: start a local run only when the request includes explicit
+  confirmation.
+- `GET /api/runs/{id}`: return run lifecycle state, run directory, progress
+  counts, failure details, and result summary when available.
+- `POST /api/runs/{id}/stop`: record an explicit stop request and report the
+  current cleanup behavior.
+- `GET /api/runs/{id}/logs`: return local console output and available stdout
+  or stderr log tails for the run.
+- `GET /api/results?run_dir=...`: read local `results.jsonl` and
+  `run_metadata.json` and return matrix overview, risk signals, cases, and
+  summaries.
+- `GET /api/artifacts?run_dir=...&path=...`: read a safe relative artifact path
+  under the selected run directory.
+- `GET /api/exports?run_dir=...&format=csv|json|markdown|html`: produce exports
+  from local run artifacts without rerunning agents.
+
+Endpoints must avoid running shell commands except through strict config
+preflight checks and the existing runner after the user confirms execution.
+Preflight must not create run directories, install dependencies, run validation
+commands, run agent commands, or create commits.
 
 ## Non-Goals
 

@@ -64,6 +64,9 @@ def test_local_app_workflow_spec_documents_full_visual_workflow() -> None:
         "run ID",
         "stdout/stderr log tails",
         "failed, timeout, low-confidence, and telemetry-gap cases",
+        "GET /api/health",
+        "POST /api/run-plan",
+        "GET /api/exports",
         "loopback",
         "does not add a hosted service",
     ]:
@@ -133,7 +136,8 @@ def test_existing_docs_link_to_new_specs_without_claiming_implementation() -> No
     configuration = Path("docs/configuration.md").read_text(encoding="utf-8")
 
     assert "docs/local-app-workflow.md" in readme
-    assert "future explicit local server/app mode" in readme
+    assert "context-eval app --workspace" in readme
+    assert "binds to loopback by default" in readme
     assert "docs/agent-profiles.md" in adapter
     assert "docs/agent-profiles.md" in configuration
     assert "docs/local-app-workflow.md" in local_ui

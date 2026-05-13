@@ -82,6 +82,9 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install Python package
+        run: python -m pip install -e ".[dev]"
+
       - name: Validate frontend
         run: python scripts/validate-frontend.py --install --install-browsers --install-system-deps
 

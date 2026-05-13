@@ -80,7 +80,8 @@ def test_frontend_workflow_doc_defines_build_test_acceptance_commands() -> None:
         "npm run validate",
         "python scripts\\validate-frontend.py --install --install-browsers",
         "frontend/dist",
-        "does not implement the local app server",
+        "loopback local app API",
+        "fixture fallback",
         "does not make Node or npm a runtime requirement",
     ]:
         assert term in text
@@ -122,6 +123,7 @@ def test_root_frontend_validation_wrapper_is_script_friendly() -> None:
     for term in [
         "npm ci",
         "npm run validate",
+        "CONTEXT_EVAL_PYTHON",
         "--install",
         "--install-browsers",
         "--install-system-deps",
@@ -144,6 +146,7 @@ def test_ci_exposes_dedicated_frontend_validation_job() -> None:
     for term in [
         "actions/setup-node@v4",
         "node-version-file",
+        "python -m pip install -e \".[dev]\"",
         "python scripts/validate-frontend.py --install --install-browsers --install-system-deps",
     ]:
         assert term in steps_text

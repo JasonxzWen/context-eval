@@ -7,14 +7,13 @@ implementation.
 
 ## Scope
 
-The `frontend/` package is development tooling for the planned local app UI. It
-does not implement the local app server, does not replace the static UI export,
-and does not make Node or npm a runtime requirement for existing context-eval
-CLI users.
+The `frontend/` package is development tooling for the local app UI served by
+`context-eval app`. It does not replace the static UI export and does not make Node or npm a runtime requirement for existing context-eval CLI users.
 
-The current frontend shell uses deterministic fixture data. Later local app
-server work will replace those fixtures with loopback API calls covered by API
-contract tests.
+The frontend uses the loopback local app API for config load/save, preflight,
+run planning, run lifecycle, log reads, result reads, and exports. It still has
+a deterministic fixture fallback so frontend validation can run without a
+Python server.
 
 ## Toolchain
 
@@ -56,19 +55,20 @@ acceptance in that order.
 ## Browser Acceptance
 
 Playwright serves the production build with Vite preview and runs Chromium smoke
-checks against desktop and narrow viewports. The acceptance tests use
-deterministic local fixtures only. They do not run coding agents, install agent
-CLIs, call hosted services, or depend on a local app server.
+checks against desktop and narrow viewports. The browser acceptance suite also
+starts `context-eval app` against the fixture repository and fake local agent,
+then completes the main local workflow through the browser. It does not run a
+real external coding agent, install agent CLIs, call hosted services, or use
+non-local artifacts.
 
 ## Build Output
 
-The frontend production build writes static assets to `frontend/dist`. This is a
-stable local output directory for future local app server work to serve
-explicitly.
+The frontend production build writes static assets to `frontend/dist`. The local
+app server serves this directory when it is available and falls back to a small
+diagnostic page when it is not.
 
-This foundation change intentionally leaves Python package data unchanged. Built
-frontend assets are not added to the runtime package until a later local app
-server change consumes them.
+Built frontend assets are still not added to the Python runtime package data in
+this repository state. Source-tree development serves `frontend/dist` directly.
 
 ## CI
 
@@ -82,8 +82,6 @@ Python quality gates.
 
 ## Non-Goals
 
-- No local app server endpoints.
-- No complete Web UI workflow.
 - No no-command-line launcher.
 - No hosted dashboard, shared account, remote database, LLM judge, automatic
   agent installation, or agent leaderboard.

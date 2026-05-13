@@ -34,16 +34,13 @@ All durable writes remain an explicit user action outside the page: copy or
 download both YAML documents, place them at the intended paths, then run
 `context-eval validate-config --config path/to/context-eval.yaml` locally.
 
-Browser file saving and explicit local server mode remain future capabilities.
-If either is added later, it must be specified in a new contract before
-implementation. A server mode would need allowed local endpoints, destination
-paths, write-before validation, and explicit prohibitions on agent execution and
-validation command execution.
+Browser file saving remains a future capability. The explicit local server mode
+is implemented separately as `context-eval app` and is specified in
+`docs/local-app-workflow.md`.
 
-The planned local app/server contract now lives in
-`docs/local-app-workflow.md`. That mode is intentionally separate from static
-UI mode: static HTML remains export-only and offline, while local app mode may
-write files and run agents only after explicit user actions.
+That mode is intentionally separate from static UI mode: static HTML remains
+export-only and offline, while local app mode may write files and run agents
+only after explicit user actions.
 Static UI must stay safe even after local app mode exists.
 
 ## Editable Fields
