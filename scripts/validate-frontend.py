@@ -9,7 +9,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 INSTALL_COMMAND_LABEL = "npm ci"
 BROWSER_INSTALL_COMMAND_LABEL = "npx playwright install"
 VALIDATE_COMMAND_LABEL = "npm run validate"
@@ -59,6 +58,7 @@ def main() -> int:
 
     npm = _command("npm")
     npx = _command("npx")
+    os.environ.setdefault("CONTEXT_EVAL_PYTHON", sys.executable)
 
     if args.install:
         _run([npm, "ci"], cwd=frontend_dir)

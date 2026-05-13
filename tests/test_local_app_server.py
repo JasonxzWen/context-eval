@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+from typer.main import get_command
 from typer.testing import CliRunner
 
 from context_eval.cli import app
@@ -165,12 +166,16 @@ def test_local_app_rejects_traversal_for_writes_and_artifact_reads(tmp_path: Pat
 
 def test_app_command_exposes_loopback_server_options() -> None:
     result = CliRunner().invoke(app, ["app", "--help"])
+    command = get_command(app).commands["app"]
+    option_names = {
+        option
+        for parameter in command.params
+        for option in getattr(parameter, "opts", [])
+    }
 
     assert result.exit_code == 0
     assert "Start the explicit local app server" in result.output
-    assert "--workspace" in result.output
-    assert "--host" in result.output
-    assert "--port" in result.output
+    assert {"--workspace", "--host", "--port"}.issubset(option_names)
 
 
 def test_local_app_save_load_preserves_raw_unknown_config_fields(tmp_path: Path) -> None:
