@@ -128,6 +128,24 @@ async function startLocalApp(workspace: string) {
   );
 }
 
+async function stopLocalApp(child: ChildProcessWithoutNullStreams) {
+  if (child.exitCode !== null || child.signalCode !== null) {
+    return;
+  }
+  await new Promise<void>((resolve) => {
+    const timer = setTimeout(() => {
+      if (child.exitCode === null && child.signalCode === null) {
+        child.kill('SIGKILL');
+      }
+    }, 5000);
+    child.once('exit', () => {
+      clearTimeout(timer);
+      resolve();
+    });
+    child.kill();
+  });
+}
+
 test('renders the fixture-backed local app shell', async ({ page }) => {
   await page.goto('/');
 
@@ -175,7 +193,7 @@ test('completes the local server workflow with fixture repo and fake agent', asy
     await page.getByRole('button', { name: 'Export JSON' }).click();
     await expect(page.getByTestId('export-output')).toContainText('"case_count": 1');
   } finally {
-    server.child.kill();
+    await stopLocalApp(server.child);
     fs.rmSync(workspace, { recursive: true, force: true });
   }
 });
