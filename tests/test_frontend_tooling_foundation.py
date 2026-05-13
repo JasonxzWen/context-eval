@@ -6,7 +6,9 @@ import yaml
 
 
 def test_frontend_tooling_openspec_artifacts_exist_and_define_scope() -> None:
-    change_dir = Path("openspec/changes/frontend-tooling-foundation")
+    archive_dirs = sorted(Path("openspec/changes/archive").glob("*-frontend-tooling-foundation"))
+    assert archive_dirs
+    change_dir = archive_dirs[-1]
 
     for relative in [
         "proposal.md",
@@ -17,7 +19,7 @@ def test_frontend_tooling_openspec_artifacts_exist_and_define_scope() -> None:
         assert (change_dir / relative).exists()
 
     proposal = (change_dir / "proposal.md").read_text(encoding="utf-8")
-    spec = (change_dir / "specs/frontend-tooling/spec.md").read_text(encoding="utf-8")
+    spec = Path("openspec/specs/frontend-tooling/spec.md").read_text(encoding="utf-8")
 
     for term in [
         "`frontend-tooling`",
@@ -27,6 +29,7 @@ def test_frontend_tooling_openspec_artifacts_exist_and_define_scope() -> None:
         assert term in proposal
 
     for term in [
+        "Define development-only frontend build, test, browser acceptance",
         "### Requirement: Frontend package quality gate",
         "#### Scenario: Frontend validation runs all local app UI gates",
         "### Requirement: Browser acceptance foundation",

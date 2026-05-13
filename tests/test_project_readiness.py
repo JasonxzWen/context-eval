@@ -117,6 +117,16 @@ def test_release_checklist_and_changelog_exist() -> None:
     assert "## Unreleased" in changelog_text
 
 
+def test_release_version_metadata_matches_changelog() -> None:
+    pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+    init_text = Path("context_eval/__init__.py").read_text(encoding="utf-8")
+    changelog_text = Path("CHANGELOG.md").read_text(encoding="utf-8")
+
+    assert pyproject["project"]["version"] == "0.1.1"
+    assert '__version__ = "0.1.1"' in init_text
+    assert "## v0.1.1 - 2026-05-13" in changelog_text
+
+
 def test_release_checklist_documents_package_build_scope() -> None:
     text = Path("docs/release-checklist.md").read_text(encoding="utf-8")
 
