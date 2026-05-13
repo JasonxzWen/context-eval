@@ -175,6 +175,9 @@ def test_release_checklist_documents_release_candidate_install_smoke() -> None:
         "## Release Candidate Install Smoke",
         "python scripts/install-smoke-artifacts.py --dist-dir C:\\tmp\\context-eval-dist",
         "installs the built wheel",
+        "installed `context-eval-app` launcher",
+        "context-eval-app --workspace",
+        "--no-browser --port 0 --check-startup",
         "temporary Python environment",
         "local fixture repository",
         "fake local agent",
@@ -356,6 +359,7 @@ def test_readme_documents_packaged_local_app_launcher() -> None:
 
     for term in [
         "context-eval-app",
+        "--check-startup",
         "opens the browser automatically",
         "local app launcher log",
         "does not install coding agents",
@@ -370,6 +374,7 @@ def test_local_app_workflow_documents_launcher_install_start_recovery() -> None:
     for term in [
         "## Launcher Packaging",
         "`context-eval-app`",
+        "`--check-startup`",
         "shortcut target",
         "startup diagnostics",
         "local app launcher log",
@@ -387,6 +392,8 @@ def test_readme_documents_release_candidate_install_smoke() -> None:
         "release candidate install smoke",
         "python scripts/install-smoke-artifacts.py --dist-dir C:\\tmp\\context-eval-dist",
         "built wheel",
+        "installed `context-eval-app` launcher",
+        "--no-browser --port 0 --check-startup",
         "temporary Python environment",
         "fixture repository",
         "fake local agent",

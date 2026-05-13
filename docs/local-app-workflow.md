@@ -91,6 +91,17 @@ Recovery:
 - retry with `--no-browser` if the browser handoff is the only failing step;
 - retry with `--port 0` if the default port is already in use.
 
+Installed package smoke tests use the same launcher entry point with
+`--check-startup`:
+
+```bash
+context-eval-app --workspace my-eval --config context-eval.yaml --no-browser --port 0 --check-startup
+```
+
+This startup preflight validates launcher inputs, writes the local launcher log,
+and exits without opening a browser, starting the blocking server loop, running
+agents, or running validation commands.
+
 Packaging boundaries:
 
 - the launcher does not install external coding agents;

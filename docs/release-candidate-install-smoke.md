@@ -22,6 +22,9 @@ The smoke must:
   local agent;
 - run `context-eval report`, `context-eval export` for CSV and JSON, and
   `context-eval ui`;
+- run the installed `context-eval-app` launcher with
+  `--no-browser --port 0 --check-startup` against the same temporary workspace
+  and config;
 - assert `results.jsonl`, `run_manifest.json`, `report.md`, `summary.csv`,
   `summary.json`, and `context-eval-ui.html` exist and are parseable;
 - assert generated report, export, and UI artifacts do not contain hosted network call patterns such as `fetch(`, `XMLHttpRequest`, `WebSocket`,
@@ -46,4 +49,6 @@ smoke, and then prints the manual publish checkpoint.
 The smoke should install the project wheel from the local `dist` directory with
 dependency installation disabled. CI may prepare runtime dependencies before the
 release preparation command, but the smoke itself must use the built local wheel
-and local fixture artifacts only.
+and local fixture artifacts only. The launcher preflight is an installed entry
+point acceptance check only; it must not open a browser, start an indefinite
+server loop, install coding agents, or cross the manual publish checkpoint.

@@ -77,7 +77,9 @@ def test_local_app_workflow_spec_documents_full_visual_workflow() -> None:
 
 
 def test_openspec_change_contains_required_artifacts_and_capabilities() -> None:
-    change_dir = Path("openspec/changes/agent-profiles-local-app")
+    archive_dirs = sorted(Path("openspec/changes/archive").glob("*-agent-profiles-local-app"))
+    assert archive_dirs
+    change_dir = archive_dirs[-1]
 
     expected_files = [
         "proposal.md",
@@ -102,14 +104,11 @@ def test_openspec_change_contains_required_artifacts_and_capabilities() -> None:
 
 
 def test_openspec_specs_define_scenarios_for_agent_profiles_and_local_app() -> None:
-    agent_spec = Path(
-        "openspec/changes/agent-profiles-local-app/specs/agent-profiles/spec.md"
-    ).read_text(encoding="utf-8")
-    app_spec = Path(
-        "openspec/changes/agent-profiles-local-app/specs/local-app-workflow/spec.md"
-    ).read_text(encoding="utf-8")
+    agent_spec = Path("openspec/specs/agent-profiles/spec.md").read_text(encoding="utf-8")
+    app_spec = Path("openspec/specs/local-app-workflow/spec.md").read_text(encoding="utf-8")
 
     for term in [
+        "Define local, noninteractive coding-agent profile configuration",
         "### Requirement: Named local agent profiles",
         "#### Scenario: Existing single-agent config remains valid",
         "### Requirement: Noninteractive command template contract",
@@ -122,6 +121,7 @@ def test_openspec_specs_define_scenarios_for_agent_profiles_and_local_app() -> N
         assert term in agent_spec
 
     for term in [
+        "Define the explicit loopback local app workflow",
         "### Requirement: Separate static UI and local app modes",
         "#### Scenario: Static UI remains offline",
         "### Requirement: Visual configuration workflow",
