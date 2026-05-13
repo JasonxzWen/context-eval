@@ -101,11 +101,13 @@ loss of SDD/TDD discipline.
 8. PR H: Agent Profiles And Noninteractive Agent Matrix, before full Web UI
    work. This unblocks Codex CLI, Claude Code, traecli, and custom commands
    such as `coco -p {prompt_file}` as first-class local profiles.
-9. PR I: Local App Server And Run Orchestration, after agent profiles are
+9. PR I: Frontend Build/Test/Acceptance Foundation, before local app server and
+   full Web UI work depend on browser tooling.
+10. PR J: Local App Server And Run Orchestration, after agent profiles are
    stable. This creates the explicit local server mode behind the visual app.
-10. PR J: Full Web UI Workflow For Non-Technical Users, after the server API is
+11. PR K: Full Web UI Workflow For Non-Technical Users, after the server API is
     stable enough to avoid duplicating runner logic in the frontend.
-11. PR K: No-CLI Launcher And Packaging, after the local app workflow is stable
+12. PR L: No-CLI Launcher And Packaging, after the local app workflow is stable
     and browser-verified.
 
 ## Capability Epic A: Config Diagnostics And Strict Validation Hardening
@@ -656,7 +658,79 @@ artifact naming, reporting, exports, and UI data. Reviewing those changes
 together keeps the multi-agent contract coherent and gives the later Web UI a
 stable backend model.
 
-## Capability Epic I: Local App Server And Run Orchestration
+## Capability Epic I: Frontend Build/Test/Acceptance Foundation
+
+### Goal
+
+Add the frontend engineering foundation required for the future local app before
+server endpoints and full Web UI workflows are implemented. The repository
+should have a clear browser app build, test, and acceptance path that can be
+run locally and in CI.
+
+### Scope
+
+- Use `docs/frontend-workflow.md` and the OpenSpec
+  `frontend-tooling-foundation` change as the source specs.
+- Add a `frontend/` package using React + Vite + TypeScript for the planned
+  local app shell.
+- Add Vitest unit/component tests for fixture-backed UI behavior.
+- Add Playwright browser acceptance for desktop and narrow viewports.
+- Add `scripts\validate-frontend.py --install --install-browsers` as the root
+  validation command for frontend work.
+- Add a dedicated frontend validation CI job that runs the combined frontend
+  gate without weakening existing Python, local-e2e, skill validation, or
+  package-build gates.
+- Keep build output under `frontend/dist` until the later local app server
+  change explicitly consumes it.
+
+### Non-Goals
+
+- This capability does not add local app server endpoints.
+- Do not implement the complete non-technical Web UI workflow.
+- Do not replace static HTML export mode.
+- Do not make Node or npm a runtime requirement for existing CLI users.
+- Do not add a launcher, hosted dashboard, remote database, LLM judge,
+  automatic agent installation, automatic commits, or leaderboard language.
+
+### Merge Acceptance Criteria
+
+- The capability PR includes spec, tests, implementation, docs, and
+  verification.
+- `frontend/` has typecheck, test, build, e2e, and validate scripts.
+- Browser acceptance verifies a deterministic local app shell at desktop and
+  narrow viewports.
+- CI exposes a clearly named frontend validation job.
+- Python package metadata does not include frontend build assets until a later
+  server change consumes them.
+
+### Suggested Ralph Stories
+
+- US-I1: Specify the frontend build/test/acceptance workflow and non-goals.
+- US-I2: Add failing tests for frontend scripts, CI wiring, docs, and runtime
+  package boundaries.
+- US-I3: Create the React/Vite/TypeScript frontend package and fixture-backed
+  app shell.
+- US-I4: Add Vitest and Playwright coverage for the local app shell.
+- US-I5: Wire frontend validation into root docs and CI.
+
+### Test Strategy
+
+- Spec tests for `docs/frontend-workflow.md` and the OpenSpec change.
+- Pytest contract tests for frontend package scripts, CI job, validation
+  wrapper, `.gitignore`, and package-data boundaries.
+- Vitest unit/component tests for UI-visible fixture behavior.
+- Playwright browser checks for desktop and narrow viewports.
+- Full verification commands after each completed story and before the PR is
+  marked ready.
+
+### Why One Capability PR
+
+Frontend build, tests, acceptance, docs, and CI are one enablement layer. Landing
+them together gives the later local app server and full UI work a stable
+quality gate instead of creating a half-wired test harness during product
+implementation.
+
+## Capability Epic J: Local App Server And Run Orchestration
 
 ### Goal
 
@@ -725,7 +799,7 @@ Local app mode is a new execution boundary. Config writes, preflight,
 orchestration, log streaming, and artifact reads need to be reviewed as one
 local safety model rather than scattered across unrelated PRs.
 
-## Capability Epic J: Full Web UI Workflow For Non-Technical Users
+## Capability Epic K: Full Web UI Workflow For Non-Technical Users
 
 ### Goal
 
@@ -735,7 +809,7 @@ preflight, run control, validation review, and result exploration.
 
 ### Scope
 
-- Use the local app API from Capability I as the only execution surface.
+- Use the local app API from Capability J as the only execution surface.
 - Provide first-run setup for evaluation workspace and target repo selection.
 - Provide visual editors for tasks, variants, overlays, agent profiles,
   validation commands, timeouts, trials, jobs, cleanup policy, and output path.
@@ -792,7 +866,7 @@ The user-facing Web UI is one coherent workflow. Splitting setup, config,
 preflight, execution, and results into separate merge packages would create
 intermediate states where non-technical users still cannot complete the job.
 
-## Capability Epic K: No-CLI Launcher And Packaging
+## Capability Epic L: No-CLI Launcher And Packaging
 
 ### Goal
 
@@ -803,7 +877,7 @@ installation.
 
 ### Scope
 
-- Decide the launcher and packaging approach after Capabilities H-J are stable.
+- Decide the launcher and packaging approach after Capabilities H-K are stable.
 - Start the local app server and open the browser automatically.
 - The launcher starts the local app server and opens the browser for the user.
 - Show startup diagnostics and log location when launch fails.
@@ -862,6 +936,7 @@ Every completed story should run the local gates requested for this repository:
 .\.venv\Scripts\python -m pytest --basetemp C:\tmp\context-eval-pytest
 .\.venv\Scripts\context-eval validate-config --config examples/basic/context-eval.yaml
 powershell -ExecutionPolicy Bypass -File scripts\validate-skills.ps1 -SkipExternal
+.\.venv\Scripts\python scripts\validate-frontend.py --install --install-browsers
 .\.venv\Scripts\python -m pytest tests\test_local_e2e_smoke.py -m local_e2e -q --basetemp C:\tmp\context-eval-local-e2e-pytest
 git diff --check
 ```

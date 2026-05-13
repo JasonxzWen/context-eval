@@ -54,6 +54,11 @@ that starts the local server and opens the browser automatically. The launcher
 must not hide errors that prevent the server from starting; it should show a
 local diagnostics page or log location.
 
+The frontend build, test, and browser acceptance foundation for this future app
+is documented in `docs/frontend-workflow.md`. Maintainers should run
+`python scripts\validate-frontend.py --install --install-browsers` when working
+on the local app frontend.
+
 ## Project And Configuration Workflow
 
 The local app must support:
@@ -163,6 +168,8 @@ automatic commits, issue mining, real network isolation, or an LLM judge.
   evaluation criteria, preflight, run start/stop, and result review.
 - Browser verification for major UI changes, including desktop and narrow
   viewport checks.
+- Frontend validation through `docs/frontend-workflow.md` and
+  `scripts\validate-frontend.py --install --install-browsers` before server and
+  full Web UI changes depend on frontend tooling.
 - Local-e2e tests using the fixture repository and fake local agent before any
   real coding-agent smoke is considered.
-

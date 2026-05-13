@@ -68,14 +68,15 @@ def test_development_plan_uses_larger_capability_epics() -> None:
         "## Capability Epic F: Local E2E CI Smoke And Test Taxonomy",
         "## Capability Epic G: Release Candidate Install Smoke And Changelog Finalization",
         "## Capability Epic H: Agent Profiles And Noninteractive Agent Matrix",
-        "## Capability Epic I: Local App Server And Run Orchestration",
-        "## Capability Epic J: Full Web UI Workflow For Non-Technical Users",
-        "## Capability Epic K: No-CLI Launcher And Packaging",
+        "## Capability Epic I: Frontend Build/Test/Acceptance Foundation",
+        "## Capability Epic J: Local App Server And Run Orchestration",
+        "## Capability Epic K: Full Web UI Workflow For Non-Technical Users",
+        "## Capability Epic L: No-CLI Launcher And Packaging",
     ]
     for heading in expected_headings:
         assert heading in text
 
-    assert text.count("## Capability Epic ") == 11
+    assert text.count("## Capability Epic ") == 12
     assert "## Active Backlog Order" not in text
     assert "## Phase 7:" not in text
 
@@ -144,9 +145,10 @@ def test_development_plan_prioritizes_agent_profiles_before_full_web_ui() -> Non
 
     required_order = [
         "PR H: Agent Profiles And Noninteractive Agent Matrix",
-        "PR I: Local App Server And Run Orchestration",
-        "PR J: Full Web UI Workflow For Non-Technical Users",
-        "PR K: No-CLI Launcher And Packaging",
+        "PR I: Frontend Build/Test/Acceptance Foundation",
+        "PR J: Local App Server And Run Orchestration",
+        "PR K: Full Web UI Workflow For Non-Technical Users",
+        "PR L: No-CLI Launcher And Packaging",
     ]
     positions = [text.index(term) for term in required_order]
     assert positions == sorted(positions)
@@ -154,7 +156,7 @@ def test_development_plan_prioritizes_agent_profiles_before_full_web_ui() -> Non
     epic_h = _section(
         text,
         "## Capability Epic H: Agent Profiles And Noninteractive Agent Matrix",
-        "## Capability Epic I: Local App Server And Run Orchestration",
+        "## Capability Epic I: Frontend Build/Test/Acceptance Foundation",
     )
     for term in [
         "Codex CLI",
@@ -174,19 +176,33 @@ def test_development_plan_defines_local_app_and_no_cli_followups() -> None:
     text = Path("docs/development-plan.md").read_text(encoding="utf-8")
     epic_i = _section(
         text,
-        "## Capability Epic I: Local App Server And Run Orchestration",
-        "## Capability Epic J: Full Web UI Workflow For Non-Technical Users",
+        "## Capability Epic I: Frontend Build/Test/Acceptance Foundation",
+        "## Capability Epic J: Local App Server And Run Orchestration",
     )
     epic_j = _section(
         text,
-        "## Capability Epic J: Full Web UI Workflow For Non-Technical Users",
-        "## Capability Epic K: No-CLI Launcher And Packaging",
+        "## Capability Epic J: Local App Server And Run Orchestration",
+        "## Capability Epic K: Full Web UI Workflow For Non-Technical Users",
     )
     epic_k = _section(
         text,
-        "## Capability Epic K: No-CLI Launcher And Packaging",
+        "## Capability Epic K: Full Web UI Workflow For Non-Technical Users",
+        "## Capability Epic L: No-CLI Launcher And Packaging",
+    )
+    epic_l = _section(
+        text,
+        "## Capability Epic L: No-CLI Launcher And Packaging",
         "## Cross-Epic Quality Gates",
     )
+
+    for term in [
+        "React + Vite + TypeScript",
+        "Vitest",
+        "Playwright",
+        "frontend/dist",
+        "does not add local app server endpoints",
+    ]:
+        assert term in epic_i
 
     for term in [
         "explicit local app/server command",
@@ -197,7 +213,7 @@ def test_development_plan_defines_local_app_and_no_cli_followups() -> None:
         "log streaming",
         "static UI mode",
     ]:
-        assert term in epic_i
+        assert term in epic_j
 
     for term in [
         "non-technical users",
@@ -207,7 +223,7 @@ def test_development_plan_defines_local_app_and_no_cli_followups() -> None:
         "risk signals",
         "Browser verification",
     ]:
-        assert term in epic_j
+        assert term in epic_k
 
     for term in [
         "without requiring users to type a command",
@@ -215,7 +231,7 @@ def test_development_plan_defines_local_app_and_no_cli_followups() -> None:
         "Startup failures are visible",
         "Do not package external coding agents",
     ]:
-        assert term in epic_k
+        assert term in epic_l
 
 
 def test_changelog_mentions_agent_profiles_and_local_app_specs() -> None:
