@@ -11,6 +11,11 @@ dist/
 .context-eval/
 .coverage
 .codex/config.toml
+frontend/node_modules/
+frontend/dist/
+frontend/playwright-report/
+frontend/test-results/
+frontend/coverage/
 scripts/ralph/prd.json
 scripts/ralph/progress.txt
 scripts/ralph/.last-branch

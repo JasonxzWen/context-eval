@@ -177,6 +177,9 @@ The planned full local app workflow is documented in
 `docs/local-app-workflow.md`. It is a future explicit local server/app mode for
 visual configuration, preflight, run orchestration, and result review. Static
 HTML remains the safe offline mode.
+Frontend build, test, and browser acceptance tooling for that future app is
+documented in `docs/frontend-workflow.md`; maintainers can run it with
+`python scripts\validate-frontend.py --install --install-browsers`.
 
 After placing the exported `context-eval.yaml` and `tasks.yaml` where you want
 them, run:
@@ -420,6 +423,10 @@ Run `ruff check .` and
 `powershell -ExecutionPolicy Bypass -File scripts\validate-skills.ps1 -SkipExternal`
 when the dev dependencies and Windows PowerShell are available. See
 `docs/release-checklist.md` for the full release packaging scope.
+When touching the planned local app frontend, run
+`python scripts\validate-frontend.py --install --install-browsers`; see
+`docs/frontend-workflow.md` for the frontend build, test, and browser
+acceptance workflow.
 
 The default pytest command covers unit and integration tests and excludes the
 installed CLI smoke marked `local_e2e`. Run the local-e2e layer explicitly when
