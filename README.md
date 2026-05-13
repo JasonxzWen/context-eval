@@ -194,6 +194,17 @@ with `--no-browser` or `--port 0` and inspect that log. The launcher does not
 install coding agents. It does not install target-repo dependencies.
 The launcher does not create tags or publish packages.
 
+For installed package acceptance without opening a browser or serving
+indefinitely, run the startup preflight:
+
+```bash
+context-eval-app --workspace my-eval --config context-eval.yaml --no-browser --port 0 --check-startup
+```
+
+The preflight validates local launcher inputs, writes the local app launcher
+log, and exits without running agents, validation commands, installers, tags, or
+publish steps.
+
 The local app binds to loopback by default and confines config writes, output
 directories, and artifact reads to the selected evaluation workspace. It reuses
 the same local config validation, runner, reporting, and export modules as the
@@ -482,8 +493,11 @@ python scripts/install-smoke-artifacts.py --dist-dir C:\tmp\context-eval-dist
 
 It installs the built wheel into a temporary Python environment and runs the
 installed CLI against a fixture repository, fake local agent, local config files,
-and local run artifacts. It does not call hosted services, run a real external
-coding agent, create tags, or publish packages.
+and local run artifacts. It also runs the installed `context-eval-app` launcher
+with `--no-browser --port 0 --check-startup` so the packaged local app entry
+point is verified without opening a browser or blocking in the server loop. It
+does not call hosted services, run a real external coding agent, create tags, or
+publish packages.
 
 The artifact inspection command checks the built wheel and sdist against the
 runtime package scope documented there.

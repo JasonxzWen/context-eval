@@ -14,6 +14,8 @@ def test_release_candidate_install_smoke_spec_documents_contract() -> None:
         "context-eval report",
         "context-eval export",
         "context-eval ui",
+        "context-eval-app",
+        "--no-browser --port 0 --check-startup",
         "do not contain hosted network call patterns",
         "manual publish checkpoint",
     ]:

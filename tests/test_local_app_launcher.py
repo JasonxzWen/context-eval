@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import subprocess
+import sys
 import tomllib
 from pathlib import Path
 from typing import Any
@@ -51,6 +53,41 @@ def test_launcher_startup_plan_uses_local_log_and_loopback_defaults(tmp_path: Pa
     assert startup.port == 8765
     assert startup.frontend_available is False
     assert startup.log_path.parent.is_dir()
+
+
+def test_launcher_check_startup_cli_validates_and_exits(tmp_path: Path) -> None:
+    workspace = tmp_path / "eval"
+    workspace.mkdir()
+    config_path = workspace / "context-eval.yaml"
+    config_path.write_text("repo:\n  path: ./repo\n", encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "context_eval.launcher",
+            "--workspace",
+            str(workspace),
+            "--config",
+            "context-eval.yaml",
+            "--no-browser",
+            "--port",
+            "0",
+            "--check-startup",
+        ],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0
+    assert "Launcher startup preflight passed" in result.stdout
+    assert "local app launcher log:" in result.stdout
+    log_text = (workspace / ".context-eval" / "logs" / "local-app-launcher.log").read_text(
+        encoding="utf-8"
+    )
+    assert "Startup preflight passed" in log_text
+    assert "Local app:" not in log_text
 
 
 def test_launcher_rejects_config_paths_outside_workspace(tmp_path: Path) -> None:

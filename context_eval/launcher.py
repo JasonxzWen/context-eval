@@ -158,6 +158,21 @@ def launch_local_app(
             server.server_close()
 
 
+def check_launcher_startup(startup: LauncherStartup, *, output: Console | None = None) -> None:
+    active_console = output or console
+    _append_log(
+        startup.log_path,
+        f"Startup preflight passed workspace={startup.workspace_root} host={startup.host} "
+        f"port={startup.port} frontend_available={startup.frontend_available}",
+    )
+    active_console.print("[green]Launcher startup preflight passed[/green]")
+    active_console.print(f"local app launcher log: {startup.log_path}")
+    active_console.print(
+        f"workspace={startup.workspace_root} host={startup.host} "
+        f"port={startup.port} frontend_available={startup.frontend_available}"
+    )
+
+
 def launch_command(
     workspace: Annotated[
         Path,
@@ -194,6 +209,13 @@ def launch_command(
             help="Optional launcher log directory inside the workspace.",
         ),
     ] = None,
+    check_startup: Annotated[
+        bool,
+        typer.Option(
+            "--check-startup",
+            help="Validate launcher startup inputs, write diagnostics, and exit.",
+        ),
+    ] = False,
 ) -> None:
     """Start the local app server, open the browser, and record startup diagnostics."""
     startup: LauncherStartup | None = None
@@ -206,6 +228,9 @@ def launch_command(
             log_dir=log_dir,
             open_browser=not no_browser,
         )
+        if check_startup:
+            check_launcher_startup(startup, output=console)
+            return
         launch_local_app(startup, output=console)
     except LauncherStartupError as exc:
         console.print(f"[red]Startup failed:[/red] {exc}")

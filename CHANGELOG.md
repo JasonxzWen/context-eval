@@ -33,3 +33,6 @@
   and a profile-map local-e2e smoke using the fixture repository.
 - Add the packaged local app launcher entry point, startup diagnostics, and
   local launcher log path for the no-command-line app startup path.
+- Add installed package smoke coverage for the `context-eval-app` launcher
+  startup preflight without opening a browser or crossing the manual publish
+  checkpoint.

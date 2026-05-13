@@ -47,6 +47,15 @@ runs the installed `context-eval` console script against a local fixture reposit
 a fake local agent, temporary local config files, and local run
 artifacts. It runs `validate-config`, `run`, `report`, CSV/JSON `export`, and
 `ui`, then verifies the generated artifacts are parseable and self-contained.
+It also runs the installed `context-eval-app` launcher startup preflight:
+
+```bash
+context-eval-app --workspace <temp> --config <temp>/context-eval.yaml --no-browser --port 0 --check-startup
+```
+
+That preflight verifies the installed launcher entry point, workspace/config
+resolution, loopback startup settings, and local launcher log path without
+opening a browser or blocking in the server loop.
 
 The smoke does not call hosted services, does not install or run a real external
 coding agent, does not create Git tags, and does not upload or publish packages.

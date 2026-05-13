@@ -48,6 +48,12 @@ def _console_script(venv_dir: Path) -> Path:
     return venv_dir / "bin" / "context-eval"
 
 
+def _launcher_script(venv_dir: Path) -> Path:
+    if sys.platform == "win32":
+        return venv_dir / "Scripts" / "context-eval-app.exe"
+    return venv_dir / "bin" / "context-eval-app"
+
+
 def _find_wheel(dist_dir: Path) -> tuple[Path | None, list[str]]:
     if not dist_dir.is_dir():
         return None, [f"{dist_dir}: not a directory"]
@@ -248,6 +254,10 @@ def _dry_run(wheel: Path, root: Path) -> int:
     print("DRY RUN: would run context-eval export <temp>/runs/<run-id> --format csv")
     print("DRY RUN: would run context-eval export <temp>/runs/<run-id> --format json")
     print("DRY RUN: would run context-eval ui --config <temp>/context-eval.yaml")
+    print(
+        "DRY RUN: would run context-eval-app --workspace <temp> "
+        "--config <temp>/context-eval.yaml --no-browser --port 0 --check-startup"
+    )
     return 0
 
 
@@ -256,6 +266,7 @@ def _run_smoke(root: Path, wheel: Path, work_dir: Path) -> int:
     venv.EnvBuilder(with_pip=True, system_site_packages=True).create(venv_dir)
     smoke_python = _venv_python(venv_dir)
     context_eval = _console_script(venv_dir)
+    context_eval_app = _launcher_script(venv_dir)
 
     install_command = [
         str(smoke_python),
@@ -277,6 +288,17 @@ def _run_smoke(root: Path, wheel: Path, work_dir: Path) -> int:
 
     config_path = _write_smoke_files(work_dir, fixture, smoke_python)
     commands = [
+        [
+            str(context_eval_app),
+            "--workspace",
+            str(work_dir),
+            "--config",
+            str(config_path),
+            "--no-browser",
+            "--port",
+            "0",
+            "--check-startup",
+        ],
         [str(context_eval), "validate-config", "--config", str(config_path)],
         [
             str(context_eval),
