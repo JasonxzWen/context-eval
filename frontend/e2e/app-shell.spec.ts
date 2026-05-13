@@ -149,8 +149,8 @@ async function stopLocalApp(child: ChildProcessWithoutNullStreams) {
 test('renders the fixture-backed local app shell', async ({ page }) => {
   await page.goto('/');
 
-  await expect(page.getByRole('heading', { name: 'Context Eval Local App' })).toBeVisible();
-  await expect(page.getByText('Local artifacts only')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'context-eval 本地工作台' })).toBeVisible();
+  await expect(page.getByText('仅使用本地产物')).toBeVisible();
   await expect(page.getByTestId('matrix-count')).toHaveText('8');
   await expect(page.getByText('traecli', { exact: true })).toBeVisible();
 
@@ -170,27 +170,44 @@ test('completes the local server workflow with fixture repo and fake agent', asy
   try {
     await page.goto(server.url);
 
-    await expect(page.getByRole('heading', { name: 'Context Eval Local App' })).toBeVisible();
-    await page.getByRole('button', { name: 'Load config' }).click();
-    await expect(page.getByLabel('Repo path')).toHaveValue(toPosix(fixture));
+    await expect(page.getByRole('heading', { name: 'context-eval 本地工作台' })).toBeVisible();
+    await page.getByRole('button', { name: '加载配置' }).click();
+    await expect(page.getByLabel('仓库路径')).toHaveValue(toPosix(fixture));
     await expect(page.locator('.profile-list strong').filter({ hasText: 'browser-fake-agent' })).toBeVisible();
 
-    await page.getByRole('button', { name: 'Save config' }).click();
-    await expect(page.getByTestId('save-status')).toContainText('Saved');
+    const tasksEditor = page.locator('#tasks-yaml');
+    await tasksEditor.fill(
+      [
+        'tasks:',
+        '  - id: fix-greeting-punctuation',
+        '    title: 修复问候标点',
+        '    prompt: Fix the fixture greeting punctuation.',
+        '    category: runtime',
+        '    difficulty: medium',
+        '    x_unknown_task_field: keep-me',
+        '',
+      ].join('\n'),
+    );
+    await page.getByRole('button', { name: '保存并重载' }).click();
+    await expect(page.getByTestId('save-status')).toContainText('已保存并从磁盘重载');
+    await expect(page.locator('.two-column-list span').filter({ hasText: '修复问候标点' })).toBeVisible();
+    expect(fs.readFileSync(path.join(workspace, 'tasks.yaml'), 'utf-8')).toContain('x_unknown_task_field');
+    await page.getByRole('button', { name: '加载配置' }).click();
+    await expect(page.locator('.two-column-list span').filter({ hasText: '修复问候标点' })).toBeVisible();
 
-    await page.getByRole('button', { name: 'Run preflight' }).click();
-    await expect(page.getByTestId('preflight-status')).toContainText('Preflight passed');
+    await page.getByRole('button', { name: '运行预检' }).click();
+    await expect(page.getByTestId('preflight-status')).toContainText('预检通过');
 
-    await page.getByRole('button', { name: 'Plan run' }).click();
+    await page.getByRole('button', { name: '生成计划' }).click();
     await expect(page.getByTestId('planned-case-count')).toHaveText('1');
 
-    await page.getByRole('button', { name: 'Start run' }).click();
-    await expect(page.getByTestId('run-status')).toContainText('completed', { timeout: 60000 });
+    await page.getByRole('button', { name: '开始运行' }).click();
+    await expect(page.getByTestId('run-status')).toContainText('已完成', { timeout: 60000 });
 
     await expect(page.getByRole('cell', { name: 'fix-greeting-punctuation' })).toBeVisible();
-    await expect(page.getByRole('cell', { name: 'completed' })).toBeVisible();
+    await expect(page.getByRole('cell', { name: '已完成' })).toBeVisible();
 
-    await page.getByRole('button', { name: 'Export JSON' }).click();
+    await page.getByRole('button', { name: '导出 JSON' }).click();
     await expect(page.getByTestId('export-output')).toContainText('"case_count": 1');
   } finally {
     await stopLocalApp(server.child);

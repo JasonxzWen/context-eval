@@ -17,9 +17,10 @@ BLOCKED_FILES = (
 )
 
 
-def _display(path: Path) -> str:
+def _display(path: Path, *, is_dir: bool | None = None) -> str:
     text = path.as_posix()
-    return f"{text}/" if path.is_dir() and not text.endswith("/") else text
+    directory = path.is_dir() if is_dir is None else is_dir
+    return f"{text}/" if directory and not text.endswith("/") else text
 
 
 def check_release_state(root: Path) -> list[str]:
@@ -35,7 +36,10 @@ def check_release_state(root: Path) -> list[str]:
             errors.append(f"hidden local release blocker: {relative}/")
 
     for path in sorted(root.glob("*.egg-info")):
-        errors.append(f"hidden local release blocker: {_display(path.relative_to(root))}")
+        errors.append(
+            f"hidden local release blocker: "
+            f"{_display(path.relative_to(root), is_dir=path.is_dir())}"
+        )
 
     for relative in BLOCKED_FILES:
         path = root / relative

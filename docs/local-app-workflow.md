@@ -65,7 +65,8 @@ The local app must support:
 
 - creating a new evaluation workspace from a target repo path;
 - opening an existing `context-eval.yaml`;
-- saving `context-eval.yaml` and `tasks.yaml` with validation before write;
+- saving `context-eval.yaml` and `tasks.yaml` with validation before write and
+  then reloading through the server API to prove the disk state changed;
 - configuring `repo.path`, `repo.base_ref`, `tasks`, variants, overlays, agent
   profiles, trials, jobs, cleanup policy, and output directory;
 - showing a task x variant x agent x trial matrix preview;
@@ -73,6 +74,21 @@ The local app must support:
 
 All writes must show destination paths and must not silently overwrite unrelated
 files.
+
+The first full Web configuration editor is Chinese-first. Headings, buttons,
+status text, errors, empty states, preflight labels, run labels, result labels,
+and export labels should be visible in Chinese. Code identifiers, file names,
+YAML keys, artifact names, and API fields can remain English.
+
+Task editing may start as a safe `tasks.yaml` editor if a full structured task
+form would make the PR too large. In that mode, users can edit IDs, titles,
+prompts, categories, difficulty, ordering, additions, deletions, and unknown
+task fields directly in YAML. The server must validate and reparse the saved
+task file after the write; it must not silently drop unknown fields.
+
+The local app may add subtle motion for hover, focus, active, loading, progress,
+and log-update states. Motion must not affect readability or narrow layouts,
+and CSS must honor `prefers-reduced-motion`.
 
 ## Evaluation Criteria Workflow
 
@@ -145,6 +161,12 @@ has one evaluation workspace root. Config writes, output directories, run
 artifact roots, and artifact-relative reads must resolve inside that workspace
 root and must reject path traversal such as `..`.
 
+Edited `config_path`, `tasks_path`, `output_dir`, overlay `source`, and overlay
+`target` values are part of the write-safety boundary. `config_path`,
+`tasks_path`, `output_dir`, and overlay `source` must remain inside the local
+app workspace. Overlay `target` must be a safe relative target path and must not
+be absolute or contain traversal.
+
 The local app API endpoints are:
 
 - `GET /api/health`: report loopback mode, workspace root, frontend mode, and
@@ -181,6 +203,33 @@ preflight checks and the existing runner after the user confirms execution.
 Preflight must not create run directories, install dependencies, run validation
 commands, run agent commands, or create commits.
 
+Config save must also be execution-free. Saving YAML must not run agent
+commands, install dependencies, run validation commands, create commits, or
+create run workspaces.
+
+## Harness Readiness Reference
+
+This phase uses `https://github.com/JasonxzWen/skill-hub` as a selective
+reference, not as an import source. The inspected reference commit for this PR
+is `24aef55`.
+
+Useful patterns to borrow:
+
+- explicit `build`, `test`, `validate`, and release-validation gates;
+- a readable acceptance matrix that distinguishes local API, frontend,
+  browser, OpenSpec, lint, and diff checks;
+- readiness analysis that is evidence-backed, category-based, and read-only
+  instead of a single score;
+- fixture repositories and fake/local agents before any real external-agent
+  smoke is considered.
+
+Out of scope for this repository phase:
+
+- installing Skill Hub assets or external coding agents;
+- copying Skill Hub's repository structure;
+- hosted dashboards, remote databases, or agent leaderboards;
+- automatic commits to a user's target repository.
+
 ## Non-Goals
 
 This capability does not add a hosted service, multi-user dashboard, remote
@@ -197,6 +246,9 @@ automatic commits, issue mining, real network isolation, or an LLM judge.
   evaluation criteria, preflight, run start/stop, and result review.
 - Browser verification for major UI changes, including desktop and narrow
   viewport checks.
+- Chinese-copy regression tests for visible headings, controls, status text,
+  errors, empty states, preflight labels, run labels, result labels, and export
+  controls.
 - Frontend validation through `docs/frontend-workflow.md` and
   `scripts\validate-frontend.py --install --install-browsers` before server and
   full Web UI changes depend on frontend tooling.

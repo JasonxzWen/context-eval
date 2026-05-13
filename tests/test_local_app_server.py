@@ -163,6 +163,18 @@ def test_local_app_rejects_traversal_for_writes_and_artifact_reads(tmp_path: Pat
             tasks_yaml=(tmp_path / "tasks.yaml").read_text(encoding="utf-8"),
         )
 
+    unsafe_output_config = config_path.read_text(encoding="utf-8").replace(
+        "output_dir: ./runs",
+        "output_dir: ../runs",
+    )
+    with pytest.raises(LocalAppError, match="output_dir contains path traversal"):
+        service.save_config(
+            config_path="context-eval.yaml",
+            tasks_path="tasks.yaml",
+            config_yaml=unsafe_output_config,
+            tasks_yaml=(tmp_path / "tasks.yaml").read_text(encoding="utf-8"),
+        )
+
 
 def test_app_command_exposes_loopback_server_options() -> None:
     result = CliRunner().invoke(app, ["app", "--help"])
@@ -178,14 +190,20 @@ def test_app_command_exposes_loopback_server_options() -> None:
     assert {"--workspace", "--host", "--port"}.issubset(option_names)
 
 
-def test_local_app_save_load_preserves_raw_unknown_config_fields(tmp_path: Path) -> None:
+def test_local_app_save_reloads_and_preserves_raw_unknown_fields(tmp_path: Path) -> None:
     repo = _create_git_repo(tmp_path / "repo")
     _write_eval_files(tmp_path, repo)
     service = LocalAppService(workspace_root=tmp_path)
 
     loaded = service.load_config(config_path="context-eval.yaml")
     config_yaml = loaded["config_yaml"].replace("preserve: true", "preserve: edited")
-    tasks_yaml = loaded["tasks_yaml"].replace("Fix greeting punctuation", "Edited title")
+    tasks_yaml = loaded["tasks_yaml"].replace(
+        "Fix greeting punctuation",
+        "Edited title",
+    ).replace(
+        "difficulty: easy",
+        "difficulty: medium\n  x_task_unknown:\n    keep: true",
+    )
     saved = service.save_config(
         config_path="context-eval.yaml",
         tasks_path="tasks.yaml",
@@ -195,8 +213,71 @@ def test_local_app_save_load_preserves_raw_unknown_config_fields(tmp_path: Path)
 
     assert saved["config_path"].endswith("context-eval.yaml")
     assert saved["tasks_path"].endswith("tasks.yaml")
+    assert saved["reloaded"]["editable"]["tasks"][0]["title"] == "Edited title"
+    assert saved["reloaded"]["editable"]["tasks"][0]["difficulty"] == "medium"
+    assert "x_task_unknown" in saved["reloaded"]["tasks_yaml"]
     assert "preserve: edited" in (tmp_path / "context-eval.yaml").read_text(encoding="utf-8")
     assert "Edited title" in (tmp_path / "tasks.yaml").read_text(encoding="utf-8")
+    assert "x_task_unknown" in (tmp_path / "tasks.yaml").read_text(encoding="utf-8")
+
+
+def test_local_app_save_rejects_overlay_paths_outside_workspace(tmp_path: Path) -> None:
+    repo = _create_git_repo(tmp_path / "repo")
+    config_path = _write_eval_files(tmp_path, repo)
+    outside_source = tmp_path.parent / "outside-overlay.md"
+    outside_source.write_text("# outside\n", encoding="utf-8")
+    service = LocalAppService(workspace_root=tmp_path)
+    loaded = service.load_config(config_path="context-eval.yaml")
+
+    traversal_config = loaded["config_yaml"].replace(
+        "source: ./contexts/baseline/AGENTS.md",
+        "source: ../outside-overlay.md",
+    )
+    with pytest.raises(LocalAppError, match="overlay source contains path traversal"):
+        service.save_config(
+            config_path="context-eval.yaml",
+            tasks_path="tasks.yaml",
+            config_yaml=traversal_config,
+            tasks_yaml=loaded["tasks_yaml"],
+        )
+
+    absolute_config = loaded["config_yaml"].replace(
+        "source: ./contexts/baseline/AGENTS.md",
+        f"source: {outside_source.as_posix()}",
+    )
+    with pytest.raises(LocalAppError, match="overlay source must stay inside"):
+        service.save_config(
+            config_path="context-eval.yaml",
+            tasks_path="tasks.yaml",
+            config_yaml=absolute_config,
+            tasks_yaml=loaded["tasks_yaml"],
+        )
+
+    target_traversal_config = loaded["config_yaml"].replace(
+        "target: AGENTS.md",
+        "target: ../AGENTS.md",
+    )
+    with pytest.raises(LocalAppError, match="overlay target contains path traversal"):
+        service.save_config(
+            config_path="context-eval.yaml",
+            tasks_path="tasks.yaml",
+            config_yaml=target_traversal_config,
+            tasks_yaml=loaded["tasks_yaml"],
+        )
+
+    target_absolute_config = loaded["config_yaml"].replace(
+        "target: AGENTS.md",
+        f"target: {outside_source.as_posix()}",
+    )
+    with pytest.raises(LocalAppError, match="overlay target must be a safe relative path"):
+        service.save_config(
+            config_path="context-eval.yaml",
+            tasks_path="tasks.yaml",
+            config_yaml=target_absolute_config,
+            tasks_yaml=loaded["tasks_yaml"],
+        )
+
+    assert config_path.read_text(encoding="utf-8") == loaded["config_yaml"]
 
 
 def test_local_app_preflight_is_side_effect_free(tmp_path: Path) -> None:

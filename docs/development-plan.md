@@ -106,7 +106,10 @@ loss of SDD/TDD discipline.
 10. PR J: Local App Server And Run Orchestration, after agent profiles are
    stable. This creates the explicit local server mode behind the visual app.
 11. PR K: Full Web UI Workflow For Non-Technical Users, after the server API is
-    stable enough to avoid duplicating runner logic in the frontend.
+    stable enough to avoid duplicating runner logic in the frontend. The first
+    focused slice is a Chinese config/tasks editor with save-reload proof,
+    desktop/narrow browser acceptance, and a minimal harness-readiness
+    reference.
 12. PR L: No-CLI Launcher And Packaging, after the local app workflow is stable
     and browser-verified.
 
@@ -813,6 +816,12 @@ preflight, run control, validation review, and result exploration.
 - Provide first-run setup for evaluation workspace and target repo selection.
 - Provide visual editors for tasks, variants, overlays, agent profiles,
   validation commands, timeouts, trials, jobs, cleanup policy, and output path.
+- Present the first full workflow in Chinese, including visible controls,
+  status text, errors, empty states, preflight labels, run labels, result
+  labels, and export labels.
+- Save `context-eval.yaml` and `tasks.yaml` through the server API, then reload
+  from disk so browser state cannot mask failed writes; this is the
+  save-reload proof for the first focused slice.
 - Show matrix preview before runs and require explicit confirmation before
   local agent execution.
 - Show run progress, active case identity, log tails, stop controls, timeout
@@ -821,6 +830,8 @@ preflight, run control, validation review, and result exploration.
   agent summaries, risk signals, validation output, patches, touched paths, and
   exports.
 - Keep static UI export available for offline sharing of completed run views.
+- Document the minimal harness-readiness reference from Skill Hub without
+  copying its repository structure or installing its assets.
 
 ### Non-Goals
 
@@ -837,6 +848,8 @@ preflight, run control, validation review, and result exploration.
 - A non-technical user can complete the workflow visually with the fixture repo
   and fake local agent.
 - Text and controls fit across desktop and narrow browser viewports.
+- Saving config and task YAML preserves unknown fields and reloads the parsed
+  disk state.
 - UI copy distinguishes local observations from benchmark claims.
 - Browser verification covers setup, config editing, preflight, run start/stop,
   results, and exports.
@@ -855,6 +868,8 @@ preflight, run control, validation review, and result exploration.
 - UI contract tests for view routing, controls, disabled states, and copy.
 - API-backed integration tests using local fixture data.
 - Browser tests across desktop and narrow viewports.
+- Save/reload tests proving config and task YAML are reparsed from disk while
+  preserving unknown fields.
 - Pixel/screenshot checks for layout regressions where practical.
 - Local-e2e smoke with fake local agent through the visual flow.
 - Full verification commands after each completed story and before the PR is

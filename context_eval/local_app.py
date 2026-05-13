@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from pathlib import Path, PurePosixPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
@@ -53,6 +53,14 @@ class LocalAppError(RuntimeError):
 def _contains_traversal(value: str) -> bool:
     normalized = value.replace("\\", "/")
     return ".." in PurePosixPath(normalized).parts
+
+
+def _is_absolute_path_like(value: str) -> bool:
+    normalized = value.replace("\\", "/")
+    return (
+        PurePosixPath(normalized).is_absolute()
+        or PureWindowsPath(normalized).is_absolute()
+    )
 
 
 def _is_relative_to(path: Path, root: Path) -> bool:
@@ -209,11 +217,13 @@ class LocalAppService:
         tasks_dst.parent.mkdir(parents=True, exist_ok=True)
         config_dst.write_text(config_yaml, encoding="utf-8")
         tasks_dst.write_text(tasks_yaml, encoding="utf-8")
+        reloaded = self.load_config(config_path=config_dst)
         return {
             "ok": True,
             "config_path": str(config_dst),
             "tasks_path": str(tasks_dst),
             "message": "Saved local config files",
+            "reloaded": reloaded,
         }
 
     def preflight(
@@ -596,6 +606,45 @@ class LocalAppService:
             if _contains_traversal(raw):
                 raise LocalAppError(f"{key} contains path traversal")
             self.guard.resolve_workspace_path(raw, field=key)
+        variants = config_data.get("variants")
+        if variants is None:
+            return
+        if not isinstance(variants, dict):
+            raise LocalAppError("variants must be a mapping")
+        for variant_name, variant_data in variants.items():
+            if not isinstance(variant_data, dict):
+                continue
+            overlays = variant_data.get("overlays", [])
+            if overlays is None:
+                continue
+            if not isinstance(overlays, list):
+                raise LocalAppError(f"variants.{variant_name}.overlays must be a list")
+            for index, overlay in enumerate(overlays):
+                if not isinstance(overlay, dict):
+                    raise LocalAppError(
+                        f"variants.{variant_name}.overlays[{index}] must be a mapping"
+                    )
+                source = overlay.get("source")
+                if source is not None:
+                    if not isinstance(source, str):
+                        field = f"variants.{variant_name}.overlays[{index}].source"
+                        raise LocalAppError(
+                            f"{field} must be a path string"
+                        )
+                    if _contains_traversal(source):
+                        raise LocalAppError("overlay source contains path traversal")
+                    self.guard.resolve_workspace_path(source, field="overlay source")
+                target = overlay.get("target")
+                if target is not None:
+                    if not isinstance(target, str):
+                        field = f"variants.{variant_name}.overlays[{index}].target"
+                        raise LocalAppError(
+                            f"{field} must be a path string"
+                        )
+                    if _contains_traversal(target):
+                        raise LocalAppError("overlay target contains path traversal")
+                    if _is_absolute_path_like(target):
+                        raise LocalAppError("overlay target must be a safe relative path")
 
     def _iter_agent_profiles(self, config: ContextEvalConfig) -> list[tuple[str, AgentConfig]]:
         if config.agents:

@@ -29,3 +29,13 @@
 - [ ] 4.2 Deferred: add launcher startup checks in a later packaging change.
 - [ ] 4.3 Deferred: document packaged installation/startup/recovery in the later launcher change.
 - [ ] 4.4 Keep package release automation stopped at the existing manual tag and publish boundary.
+
+## 5. Chinese Web Config Editor And Harness Readiness
+
+- [x] 5.1 Update the local app spec and docs for Chinese UI copy, config/tasks load-save-reload, safe YAML editing, and local-only write boundaries.
+- [x] 5.2 Add API tests for config/tasks round-trip reload, unknown-field preservation, and config/tasks/output/overlay path safety.
+- [x] 5.3 Add frontend unit tests for Chinese labels, save-and-reload status, task YAML editing, and API-only workflow calls.
+- [x] 5.4 Add Playwright coverage for load, edit, save, reload, preflight, plan, run, results, and exports across desktop and narrow viewports.
+- [x] 5.5 Implement the Chinese API-backed config/tasks editor and lightweight motion with `prefers-reduced-motion` support.
+- [x] 5.6 Add a minimal Skill Hub reference analysis for build/test/validate gates, acceptance matrix, and readiness boundaries.
+- [x] 5.7 Run the full requested verification gates and remove regenerated local artifacts.

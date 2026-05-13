@@ -40,6 +40,60 @@ evaluation configuration without manually editing YAML.
 - **WHEN** the app opens a config containing fields that are not yet editable
 - **THEN** saving editable fields does not silently drop the unknown fields
 
+#### Scenario: Save reloads from disk
+
+- **WHEN** the user saves `context-eval.yaml` or `tasks.yaml`
+- **THEN** the app reloads those files through the server API and shows the
+  parsed disk state instead of trusting only browser state
+
+#### Scenario: Safe task YAML editing is available
+
+- **WHEN** the first task editor does not expose every task field visually
+- **THEN** the app provides a safe `tasks.yaml` editing mode that validates and
+  reparses task IDs, titles, prompts, categories, difficulty, and unknown task
+  fields on save
+
+### Requirement: Chinese local app experience
+
+The local app SHALL present the first full Web configuration workflow in
+Chinese while keeping code identifiers and artifact field names stable.
+
+#### Scenario: Visible application copy is Chinese
+
+- **WHEN** a user opens the local app
+- **THEN** headings, buttons, status text, errors, empty states, run labels,
+  preflight labels, result labels, and export labels are shown in Chinese
+
+#### Scenario: Motion is lightweight and optional
+
+- **WHEN** the UI shows hover, focus, active, loading, progress, or log-update
+  states
+- **THEN** the motion is subtle, does not reduce readability, and honors
+  `prefers-reduced-motion`
+
+### Requirement: Edited path safety
+
+The local app SHALL reject unsafe edited paths before local files are written
+or local agents can run.
+
+#### Scenario: Config and task destination paths stay inside the workspace
+
+- **WHEN** a save request names `config_path`, `tasks_path`, or `output_dir`
+  outside the local app workspace or with `..` traversal
+- **THEN** the request fails before writing files
+
+#### Scenario: Overlay paths remain bounded
+
+- **WHEN** an edited overlay source leaves the local app workspace or an overlay
+  target is absolute or contains traversal
+- **THEN** the request fails before writing files
+
+#### Scenario: Config save has no execution side effects
+
+- **WHEN** the user saves config or task YAML
+- **THEN** the server does not run agents, install dependencies, run validation
+  commands, create commits, or create run workspaces
+
 ### Requirement: Preflight before agent execution
 
 The local app SHALL provide a side-effect-free preflight step before a run can
@@ -120,3 +174,22 @@ do not need to operate the command line after installation.
 - **THEN** the launcher or diagnostics view shows a local error message and log
   location instead of silently failing
 
+### Requirement: Harness readiness reference
+
+The system SHALL use the current `JasonxzWen/skill-hub` repository only as a
+selective reference for explicit build/test/validate gates and readiness
+analysis boundaries.
+
+#### Scenario: Reference gates are documented without copying Skill Hub
+
+- **WHEN** local app harness readiness is documented
+- **THEN** the documentation compares context-eval's Python, frontend,
+  OpenSpec, and diff-check gates against Skill Hub's explicit build, test,
+  validate, release-validate, acceptance, and readiness patterns
+
+#### Scenario: Reference scope stays local and non-mutating
+
+- **WHEN** the harness reference is applied in this change
+- **THEN** it does not install Codex, Claude Code, traecli, coco, or Skill Hub
+  assets, and it does not add a hosted dashboard, remote database, leaderboard,
+  or automatic target-repository commits

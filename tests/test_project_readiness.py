@@ -411,3 +411,23 @@ def test_readme_documents_agent_executable_preflight() -> None:
         "does not install coding agents",
     ]:
         assert term in text
+
+
+def test_local_app_harness_readiness_documents_skill_hub_reference() -> None:
+    text = Path("docs/local-app-harness-readiness.md").read_text(encoding="utf-8")
+
+    for term in [
+        "https://github.com/JasonxzWen/skill-hub",
+        "24aef55",
+        "`build`",
+        "`test`",
+        "`validate`",
+        "`validate:release`",
+        "python scripts\\validate-frontend.py --install --install-browsers",
+        "read-only",
+        "category-based",
+        "scoreless",
+        "should not add a scoring model",
+        "automatic target-repository commit workflow",
+    ]:
+        assert term in text

@@ -15,6 +15,11 @@ run planning, run lifecycle, log reads, result reads, and exports. It still has
 a deterministic fixture fallback so frontend validation can run without a
 Python server.
 
+The first full local app workflow is Chinese-first. Visible headings, buttons,
+status text, errors, empty states, preflight labels, run labels, result labels,
+and export labels should be Chinese while preserving code identifiers, YAML
+keys, artifact filenames, and API field names.
+
 ## Toolchain
 
 - React + Vite + TypeScript for the browser app shell.
@@ -60,6 +65,13 @@ starts `context-eval app` against the fixture repository and fake local agent,
 then completes the main local workflow through the browser. It does not run a
 real external coding agent, install agent CLIs, call hosted services, or use
 non-local artifacts.
+
+Acceptance should cover load, edit, save, reload, preflight, plan, run,
+results, and exports through the local server API. UI changes must not copy
+runner or config parsing logic into the browser.
+
+Lightweight motion is allowed for hover, focus, active, loading, progress, and
+log-update states. CSS must include a `prefers-reduced-motion` path.
 
 ## Build Output
 
