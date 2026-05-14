@@ -1,10 +1,10 @@
 <!doctype html>
-<!-- Use case: research synthesis, architecture walkthrough, module understanding, concept explainer with citations and rendered diagrams. -->
-<html lang="en">
+<!-- 用途：研究综合、架构讲解、模块理解、带引用和图表的概念说明。 -->
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Research Explainer Report</title>
+  <title>研究说明报告</title>
   <style>
     :root { color-scheme:light; --bg:#f7f8fb; --panel:#fff; --ink:#172033; --muted:#667085; --line:#d7dce5; --accent:#2563eb; --info:#0f766e; --warn:#b7791f; --shadow:0 14px 40px rgba(23,32,51,.12); }
     * { box-sizing:border-box; }
@@ -39,90 +39,90 @@
 <body>
   <main class="shell">
     <header>
-      <div class="meta">Research explainer</div>
-      <h1>Replace with topic</h1>
-      <p class="muted">One-sentence conclusion. Keep detail in cards, tabs, and source notes.</p>
+      <div class="meta">研究说明</div>
+      <h1>替换为主题</h1>
+      <p class="muted">用一句话给结论；细节放在卡片、标签页和来源说明中。</p>
     </header>
 
-    <section class="grid" aria-label="Top conclusions">
+    <section class="grid" aria-label="核心结论">
       <article class="card">
-        <div class="meta">Answer</div>
-        <strong>Direct answer or recommendation.</strong>
+        <div class="meta">答案</div>
+        <strong>直接答案或建议。</strong>
       </article>
       <article class="card">
-        <div class="meta">Confidence</div>
-        <strong>High / medium / low with reason.</strong>
+        <div class="meta">置信度</div>
+        <strong>高 / 中 / 低，并说明原因。</strong>
       </article>
       <article class="card">
-        <div class="meta">Caveat</div>
-        <strong>Boundary that prevents overclaiming.</strong>
+        <div class="meta">边界</div>
+        <strong>避免过度断言的边界。</strong>
       </article>
     </section>
 
     <section class="layout">
       <article class="panel">
-        <h2>Rendered explanation</h2>
-        <div class="tabs" role="tablist" aria-label="Explainer sections">
-          <button data-tab="mechanism" aria-selected="true">Mechanism</button>
-          <button data-tab="tradeoffs">Tradeoffs</button>
-          <button data-tab="examples">Examples</button>
+        <h2>渲染说明</h2>
+        <div class="tabs" role="tablist" aria-label="说明章节">
+          <button data-tab="mechanism" aria-selected="true">机制</button>
+          <button data-tab="tradeoffs">取舍</button>
+          <button data-tab="examples">示例</button>
         </div>
 
         <section id="mechanism" data-panel>
-          <div class="callout"><strong>Key idea:</strong> Replace raw Markdown with semantic HTML blocks.</div>
+          <div class="callout"><strong>关键点：</strong> 用语义化 HTML 块替代原始 Markdown。</div>
           <ul>
-            <li>Use short bullets for mechanism steps.</li>
-            <li>Use tables or cards for comparisons.</li>
+            <li>用短要点描述机制步骤。</li>
+            <li>用表格或卡片做比较。</li>
           </ul>
           <figure class="diagram">
-            <svg viewBox="0 0 560 230" role="img" aria-label="Rendered architecture diagram">
+            <svg viewBox="0 0 560 230" role="img" aria-label="已渲染的架构图">
               <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#2563eb"/></marker></defs>
               <rect x="24" y="38" width="140" height="62" rx="8" fill="#eef4ff" stroke="#2563eb"/>
-              <text x="94" y="73" text-anchor="middle" font-size="14">Question</text>
+              <text x="94" y="73" text-anchor="middle" font-size="14">问题</text>
               <rect x="210" y="38" width="140" height="62" rx="8" fill="#f8fffd" stroke="#0f766e"/>
-              <text x="280" y="73" text-anchor="middle" font-size="14">Evidence</text>
+              <text x="280" y="73" text-anchor="middle" font-size="14">证据</text>
               <rect x="396" y="38" width="140" height="62" rx="8" fill="#fffaf0" stroke="#b7791f"/>
-              <text x="466" y="73" text-anchor="middle" font-size="14">Conclusion</text>
+              <text x="466" y="73" text-anchor="middle" font-size="14">结论</text>
               <path d="M164 69 H210" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow)"/>
               <path d="M350 69 H396" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow)"/>
             </svg>
-            <figcaption class="muted">Rendered diagram. Keep Mermaid/source fallback below.</figcaption>
+            <figcaption class="muted">已渲染图表。下方保留 Mermaid/源内容备用。</figcaption>
           </figure>
           <details>
-            <summary>Mermaid/source fallback</summary>
+            <summary>Mermaid/源内容备用</summary>
             <pre>graph LR
-  Question --&gt; Evidence --&gt; Conclusion</pre>
+  问题 --&gt; 证据 --&gt; 结论</pre>
           </details>
         </section>
 
         <section id="tradeoffs" data-panel hidden>
           <table>
-            <thead><tr><th>Option</th><th>Best for</th><th>Risk</th></tr></thead>
+            <thead><tr><th>选项</th><th>适合场景</th><th>风险</th></tr></thead>
             <tbody>
-              <tr><td>Inline SVG</td><td>Stable local reports</td><td>Manual layout work</td></tr>
-              <tr><td>Pinned Mermaid runtime</td><td>Dynamic diagrams</td><td>Network or dependency drift</td></tr>
+              <tr><td>内联 SVG</td><td>稳定的本地报告</td><td>需要手工布局</td></tr>
+              <tr><td>固定版本 Mermaid runtime</td><td>动态图表</td><td>网络或依赖漂移</td></tr>
             </tbody>
           </table>
         </section>
 
         <section id="examples" data-panel hidden>
           <div class="glossary">
-            <div class="term"><strong>Rendered Markdown</strong><br>Headings, lists, tables, and callouts as real HTML.</div>
-            <div class="term"><strong>Evidence rail</strong><br>Short source cards beside the explanation.</div>
+            <div class="term"><strong>已渲染 Markdown</strong><br>把标题、列表、表格和提示块转为真实 HTML。</div>
+            <div class="term"><strong>证据栏</strong><br>说明旁边的短来源卡片。</div>
           </div>
         </section>
       </article>
 
-      <aside class="sources" aria-label="Sources">
+      <aside class="sources" aria-label="来源">
         <article class="source">
-          <div class="meta">Source</div>
-          <a href="#">Source title</a>
-          <p class="muted">Why it matters in one line.</p>
+          <div class="meta">来源</div>
+          <a href="#">来源标题</a>
+          <p class="muted">用一句话说明为什么重要。</p>
         </article>
         <article class="source">
-          <div class="meta">File</div>
+          <div class="meta">文件</div>
           <strong>docs/example.md:12</strong>
-          <p class="muted">Local evidence or implementation anchor.</p>
+          <p class="muted">本地证据或实现锚点。</p>
         </article>
       </aside>
     </section>

@@ -1,10 +1,10 @@
 <!doctype html>
-<!-- Use case: completed non-trivial task handoff, release readiness summary, implementation conclusion, verification report. -->
-<html lang="en">
+<!-- 用途：已完成复杂任务交付、发布就绪摘要、实现结论和验证报告。 -->
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Task Conclusion Report</title>
+  <title>任务结论报告</title>
   <style>
     :root { color-scheme: light; --bg:#f7f8fb; --panel:#fff; --ink:#172033; --muted:#667085; --line:#d7dce5; --accent:#2563eb; --ok:#16845b; --warn:#b7791f; --danger:#c2414b; --shadow:0 14px 40px rgba(23,32,51,.12); }
     * { box-sizing: border-box; }
@@ -48,54 +48,54 @@
     <header>
       <div class="title-row">
         <div>
-          <div class="eyebrow">Completed task conclusion</div>
-          <h1>Replace with task title</h1>
+          <div class="eyebrow">已完成任务结论</div>
+          <h1>替换为任务标题</h1>
         </div>
-        <span class="pill ok">Status: complete</span>
+        <span class="pill ok">状态：完成</span>
       </div>
       <div class="grid">
         <section class="card">
-          <div class="meta">Decision</div>
-          <strong>Primary conclusion in one sentence.</strong>
+          <div class="meta">决策</div>
+          <strong>用一句话写主要结论。</strong>
         </section>
         <section class="card">
-          <div class="meta">Verification</div>
-          <strong>Tests/checks run and result.</strong>
+          <div class="meta">验证</div>
+          <strong>已运行的测试/检查及结果。</strong>
         </section>
         <section class="card">
-          <div class="meta">Risk</div>
-          <strong>Open caveat or none known.</strong>
+          <div class="meta">风险</div>
+          <strong>未关闭的 caveat，或说明暂无已知风险。</strong>
         </section>
       </div>
     </header>
 
-    <nav aria-label="Report sections">
-      <a href="#summary">Summary</a>
-      <a href="#evidence">Evidence</a>
-      <a href="#flow">Flow</a>
-      <a href="#next">Next</a>
+    <nav aria-label="报告章节">
+      <a href="#summary">摘要</a>
+      <a href="#evidence">证据</a>
+      <a href="#flow">流程</a>
+      <a href="#next">下一步</a>
     </nav>
 
     <section id="summary" class="grid focus-field">
       <article class="card">
-        <h2>What changed</h2>
+        <h2>改动内容</h2>
         <ul>
-          <li>Short visual bullet, not a paragraph.</li>
-          <li>Short visual bullet, not a paragraph.</li>
+          <li>使用短要点，不写成长段落。</li>
+          <li>使用短要点，不写成长段落。</li>
         </ul>
       </article>
       <article class="card">
-        <h2>Why it matters</h2>
+        <h2>为什么重要</h2>
         <ul>
-          <li>Outcome or user impact.</li>
-          <li>Boundary or caveat.</li>
+          <li>结果或用户影响。</li>
+          <li>边界或 caveat。</li>
         </ul>
       </article>
       <article class="card">
-        <h2>Verification gates</h2>
+        <h2>验证门禁</h2>
         <ul>
-          <li><span class="pill ok">pass</span> command or check</li>
-          <li><span class="pill warn">not run</span> reason if skipped</li>
+          <li><span class="pill ok">通过</span> 命令或检查</li>
+          <li><span class="pill warn">未运行</span> 跳过原因</li>
         </ul>
       </article>
     </section>
@@ -103,15 +103,15 @@
     <div class="wide-grid">
       <section id="evidence" class="panel">
         <div class="split">
-          <h2>File evidence</h2>
-          <button data-copy-from="#file-list">Copy paths</button>
+          <h2>文件证据</h2>
+          <button data-copy-from="#file-list">复制路径</button>
         </div>
         <div id="file-list" class="grid">
           <span class="file-chip">src/example.ts:42</span>
           <span class="file-chip">tests/example.test.ts:18</span>
         </div>
         <div class="code-panel" style="margin-top:12px">
-          <header><span>src/example.ts:42</span><button data-copy-from="#snippet">Copy snippet</button></header>
+          <header><span>src/example.ts:42</span><button data-copy-from="#snippet">复制片段</button></header>
           <pre id="snippet"><code>40  function summarize(result) {
 41    const status = result.ok ? "complete" : "blocked";
 42    <span class="hot">return { status, evidence: result.files };</span>
@@ -120,31 +120,31 @@
       </section>
 
       <section id="flow" class="panel diagram">
-        <h2>Rendered flow</h2>
-        <svg viewBox="0 0 520 260" role="img" aria-label="Rendered workflow diagram">
+        <h2>渲染流程</h2>
+        <svg viewBox="0 0 520 260" role="img" aria-label="已渲染的工作流图">
           <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#2563eb"/></marker></defs>
           <rect x="20" y="35" width="130" height="58" rx="8" fill="#eef4ff" stroke="#2563eb"/>
-          <text x="85" y="68" text-anchor="middle" font-size="14">Input</text>
+          <text x="85" y="68" text-anchor="middle" font-size="14">输入</text>
           <rect x="195" y="35" width="130" height="58" rx="8" fill="#f9fafc" stroke="#d7dce5"/>
-          <text x="260" y="68" text-anchor="middle" font-size="14">Work</text>
+          <text x="260" y="68" text-anchor="middle" font-size="14">工作</text>
           <rect x="370" y="35" width="130" height="58" rx="8" fill="#ecfdf5" stroke="#16845b"/>
-          <text x="435" y="68" text-anchor="middle" font-size="14">Conclusion</text>
+          <text x="435" y="68" text-anchor="middle" font-size="14">结论</text>
           <path d="M150 64 H195" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow)"/>
           <path d="M325 64 H370" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow)"/>
         </svg>
         <details>
-          <summary>Mermaid/source fallback</summary>
+          <summary>Mermaid/源内容备用</summary>
           <pre>graph LR
-  Input --&gt; Work --&gt; Conclusion</pre>
+  输入 --&gt; 工作 --&gt; 结论</pre>
         </details>
       </section>
     </div>
 
     <section id="next" class="panel" style="margin-top:12px">
-      <h2>Next actions</h2>
+      <h2>下一步行动</h2>
       <div class="timeline">
-        <div class="step"><strong>Now</strong><span>Action item or reviewer focus.</span></div>
-        <div class="step"><strong>Later</strong><span>Follow-up only if needed.</span></div>
+        <div class="step"><strong>现在</strong><span>行动项或评审重点。</span></div>
+        <div class="step"><strong>稍后</strong><span>仅在需要时跟进。</span></div>
       </div>
     </section>
   </main>
@@ -156,7 +156,7 @@
       if (!source) return;
       if (navigator.clipboard) navigator.clipboard.writeText(source.textContent.trim());
       var previous = button.textContent;
-      button.textContent = "Copied";
+      button.textContent = "已复制";
       setTimeout(function () { button.textContent = previous; }, 900);
     });
   </script>

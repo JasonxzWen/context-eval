@@ -30,12 +30,12 @@
       }
 
       if (!parser || typeof parser.parse !== "function") {
-        setStatus(statusId, "fallback", "Markdown runtime missing; showing source");
+        setStatus(statusId, "fallback", "Markdown 运行时缺失，显示源内容");
         return;
       }
 
       if (!purifier && !trusted) {
-        setStatus(statusId, "error", "Markdown not rendered: sanitizer missing");
+        setStatus(statusId, "error", "Markdown 未渲染：缺少 sanitizer");
         return;
       }
 
@@ -43,7 +43,7 @@
       node.innerHTML = purifier ? purifier.sanitize(html) : html;
       node.classList.add("rendered-markdown");
       node.dataset.rendered = "true";
-      setStatus(statusId, "ready", "Markdown rendered");
+      setStatus(statusId, "ready", "Markdown 已渲染");
       count += 1;
     });
 
@@ -52,7 +52,7 @@
 
   async function renderMermaid() {
     if (!window.mermaid) {
-      setStatus("mermaid", "fallback", "Mermaid runtime missing; showing source");
+      setStatus("mermaid", "fallback", "Mermaid 运行时缺失，显示源内容");
       return 0;
     }
 
@@ -70,17 +70,17 @@
         querySelector: "[data-rich-mermaid]",
         suppressErrors: false
       });
-      setStatus("mermaid", "ready", "Mermaid rendered");
+      setStatus("mermaid", "ready", "Mermaid 已渲染");
       return document.querySelectorAll("[data-rich-mermaid] svg").length;
     } catch (error) {
-      setStatus("mermaid", "error", "Mermaid render failed");
+      setStatus("mermaid", "error", "Mermaid 渲染失败");
       return 0;
     }
   }
 
   function highlightCode() {
     if (!window.hljs || typeof window.hljs.highlightElement !== "function") {
-      setStatus("code", "fallback", "Highlighter missing; showing plain code");
+      setStatus("code", "fallback", "高亮器缺失，显示纯代码");
       return 0;
     }
 
@@ -94,7 +94,7 @@
       node.dataset.highlighted = "true";
       count += 1;
     });
-    setStatus("code", "ready", "Code highlighted");
+    setStatus("code", "ready", "代码已高亮");
     return count;
   }
 

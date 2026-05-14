@@ -14,6 +14,7 @@ python scripts/check-release-state.py
 python -m build --outdir C:\tmp\context-eval-dist
 python scripts/inspect-package-artifacts.py C:\tmp\context-eval-dist
 python scripts/install-smoke-artifacts.py --dist-dir C:\tmp\context-eval-dist
+python scripts/build-windows-portable.py --dist-dir C:\tmp\context-eval-dist --frontend-dist frontend\dist --output-dir C:\tmp\context-eval-dist
 git diff --check
 ```
 
@@ -61,6 +62,33 @@ The smoke does not call hosted services, does not install or run a real external
 coding agent, does not create Git tags, and does not upload or publish packages.
 It is still a release candidate gate only; the publish boundary remains a
 manual checkpoint.
+
+## Windows Portable Package
+
+Build the Windows portable local app archive after package artifact inspection,
+install smoke, and frontend validation:
+
+```bash
+python scripts/build-windows-portable.py --dist-dir C:\tmp\context-eval-dist --frontend-dist frontend\dist --output-dir C:\tmp\context-eval-dist
+```
+
+The output is `context-eval-windows-x64-<version>.zip`. It contains the built
+context-eval wheel, dependency wheelhouse, `frontend/dist`, `Start Context
+Eval.cmd`, `scripts/start-context-eval.ps1`, a package-local workspace, and a
+README for users.
+
+Acceptance for the zip is intentionally simple: unzip it on Windows with Python
+3.11 or newer installed, then double-click `Start Context Eval.cmd`. The script
+creates or reuses a private `.venv`, installs only from the bundled wheelhouse,
+passes `--frontend-dist frontend\dist` to the local app launcher, starts the
+loopback local app, and opens the browser. The default builder downloads
+Windows dependency wheels for Python 3.11, 3.12, and 3.13; use repeated
+`--python-version` flags only when intentionally narrowing a candidate package.
+
+The portable package does not install coding agents, does not install target
+repository dependencies, does not call hosted context-eval services, does not
+create Git tags, and does not publish packages. The release flow still stops at
+the manual tag and publish checkpoint.
 
 ## Supported Runtime And Platforms
 

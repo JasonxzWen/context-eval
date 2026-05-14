@@ -5,7 +5,7 @@
     var done = function () {
       if (!button) return;
       var previous = button.textContent;
-      button.textContent = "Copied";
+      button.textContent = "已复制";
       setTimeout(function () {
         button.textContent = previous;
       }, 900);

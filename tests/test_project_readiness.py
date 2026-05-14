@@ -412,6 +412,38 @@ def test_readme_documents_release_candidate_install_smoke() -> None:
         assert term in text
 
 
+def test_readme_documents_windows_portable_launcher_package() -> None:
+    text = Path("README.md").read_text(encoding="utf-8")
+
+    for term in [
+        "Windows portable package",
+        "context-eval-windows-x64-<version>.zip",
+        "Start Context Eval.cmd",
+        "scripts/build-windows-portable.py",
+        "--frontend-dist frontend\\dist",
+        "private `.venv`",
+        "does not install coding agents",
+        "does not install target repository dependencies",
+    ]:
+        assert term in text
+
+
+def test_release_checklist_documents_windows_portable_launcher_package() -> None:
+    text = Path("docs/release-checklist.md").read_text(encoding="utf-8")
+
+    for term in [
+        "## Windows Portable Package",
+        "python scripts/build-windows-portable.py",
+        "--dist-dir C:\\tmp\\context-eval-dist",
+        "--frontend-dist frontend\\dist",
+        "context-eval-windows-x64-<version>.zip",
+        "Start Context Eval.cmd",
+        "Python 3.11 or newer",
+        "manual tag and publish checkpoint",
+    ]:
+        assert term in text
+
+
 def test_readme_documents_optional_local_telemetry_workflow() -> None:
     text = Path("README.md").read_text(encoding="utf-8")
 

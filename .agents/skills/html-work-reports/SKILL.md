@@ -48,6 +48,13 @@ Do not use this skill for:
 
 Write one self-contained static `.html` under `reports/` unless the repo has a better convention. In chat, link the file and verification.
 
+Language requirement: generated webpages must be Chinese-first by default. Use
+Chinese for visible titles, headings, summaries, navigation, buttons, status
+labels, table headers, card labels, empty states, verification text, and next
+actions. Keep code identifiers, file names, command names, package names, API
+fields, and quoted source snippets in their original language when translation
+would reduce accuracy.
+
 Build with visual blocks, tables, timelines, diagrams, cards, code panels, and chips. Keep keyboard access, narrow width readability, and `prefers-reduced-motion`.
 
 Use only inlineable HTML/CSS and vanilla JS for report components. If a visual idea needs React, Tailwind, Vite, or another build step, port the static shape or skip it.

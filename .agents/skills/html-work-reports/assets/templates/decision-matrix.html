@@ -1,10 +1,10 @@
 <!doctype html>
-<!-- Use case: option comparison, product or implementation trade-off review, recommendation, risks, and confirmation questions. -->
-<html lang="en">
+<!-- 用途：选项比较、产品或实现取舍评审、建议、风险和确认问题。 -->
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Decision Matrix</title>
+  <title>决策矩阵</title>
   <style>
     :root { color-scheme: light; --bg:#f7f8fb; --panel:#fff; --ink:#172033; --muted:#667085; --line:#d7dce5; --accent:#2563eb; --ok:#16845b; --warn:#b7791f; --shadow:0 14px 40px rgba(23,32,51,.12); }
     * { box-sizing:border-box; }
@@ -32,18 +32,18 @@
 <body>
   <main class="shell">
     <header>
-      <span class="chip warn">Decision matrix</span>
-      <h1>Replace with decision</h1>
-      <p>State the recommendation first, then expose trade-offs and confirmation questions.</p>
+      <span class="chip warn">决策矩阵</span>
+      <h1>替换为决策主题</h1>
+      <p>先给建议，再展开取舍和确认问题。</p>
     </header>
-    <section class="matrix" aria-label="Options">
-      <article class="option"><h2>Option A</h2><ul><li>Benefit</li><li>Risk</li><li>Best when</li></ul></article>
-      <article class="option"><h2>Option B</h2><ul><li>Benefit</li><li>Risk</li><li>Best when</li></ul></article>
-      <article class="option"><h2>Recommendation</h2><span class="chip ok">Preferred</span><p>Why this is the lowest-risk path.</p></article>
+    <section class="matrix" aria-label="选项">
+      <article class="option"><h2>选项 A</h2><ul><li>收益</li><li>风险</li><li>适用条件</li></ul></article>
+      <article class="option"><h2>选项 B</h2><ul><li>收益</li><li>风险</li><li>适用条件</li></ul></article>
+      <article class="option"><h2>建议</h2><span class="chip ok">推荐</span><p>为什么这是风险最低的路径。</p></article>
     </section>
     <section class="panel" style="margin-top:12px">
-      <h2>Confirmation Questions</h2>
-      <table><thead><tr><th>Question</th><th>Why it matters</th></tr></thead><tbody><tr><td>Open decision</td><td>Implementation impact</td></tr></tbody></table>
+      <h2>确认问题</h2>
+      <table><thead><tr><th>问题</th><th>为什么重要</th></tr></thead><tbody><tr><td>待确认决策</td><td>实现影响</td></tr></tbody></table>
     </section>
   </main>
   <script>

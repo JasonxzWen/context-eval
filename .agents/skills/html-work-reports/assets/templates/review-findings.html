@@ -1,10 +1,10 @@
 <!doctype html>
-<!-- Use case: PR/code/doc review with multiple findings, severity filters, reviewer focus areas, and code evidence. -->
-<html lang="en">
+<!-- 用途：PR/代码/文档评审，包含多条发现、严重级别筛选、评审重点和代码证据。 -->
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Review Findings Report</title>
+  <title>评审发现报告</title>
   <style>
     :root { color-scheme:light; --bg:#f7f8fb; --panel:#fff; --ink:#172033; --muted:#667085; --line:#d7dce5; --accent:#2563eb; --p1:#c2414b; --p2:#b7791f; --p3:#0f766e; --shadow:0 14px 40px rgba(23,32,51,.12); }
     * { box-sizing:border-box; }
@@ -50,17 +50,17 @@
 <body>
   <main class="shell">
     <header>
-      <span class="badge p2">Review report</span>
-      <h1>Replace with PR or change name</h1>
-      <p class="muted">One-line verdict. Keep the full explanation in findings, not a paragraph wall.</p>
+      <span class="badge p2">评审报告</span>
+      <h1>替换为 PR 或变更名称</h1>
+      <p class="muted">用一行给结论；完整解释放进发现卡片，不写成长段落。</p>
     </header>
 
-    <div class="toolbar" role="toolbar" aria-label="Finding filters">
-      <button data-filter="all" aria-pressed="true">All</button>
+    <div class="toolbar" role="toolbar" aria-label="发现筛选">
+      <button data-filter="all" aria-pressed="true">全部</button>
       <button data-filter="p1">P1</button>
       <button data-filter="p2">P2</button>
       <button data-filter="p3">P3</button>
-      <button data-copy-from="#actions">Copy actions</button>
+      <button data-copy-from="#actions">复制行动项</button>
     </div>
 
     <section class="layout">
@@ -69,14 +69,14 @@
           <div class="finding-grid">
             <span class="badge p1">P1</span>
             <div>
-              <h2>Finding title goes here</h2>
+              <h2>发现标题写在这里</h2>
               <ul>
-                <li>Bug or regression in one sentence.</li>
-                <li>Impact and trigger condition.</li>
-                <li>Suggested fix route.</li>
+                <li>用一句话描述 bug 或回归。</li>
+                <li>影响和触发条件。</li>
+                <li>建议修复路径。</li>
               </ul>
             </div>
-            <span class="muted">File</span>
+            <span class="muted">文件</span>
             <span>src/example.ts:42</span>
           </div>
         </article>
@@ -85,13 +85,13 @@
           <div class="finding-grid">
             <span class="badge p2">P2</span>
             <div>
-              <h2>Second finding</h2>
+              <h2>第二条发现</h2>
               <ul>
-                <li>Keep finding body as bullets.</li>
-                <li>Reference the exact evidence.</li>
+                <li>发现正文保持为要点。</li>
+                <li>引用精确证据。</li>
               </ul>
             </div>
-            <span class="muted">File</span>
+            <span class="muted">文件</span>
             <span>tests/example.test.ts:18</span>
           </div>
         </article>
@@ -100,19 +100,19 @@
           <div class="finding-grid">
             <span class="badge p3">P3</span>
             <div>
-              <h2>Lower-risk note</h2>
+              <h2>低风险备注</h2>
               <ul>
-                <li>Make low-risk notes easy to collapse or filter away.</li>
+                <li>让低风险备注易于折叠或筛掉。</li>
               </ul>
             </div>
-            <span class="muted">File</span>
+            <span class="muted">文件</span>
             <span>docs/example.md:10</span>
           </div>
         </article>
       </div>
 
-      <aside class="code" aria-label="Highlighted code evidence">
-        <header><a class="source-link" data-source-link href="#snippet">src/example.ts:40-43</a><button data-copy-from="#snippet">Copy snippet</button></header>
+      <aside class="code" aria-label="高亮代码证据">
+        <header><a class="source-link" data-source-link href="#snippet">src/example.ts:40-43</a><button data-copy-from="#snippet">复制片段</button></header>
         <pre id="snippet"><code><span class="line" data-line="40">async function save(input) {</span>
 <span class="line" data-line="41">  const target = path.join(root, input.name);</span>
 <span class="hot" data-line="42">  await fs.writeFile(target, input.body);</span>
@@ -121,13 +121,13 @@
     </section>
 
     <section class="diff-panel" data-section-type="diff">
-      <header><a class="source-link" data-source-link href="#review-diff">src/example.ts:42</a><button data-copy-from="#review-diff">Copy diff</button></header>
+      <header><a class="source-link" data-source-link href="#review-diff">src/example.ts:42</a><button data-copy-from="#review-diff">复制差异</button></header>
       <pre id="review-diff"><code><span class="diff-line diff-removed" data-line="1">- await fs.writeFile(target, input.body);</span>
 <span class="diff-line diff-added" data-line="2">+ await fs.writeFile(resolveSafePath(root, input.name), input.body);</span></code></pre>
     </section>
 
     <section class="panel" style="margin-top:12px">
-      <h2>Action export</h2>
+      <h2>行动项导出</h2>
       <pre id="actions">- [ ] Fix P1 in src/example.ts:42
 - [ ] Add regression coverage in tests/example.test.ts:18</pre>
     </section>
@@ -149,7 +149,7 @@
       var source = document.querySelector(copy.getAttribute("data-copy-from"));
       if (source && navigator.clipboard) navigator.clipboard.writeText(source.textContent.trim());
       var previous = copy.textContent;
-      copy.textContent = "Copied";
+      copy.textContent = "已复制";
       setTimeout(function () { copy.textContent = previous; }, 900);
     });
   </script>

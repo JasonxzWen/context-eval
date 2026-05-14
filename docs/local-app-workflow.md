@@ -109,6 +109,23 @@ Packaging boundaries:
 - the launcher does not create commits, tags, releases, or published packages;
 - release automation stays stopped at the existing manual tag and publish boundary.
 
+The first no-manual-CLI Windows package is a portable zip built from the
+release wheel and frontend build output:
+
+```powershell
+python scripts/build-windows-portable.py --dist-dir C:\tmp\context-eval-dist --frontend-dist frontend\dist --output-dir C:\tmp\context-eval-dist
+```
+
+The archive is named `context-eval-windows-x64-<version>.zip` and contains
+`Start Context Eval.cmd`, `scripts/start-context-eval.ps1`, a bundled
+wheelhouse, `frontend/dist`, a package-local `workspace`, and a README. The
+double-click path creates or reuses a private `.venv`, installs from the
+bundled wheelhouse with no package index, starts `context-eval-app` with
+`--frontend-dist`, opens the browser, and keeps all generated files under the
+portable package directory. Release builds bundle Windows dependency wheels for
+Python 3.11, 3.12, and 3.13 by default so the private `.venv` install remains
+offline for those supported runtimes.
+
 ## Project And Configuration Workflow
 
 The local app must support:
