@@ -464,16 +464,72 @@ def test_local_app_harness_readiness_documents_skill_hub_reference() -> None:
 
     for term in [
         "https://github.com/JasonxzWen/skill-hub",
-        "24aef55",
+        "42c3065378e1d1d2851ca0e387e915a2841b885e",
         "`build`",
         "`test`",
         "`validate`",
         "`validate:release`",
+        "html-work-reports",
+        "self-contained static HTML reports",
+        "source-linked file evidence",
+        "degraded browser coverage",
         "python scripts\\validate-frontend.py --install --install-browsers",
         "read-only",
         "category-based",
         "scoreless",
+        "maintainer tooling only",
         "should not add a scoring model",
         "automatic target-repository commit workflow",
     ]:
         assert term in text
+
+
+def test_skill_hub_import_documents_refreshed_minimal_profile_skills() -> None:
+    text = Path("docs/skill-hub-import.md").read_text(encoding="utf-8")
+
+    for term in [
+        "Latest refreshed commit: `42c3065378e1d1d2851ca0e387e915a2841b885e`",
+        "Latest refresh date: `2026-05-14`",
+        "`html-work-reports`",
+        "`compound-code-review`",
+        "`diagnose`",
+        "`prototype`",
+        "`grill-me`",
+        "does not import `feynman-learning-coach`",
+        "not needed for this project's runtime package",
+    ]:
+        assert term in text
+
+
+def test_html_work_reports_skill_assets_are_installed() -> None:
+    root = Path(".agents/skills/html-work-reports")
+
+    for skill_name in [
+        "compound-code-review",
+        "diagnose",
+        "grill-me",
+        "html-work-reports",
+        "prototype",
+    ]:
+        skill_root = Path(".agents/skills") / skill_name
+        assert (skill_root / "SKILL.md").exists()
+        assert (skill_root / "agents/openai.yaml").exists()
+
+    for relative in [
+        "SKILL.md",
+        "agents/openai.yaml",
+        "scripts/create-report.mjs",
+        "scripts/validate-html-report.mjs",
+        "references/report-input-schema.json",
+        "references/html-report-patterns.md",
+        "assets/components/report-ui.css",
+        "assets/components/report-ui.js",
+        "assets/templates/implementation-handoff.html",
+        "assets/templates/review-findings.html",
+    ]:
+        assert (root / relative).exists()
+
+    skill = (root / "SKILL.md").read_text(encoding="utf-8")
+    assert "self-contained static `.html`" in skill
+    assert "source file link" in skill
+    assert "scripts/validate-html-report.mjs" in skill

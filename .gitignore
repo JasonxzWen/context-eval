@@ -16,6 +16,7 @@ frontend/dist/
 frontend/playwright-report/
 frontend/test-results/
 frontend/coverage/
+reports/
 scripts/ralph/prd.json
 scripts/ralph/progress.txt
 scripts/ralph/.last-branch
