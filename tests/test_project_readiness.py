@@ -522,3 +522,14 @@ def test_html_work_reports_skill_assets_are_installed() -> None:
         "scripts/validate-html-report.mjs",
         "references/report-input-schema.json",
         "references/html-report-patterns.md",
+        "assets/components/report-ui.css",
+        "assets/components/report-ui.js",
+        "assets/templates/implementation-handoff.html",
+        "assets/templates/review-findings.html",
+    ]:
+        assert (root / relative).exists()
+
+    skill = (root / "SKILL.md").read_text(encoding="utf-8")
+    assert "self-contained static `.html`" in skill
+    assert "source file link" in skill
+    assert "scripts/validate-html-report.mjs" in skill
