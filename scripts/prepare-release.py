@@ -32,12 +32,15 @@ def check_changelog(root: Path) -> list[str]:
     if "## Unreleased" not in text:
         return ["CHANGELOG.md must contain ## Unreleased"]
 
-    unreleased = text.split("## Unreleased", maxsplit=1)[1]
+    after_unreleased = text.split("## Unreleased", maxsplit=1)[1]
+    unreleased = after_unreleased
     next_heading = unreleased.find("\n## ")
     if next_heading != -1:
         unreleased = unreleased[:next_heading]
     if not any(line.lstrip().startswith("- ") for line in unreleased.splitlines()):
-        return ["CHANGELOG.md ## Unreleased must contain at least one bullet"]
+        released = after_unreleased[next_heading:] if next_heading != -1 else ""
+        if not any(line.lstrip().startswith("- ") for line in released.splitlines()):
+            return ["CHANGELOG.md must contain at least one unreleased or released bullet"]
 
     return []
 

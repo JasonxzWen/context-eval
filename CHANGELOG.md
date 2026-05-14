@@ -2,11 +2,15 @@
 
 ## Unreleased
 
+## v0.1.2 - 2026-05-14
+
 - Add a Windows portable local app package builder that bundles the release
   wheel, dependency wheelhouse, frontend `dist`, and a double-click launcher for
   users who should not create a venv or run `pip` manually.
 - Add `context-eval-app --frontend-dist` so packaged launchers can serve
   bundled frontend assets outside the Python wheel.
+- Archive the Windows portable launcher OpenSpec requirements into the main
+  specs after implementation and CI validation.
 
 ## v0.1.1 - 2026-05-13
 
