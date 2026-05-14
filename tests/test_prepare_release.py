@@ -38,6 +38,19 @@ def test_prepare_release_dry_run_checks_changelog_and_prints_plan(tmp_path: Path
     )
 
 
+def test_prepare_release_accepts_empty_unreleased_with_release_notes(tmp_path: Path) -> None:
+    (tmp_path / "CHANGELOG.md").write_text(
+        "# Changelog\n\n## Unreleased\n\n## v0.1.2 - 2026-05-14\n\n- Release notes.\n",
+        encoding="utf-8",
+    )
+    dist_dir = tmp_path / "release-dist"
+
+    result = _run_prepare_release("--root", str(tmp_path), "--dist-dir", str(dist_dir), "--dry-run")
+
+    assert result.returncode == 0
+    assert "CHANGELOG.md check passed" in result.stdout
+
+
 def test_prepare_release_rejects_missing_unreleased_changelog(tmp_path: Path) -> None:
     (tmp_path / "CHANGELOG.md").write_text("# Changelog\n\n## 0.1.0\n", encoding="utf-8")
 
