@@ -260,8 +260,9 @@ create run workspaces.
 ## Harness Readiness Reference
 
 This phase uses `https://github.com/JasonxzWen/skill-hub` as a selective
-reference, not as an import source. The inspected reference commit for this PR
-is `24aef55`.
+reference and maintainer-skill source, not as runtime app code. The inspected
+reference commit for this PR is
+`42c3065378e1d1d2851ca0e387e915a2841b885e`.
 
 Useful patterns to borrow:
 
@@ -270,13 +271,16 @@ Useful patterns to borrow:
   browser, OpenSpec, lint, and diff checks;
 - readiness analysis that is evidence-backed, category-based, and read-only
   instead of a single score;
+- HTML work-report generation that keeps primary report content pre-rendered,
+  self-contained, source-linked, and validator-checked;
 - fixture repositories and fake/local agents before any real external-agent
   smoke is considered.
 
 Out of scope for this repository phase:
 
-- installing Skill Hub assets or external coding agents;
-- copying Skill Hub's repository structure;
+- installing Skill Hub assets into target repositories or external coding
+  agents;
+- copying Skill Hub's repository structure into the `context_eval` runtime;
 - hosted dashboards, remote databases, or agent leaderboards;
 - automatic commits to a user's target repository.
 

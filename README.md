@@ -512,7 +512,10 @@ This repository includes a vendored project-local skill and workflow library
 from `JasonxzWen/skill-hub` under `.agents/`, `.codex/`, `openspec/`, and
 `scripts/`. It provides reusable development skills, focused agent role configs,
 OpenSpec helpers, Ralph loop utilities, and skill validation scripts for
-maintainers working on context-eval.
+maintainers working on context-eval. The refreshed maintainer skill set includes
+HTML work reports, deep code review, reproducible diagnosis, throwaway
+prototyping, and plan pressure testing; these support development handoffs and
+reviews but are not runtime package features.
 
 The upstream `AGENTS.md`, `README.md`, and general-purpose skill-hub research
 docs are intentionally not included. Optional Codex configuration is provided as
