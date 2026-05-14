@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add a project documentation site entry, demo workflow, architecture overview,
+  evaluation methodology, artifact model, FAQ, and GitHub Pages setup notes.
+
 ## v0.1.2 - 2026-05-14
 
 - Add a Windows portable local app package builder that bundles the release

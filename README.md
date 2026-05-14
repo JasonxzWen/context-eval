@@ -1,37 +1,72 @@
 # context-eval
 
-context-eval is an engineering-focused Context A/B Testing Framework for
-evaluating how context assets affect coding agent task outcomes in real Git
-repositories.
+context-eval is a local Context A/B Testing Framework for coding agents. It
+helps engineering teams evaluate whether context assets improve task outcomes in
+real Git repositories under controlled local conditions.
 
-It compares variants such as `AGENTS.md`, DeepWiki exports, skills, docs, and
-rules under controlled conditions. This is an engineering tool, not a
-leaderboard.
+## What context-eval is
 
-## Why context-eval
+context-eval runs a configured coding-agent command against the same repository,
+task, and validation criteria while changing only the selected context variant.
+It records the resulting patch, logs, validation output, timing, diff stats,
+telemetry when available, and reproducibility metadata as local artifacts.
 
-Teams increasingly invest in context assets for coding agents, but it is hard to
-know whether a new instruction file or documentation bundle actually improves
-task completion. context-eval runs the same repo, task, and agent command across
-multiple context variants, then captures patches, logs, timing, validation
-results, and diff stats.
+## What problem it solves
 
-It does not claim fully automated correctness without validation commands or
-human review.
+Teams increasingly invest in agent-facing context, but it is hard to know
+whether a new instruction file, documentation bundle, skill, or rule set
+actually helps an agent complete project work. context-eval makes that question
+inspectable by keeping the repo, task, agent command, trials, and validation
+commands explicit while varying the context overlay.
 
-## Use Cases
+Validation commands and human review still define the useful confidence
+boundary. context-eval does not claim fully automated correctness from patches,
+diff stats, or generated prose alone.
 
-- Compare a baseline `AGENTS.md` with an optimized version.
-- Measure whether DeepWiki or local docs reduce failed patches.
-- Test rules or skills before rolling them into a repository.
-- Build repeatable regression suites for agent-facing context changes.
+## What it compares
 
-## Not A Fit
+- Baseline and revised `AGENTS.md` files.
+- Local docs, DeepWiki exports, and other documentation bundles.
+- Skills, rules, prompts, and repo-specific guidance files.
+- Named local agent profiles when you want the same context matrix observed
+  across multiple configured commands.
 
-- Ranking different agents on public benchmarks.
-- Replacing project-specific tests or code review.
-- Mining issues, judging patches with an LLM, or hosting a dashboard.
-- Sandboxing network access or installing target repo dependencies.
+## Minimal workflow
+
+1. Create or initialize an evaluation directory with `context-eval init`.
+2. Define tasks, context variants, agent command templates, and validation
+   commands in local YAML files.
+3. Run `context-eval validate-config` and optionally a dry run to inspect the
+   planned matrix before any agent command runs.
+4. Execute a small local evaluation with fixture or real project validation
+   commands.
+5. Inspect `results.jsonl`, `run_manifest.json`, logs, patches, reports,
+   exports, and optional static UI output before drawing conclusions.
+
+## Demo and project documentation
+
+- [README quickstart](#quickstart) keeps the detailed command path in this file.
+- [Demo workflow](docs/demo-workflow.md) runs the bundled fixture repository and
+  fake local agent without external services or provider credentials.
+- [Project documentation site entry](docs/index.md) links the public
+  architecture, methodology, artifact model, FAQ, and maintainer setup pages.
+- [Architecture overview](docs/architecture.md) explains the runtime flow and
+  static UI vs local app boundary.
+- [Evaluation methodology](docs/evaluation-methodology.md) explains what the
+  comparisons can and cannot support.
+- [Artifact model](docs/artifact-model.md) describes the local files used for
+  reproducibility, review, debugging, and exports.
+- [FAQ](docs/faq.md) answers common scope, confidence, static UI, local app,
+  and artifact inspection questions.
+
+## What it is not
+
+- Not an agent leaderboard or public benchmark ranking.
+- Not a hosted dashboard, managed service, or provider account manager.
+- Not an LLM judge treated as the source of truth.
+- Not an automatic coding-agent installer or target-repo dependency installer.
+- Not a replacement for project tests, validation commands, or code review.
+- Not an automatic commit, tag, release, or publish workflow.
 
 ## Quickstart
 
