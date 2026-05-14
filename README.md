@@ -205,6 +205,28 @@ The preflight validates local launcher inputs, writes the local app launcher
 log, and exits without running agents, validation commands, installers, tags, or
 publish steps.
 
+### Windows portable package
+
+For Windows users who should not create a virtual environment, run `pip`, or
+type the launcher command manually, maintainers can build a portable local app
+archive after the wheel and frontend are built:
+
+```bash
+python scripts/build-windows-portable.py --dist-dir C:\tmp\context-eval-dist --frontend-dist frontend\dist --output-dir C:\tmp\context-eval-dist
+```
+
+The output is `context-eval-windows-x64-<version>.zip`. A user with Python 3.11
+or newer unzips it and double-clicks `Start Context Eval.cmd`; the script
+creates or reuses the package-local private `.venv`, installs from the bundled
+wheelhouse, starts the loopback local app with `--frontend-dist frontend\dist`,
+and opens the browser. The release wheelhouse bundles Windows dependency wheels
+for Python 3.11, 3.12, and 3.13 by default.
+
+The portable package still follows the same local-only boundaries: it does not
+install coding agents, does not install target repository dependencies, does
+not call hosted context-eval services, does not create tags, and does not
+publish packages.
+
 The local app binds to loopback by default and confines config writes, output
 directories, and artifact reads to the selected evaluation workspace. It reuses
 the same local config validation, runner, reporting, and export modules as the
@@ -452,6 +474,7 @@ python scripts/check-release-state.py
 python -m build --outdir C:\tmp\context-eval-dist
 python scripts/inspect-package-artifacts.py C:\tmp\context-eval-dist
 python scripts/install-smoke-artifacts.py --dist-dir C:\tmp\context-eval-dist
+python scripts/build-windows-portable.py --dist-dir C:\tmp\context-eval-dist --frontend-dist frontend\dist --output-dir C:\tmp\context-eval-dist
 git diff --check
 ```
 

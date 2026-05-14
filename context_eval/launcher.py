@@ -209,6 +209,14 @@ def launch_command(
             help="Optional launcher log directory inside the workspace.",
         ),
     ] = None,
+    frontend_dist: Annotated[
+        Path | None,
+        typer.Option(
+            "--frontend-dist",
+            file_okay=False,
+            help="Optional built frontend dist directory to serve from the local app.",
+        ),
+    ] = None,
     check_startup: Annotated[
         bool,
         typer.Option(
@@ -225,6 +233,7 @@ def launch_command(
             config_path=config,
             host=host,
             port=port,
+            frontend_dist=frontend_dist,
             log_dir=log_dir,
             open_browser=not no_browser,
         )

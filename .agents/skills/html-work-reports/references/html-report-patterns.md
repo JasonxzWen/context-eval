@@ -49,6 +49,16 @@ Use the closest asset and delete sections that do not apply:
 
 Report components must preserve the self-contained static HTML contract. Use inlineable HTML, CSS, and vanilla JS only. If a visual idea requires React, Tailwind compilation, Vite, bundling, or a long-lived app runtime, do not add that dependency to this skill; port only the static shape that can be embedded in a single report file, or skip the idea.
 
+## Language Contract
+
+Generated webpages are Chinese-first by default. All visible report scaffolding
+must use Chinese unless the user explicitly asks for another language: titles,
+section headings, navigation labels, buttons, status labels, table headers,
+cards, evidence labels, verification labels, timeline labels, and next actions.
+Leave code identifiers, file names, commands, package names, schema fields, and
+quoted source text in the original language when translating them would reduce
+precision.
+
 ## Generator Contract
 
 Use the generator first for normal reports:
@@ -62,22 +72,22 @@ Input is JSON and follows `references/report-input-schema.json`. The minimum use
 
 ```json
 {
-  "title": "Report title",
-  "summary": "Conclusion first.",
+  "title": "报告标题",
+  "summary": "先给结论。",
   "status": "complete",
   "template": "implementation-handoff",
   "renderMode": "pre-rendered",
   "sections": [
-    { "type": "markdown", "title": "What changed", "content": "- Short bullet" },
-    { "type": "mermaid", "title": "Flow", "content": "graph LR\n  A --> B" },
-    { "type": "code", "title": "Snippet", "language": "typescript", "filePath": "src/file.ts", "startLine": 42, "highlightLines": [42], "content": "export const ok = true;" },
-    { "type": "diff", "title": "Behavior diff", "filePath": "src/file.ts", "startLine": 42, "content": "- return oldValue;\n+ return newValue;" }
+    { "type": "markdown", "title": "改动内容", "content": "- 简短要点" },
+    { "type": "mermaid", "title": "流程", "content": "graph LR\n  A --> B" },
+    { "type": "code", "title": "关键代码片段", "language": "typescript", "filePath": "src/file.ts", "startLine": 42, "highlightLines": [42], "content": "export const ok = true;" },
+    { "type": "diff", "title": "行为差异", "filePath": "src/file.ts", "startLine": 42, "content": "- return oldValue;\n+ return newValue;" }
   ],
   "evidence": [
-    { "kind": "file", "label": "Implementation", "value": "src/file.ts", "status": "info" }
+    { "kind": "file", "label": "实现文件", "value": "src/file.ts", "status": "info" }
   ],
   "verification": [
-    { "label": "Focused tests", "status": "pass", "detail": "bun test ./tests/example.test.ts" }
+    { "label": "定向测试", "status": "pass", "detail": "bun test ./tests/example.test.ts" }
   ]
 }
 ```
@@ -183,7 +193,7 @@ Use this structure unless the task clearly needs something else:
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Report title</title>
+  <title>报告标题</title>
   <style>
     :root { color-scheme: light; }
     body { margin: 0; font-family: system-ui, sans-serif; line-height: 1.5; }
@@ -197,11 +207,11 @@ Use this structure unless the task clearly needs something else:
 <body>
   <main>
     <header>
-      <h1>Report title</h1>
-      <p>Generated YYYY-MM-DD. Scope and assumptions.</p>
+      <h1>报告标题</h1>
+      <p>生成时间 YYYY-MM-DD。范围与假设。</p>
     </header>
     <aside class="summary">Top finding or decision.</aside>
-    <nav aria-label="Report sections"></nav>
+    <nav aria-label="报告章节"></nav>
     <section id="main-workspace"></section>
     <section id="evidence"></section>
     <section id="next-actions"></section>

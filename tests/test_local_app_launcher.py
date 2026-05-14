@@ -90,6 +90,44 @@ def test_launcher_check_startup_cli_validates_and_exits(tmp_path: Path) -> None:
     assert "Local app:" not in log_text
 
 
+def test_launcher_check_startup_cli_accepts_frontend_dist(tmp_path: Path) -> None:
+    workspace = tmp_path / "eval"
+    workspace.mkdir()
+    config_path = workspace / "context-eval.yaml"
+    config_path.write_text("repo:\n  path: ./repo\n", encoding="utf-8")
+    frontend_dist = tmp_path / "frontend-dist"
+    frontend_dist.mkdir()
+    (frontend_dist / "index.html").write_text("<main>context-eval</main>", encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "context_eval.launcher",
+            "--workspace",
+            str(workspace),
+            "--config",
+            "context-eval.yaml",
+            "--frontend-dist",
+            str(frontend_dist),
+            "--no-browser",
+            "--port",
+            "0",
+            "--check-startup",
+        ],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0
+    assert "frontend_available=True" in result.stdout
+    log_text = (workspace / ".context-eval" / "logs" / "local-app-launcher.log").read_text(
+        encoding="utf-8"
+    )
+    assert "frontend_available=True" in log_text
+
+
 def test_launcher_rejects_config_paths_outside_workspace(tmp_path: Path) -> None:
     workspace = tmp_path / "eval"
     workspace.mkdir()

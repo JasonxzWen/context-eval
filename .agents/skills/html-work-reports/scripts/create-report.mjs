@@ -19,23 +19,23 @@ const runtimePins = {
 
 const templateMeta = {
   "implementation-handoff": {
-    label: "Implementation handoff",
-    useCase: "completed implementation work, verification gates, file evidence, risks, and next actions",
+    label: "实现交付",
+    useCase: "已完成实现、验证门禁、文件证据、风险和下一步",
     accent: "#2563eb"
   },
   "review-findings": {
-    label: "Review findings",
-    useCase: "code or document review with severity filters, snippets, owners, and action export",
+    label: "评审发现",
+    useCase: "代码或文档评审、严重级别筛选、片段、负责人和行动导出",
     accent: "#c2414b"
   },
   "research-explainer": {
-    label: "Research explainer",
-    useCase: "research synthesis, architecture walkthroughs, source-backed explanations, and diagrams",
+    label: "研究说明",
+    useCase: "研究综合、架构讲解、来源支撑说明和图表",
     accent: "#0f766e"
   },
   "decision-matrix": {
-    label: "Decision matrix",
-    useCase: "option comparison, recommendation, trade-offs, risks, and confirmation questions",
+    label: "决策矩阵",
+    useCase: "选项比较、建议、取舍、风险和确认问题",
     accent: "#b7791f"
   }
 };
@@ -97,9 +97,11 @@ function safeAuditText(value) {
 
 function slugify(value) {
   const slug = String(value ?? "")
+    .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
+    .normalize("NFKC")
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .replace(/^-+|-+$/gu, "")
     .slice(0, 80);
   return slug || "html-work-report";
 }
@@ -254,9 +256,13 @@ async function renderMermaidSvg(source, title, options) {
   if (options.browserMermaid) {
     const rendered = await renderMermaidWithBrowser(source);
     if (rendered.ok) return rendered.svg;
+    const simple = renderSimpleFlowchartSvg(source, title, `浏览器 Mermaid 渲染失败：${rendered.error}`);
+    if (simple) return simple;
     return fallbackMermaidSvg(source, title, rendered.error);
   }
-  return fallbackMermaidSvg(source, title, "Browser Mermaid rendering not requested; generated deterministic inline SVG fallback.");
+  const simple = renderSimpleFlowchartSvg(source, title, "已用内置 flowchart 渲染器生成 SVG。");
+  if (simple) return simple;
+  return fallbackMermaidSvg(source, title, "未能识别该 Mermaid 图，显示源内容备用。");
 }
 
 async function renderMermaidWithBrowser(source) {
@@ -282,16 +288,166 @@ async function renderMermaidWithBrowser(source) {
   }
 }
 
+function parseSimpleFlowchart(source) {
+  const lines = String(source ?? "")
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const header = lines[0]?.match(/^flowchart\s+(LR|RL|TB|TD)$/i);
+  if (!header) return null;
+
+  const labels = new Map();
+  const nodeOrder = [];
+  const edges = [];
+
+  function rememberNode(id, label) {
+    if (!labels.has(id)) {
+      labels.set(id, label || id);
+      nodeOrder.push(id);
+      return;
+    }
+    if (label) labels.set(id, label);
+  }
+
+  for (const line of lines.slice(1)) {
+    const edge = line.match(
+      /^([A-Za-z][\w-]*)(?:\[(.*?)\])?\s*-->\s*([A-Za-z][\w-]*)(?:\[(.*?)\])?$/
+    );
+    if (!edge) continue;
+    const [, from, fromLabel, to, toLabel] = edge;
+    rememberNode(from, fromLabel);
+    rememberNode(to, toLabel);
+    edges.push({ from, to });
+  }
+
+  if (!edges.length) return null;
+  return {
+    direction: header[1].toUpperCase(),
+    nodes: nodeOrder.map((id) => ({ id, label: labels.get(id) || id })),
+    edges
+  };
+}
+
+function labelWidthUnit(char) {
+  return char.charCodeAt(0) <= 127 ? 0.58 : 1;
+}
+
+function wrapSvgLabel(label, maxUnits = 14, maxLines = 3) {
+  const lines = [];
+  let current = "";
+  let width = 0;
+
+  for (const char of String(label ?? "")) {
+    const nextWidth = width + labelWidthUnit(char);
+    if (current && nextWidth > maxUnits) {
+      lines.push(current.trim());
+      current = char;
+      width = labelWidthUnit(char);
+    } else {
+      current += char;
+      width = nextWidth;
+    }
+  }
+  if (current.trim()) lines.push(current.trim());
+
+  if (lines.length > maxLines) {
+    const clipped = lines.slice(0, maxLines);
+    clipped[maxLines - 1] = `${clipped[maxLines - 1].slice(0, 12)}...`;
+    return clipped;
+  }
+  return lines.length ? lines : [String(label ?? "")];
+}
+
+function renderSvgLabel(label, x, y) {
+  const lines = wrapSvgLabel(label);
+  const startY = y - (lines.length - 1) * 8;
+  return `<text x="${x}" y="${startY}" text-anchor="middle" font-size="13" fill="#172033" font-weight="700">${lines
+    .map((line, index) => `<tspan x="${x}" dy="${index === 0 ? 0 : 17}">${escapeHtml(line)}</tspan>`)
+    .join("")}</text>`;
+}
+
+function renderSimpleFlowchartSvg(source, title, message) {
+  const parsed = parseSimpleFlowchart(source);
+  if (!parsed) return null;
+
+  const maxColumns = parsed.direction === "LR" || parsed.direction === "RL" ? 4 : 3;
+  const columns = Math.max(1, Math.min(maxColumns, parsed.nodes.length));
+  const rows = Math.ceil(parsed.nodes.length / columns);
+  const margin = 28;
+  const headerHeight = 58;
+  const boxWidth = 176;
+  const boxHeight = 64;
+  const gapX = 54;
+  const gapY = 62;
+  const width = margin * 2 + columns * boxWidth + (columns - 1) * gapX;
+  const height = headerHeight + margin + rows * boxHeight + (rows - 1) * gapY + 48;
+  const positions = new Map();
+
+  const nodes = parsed.nodes.map((node, index) => {
+    const row = Math.floor(index / columns);
+    const col = index % columns;
+    const x = margin + col * (boxWidth + gapX);
+    const y = headerHeight + row * (boxHeight + gapY);
+    positions.set(node.id, { ...node, x, y, row, col });
+    return { ...node, x, y, row, col };
+  });
+
+  const edges = parsed.edges
+    .map((edge) => {
+      const from = positions.get(edge.from);
+      const to = positions.get(edge.to);
+      if (!from || !to) return "";
+
+      if (from.row === to.row && from.col < to.col) {
+        const startX = from.x + boxWidth;
+        const startY = from.y + boxHeight / 2;
+        const endX = to.x;
+        return `<path d="M ${startX} ${startY} H ${endX - 8}" fill="none" stroke="#2563eb" stroke-width="2.3" marker-end="url(#arrow)"/>`;
+      }
+
+      const startX = from.x + boxWidth / 2;
+      const startY = from.y + boxHeight;
+      const endX = to.x + boxWidth / 2;
+      const endY = to.y;
+      const midY = startY + Math.max(28, (endY - startY) / 2);
+      return `<path d="M ${startX} ${startY} V ${midY} H ${endX} V ${endY - 8}" fill="none" stroke="#2563eb" stroke-width="2.3" marker-end="url(#arrow)"/>`;
+    })
+    .join("\n");
+
+  const nodeMarkup = nodes
+    .map(
+      (node, index) => `<g>
+        <rect x="${node.x}" y="${node.y}" width="${boxWidth}" height="${boxHeight}" rx="10" fill="${index === 0 ? "#eef4ff" : "#ffffff"}" stroke="${index === 0 ? "#2563eb" : "#d7dce5"}" stroke-width="1.4"/>
+        <circle cx="${node.x + 18}" cy="${node.y + 18}" r="11" fill="#2563eb"/>
+        <text x="${node.x + 18}" y="${node.y + 23}" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff">${index + 1}</text>
+        ${renderSvgLabel(node.label, node.x + boxWidth / 2, node.y + boxHeight / 2 + 5)}
+      </g>`
+    )
+    .join("\n");
+
+  return [
+    `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeAttr(title)} 图表" data-mermaid-renderer="simple-flowchart">`,
+    `<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L8,3 z" fill="#2563eb"/></marker></defs>`,
+    `<rect x="12" y="12" width="${width - 24}" height="${height - 24}" rx="12" fill="#ffffff" stroke="#d7dce5"/>`,
+    `<text x="28" y="40" font-size="16" font-weight="800" fill="#172033">${escapeHtml(title)}</text>`,
+    edges,
+    nodeMarkup,
+    `<text x="28" y="${height - 22}" font-size="12" fill="#667085">${escapeHtml(message)}</text>`,
+    `</svg>`
+  ].join("");
+}
+
 function fallbackMermaidSvg(source, title, message) {
   const lines = String(source ?? "").split("\n").filter(Boolean).slice(0, 6);
   const width = 760;
-  const height = Math.max(180, 78 + lines.length * 24);
+  const height = Math.max(220, 106 + lines.length * 24);
   const renderedLines = lines
     .map((line, index) => `<text x="34" y="${88 + index * 24}" font-size="14" fill="#172033">${escapeHtml(line)}</text>`)
     .join("");
 
   return [
-    `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeAttr(title)} diagram" data-mermaid-renderer="fallback">`,
+    `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeAttr(title)} 图表" data-mermaid-renderer="fallback">`,
     `<rect x="12" y="12" width="${width - 24}" height="${height - 24}" rx="10" fill="#ffffff" stroke="#d7dce5"/>`,
     `<rect x="24" y="24" width="${width - 48}" height="34" rx="8" fill="#eef4ff" stroke="#2563eb"/>`,
     `<text x="38" y="46" font-size="15" font-weight="700" fill="#172033">${escapeHtml(title)}</text>`,
@@ -307,6 +463,33 @@ function statusClass(status) {
   return "status-warn";
 }
 
+function statusLabel(status) {
+  const labels = {
+    complete: "完成",
+    ready: "就绪",
+    blocked: "阻塞",
+    review: "待评审",
+    draft: "草稿",
+    pass: "通过",
+    warn: "警告",
+    fail: "失败",
+    info: "信息",
+    "not-run": "未运行"
+  };
+  return labels[status] || status || "信息";
+}
+
+function kindLabel(kind) {
+  const labels = {
+    file: "文件",
+    command: "命令",
+    source: "来源",
+    assumption: "假设",
+    verification: "验证"
+  };
+  return labels[kind] || kind || "证据";
+}
+
 function renderSummaryCards(section) {
   const cards = Array.isArray(section.cards) ? section.cards : [];
   return `<section class="panel" id="${sectionId(section.title)}" data-section-type="summary-cards">
@@ -320,35 +503,35 @@ function renderSummaryCards(section) {
 function renderRuntimeMarkdown(section, index) {
   const sourceId = `markdown-source-${index}`;
   return `<section class="panel" id="${sectionId(section.title)}" data-section-type="markdown" data-source-fallback>
-    <div class="split-row"><h2>${escapeHtml(section.title)}</h2><span class="rich-status" data-rich-status="${sourceId}">Markdown source fallback</span></div>
+    <div class="split-row"><h2>${escapeHtml(section.title)}</h2><span class="rich-status" data-rich-status="${sourceId}">Markdown 源内容备用</span></div>
     <div data-rich-markdown data-rich-status-id="${sourceId}">${escapeHtml(section.content)}</div>
-    <details><summary>Source fallback</summary><pre>${escapeHtml(safeAuditText(section.content))}</pre></details>
+    <details><summary>源内容备用</summary><pre>${escapeHtml(safeAuditText(section.content))}</pre></details>
   </section>`;
 }
 
 async function renderMarkdownSection(section, mode, index) {
   if (mode === "runtime") return renderRuntimeMarkdown(section, index);
   return `<section class="panel" id="${sectionId(section.title)}" data-section-type="markdown" data-source-fallback>
-    <div class="split-row"><h2>${escapeHtml(section.title)}</h2><span class="rich-status" data-state="ready">Markdown pre-rendered</span></div>
+    <div class="split-row"><h2>${escapeHtml(section.title)}</h2><span class="rich-status" data-state="ready">Markdown 已预渲染</span></div>
     ${renderMarkdown(section.content)}
-    <details><summary>Source fallback</summary><pre>${escapeHtml(safeAuditText(section.content))}</pre></details>
+    <details><summary>源内容备用</summary><pre>${escapeHtml(safeAuditText(section.content))}</pre></details>
   </section>`;
 }
 
 async function renderMermaidSection(section, mode, index, options) {
   if (mode === "runtime") {
     return `<section class="panel diagram-panel mermaid-evidence" id="${sectionId(section.title)}" data-section-type="mermaid" data-source-fallback>
-      <div class="split-row"><h2>${escapeHtml(section.title)}</h2><span class="rich-status" data-rich-status="mermaid">Mermaid source fallback</span></div>
+      <div class="split-row"><h2>${escapeHtml(section.title)}</h2><span class="rich-status" data-rich-status="mermaid">Mermaid 源内容备用</span></div>
       <div data-rich-mermaid>${escapeHtml(section.content)}</div>
-      <details><summary>Mermaid source</summary><pre data-mermaid-source>${escapeHtml(section.content)}</pre></details>
+      <details><summary>Mermaid 源内容</summary><pre data-mermaid-source>${escapeHtml(section.content)}</pre></details>
     </section>`;
   }
 
   const svg = await renderMermaidSvg(section.content, section.title, options);
   return `<section class="panel diagram-panel mermaid-evidence" id="${sectionId(section.title)}" data-section-type="mermaid" data-source-fallback>
-    <div class="split-row"><h2>${escapeHtml(section.title)}</h2><span class="rich-status" data-state="ready">Mermaid inline SVG</span></div>
+    <div class="split-row"><h2>${escapeHtml(section.title)}</h2><span class="rich-status" data-state="ready">Mermaid 内联 SVG</span></div>
     ${svg}
-    <details><summary>Mermaid source</summary><pre data-mermaid-source>${escapeHtml(section.content)}</pre></details>
+    <details><summary>Mermaid 源内容</summary><pre data-mermaid-source>${escapeHtml(section.content)}</pre></details>
   </section>`;
 }
 
@@ -359,9 +542,9 @@ function renderCodeSection(section, mode, index) {
   const code = highlightCode(section.content, language, section.highlightLines || [], startLine);
 
   return `<section class="code-panel" id="${sectionId(section.title)}" data-section-type="code" data-source-fallback>
-    <header>${renderSourceLink(section, sourceId)}<button data-copy-from="#${sourceId}">Copy</button></header>
+    <header>${renderSourceLink(section, sourceId)}<button data-copy-from="#${sourceId}">复制</button></header>
     <pre id="${sourceId}" data-start-line="${startLine}" data-line-numbered>${code}</pre>
-    <details><summary>Code source</summary><pre>${escapeHtml(section.content)}</pre></details>
+    <details><summary>代码源内容</summary><pre>${escapeHtml(section.content)}</pre></details>
   </section>`;
 }
 
@@ -386,7 +569,7 @@ function highlightDiff(source) {
 function renderDiffSection(section, index) {
   const sourceId = `diff-${index}`;
   return `<section class="diff-panel" id="${sectionId(section.title)}" data-section-type="diff" data-source-fallback>
-    <header><div><h2>${escapeHtml(section.title)}</h2>${renderSourceLink(section, sourceId)}</div><button data-copy-from="#${sourceId}">Copy diff</button></header>
+    <header><div><h2>${escapeHtml(section.title)}</h2>${renderSourceLink(section, sourceId)}</div><button data-copy-from="#${sourceId}">复制差异</button></header>
     <pre id="${sourceId}" data-line-numbered><code>${highlightDiff(section.content)}</code></pre>
   </section>`;
 }
@@ -457,14 +640,14 @@ function renderActions(section) {
   const actions = Array.isArray(section.items) ? section.items : [];
   const id = `${sectionId(section.title)}-actions`;
   return `<section class="panel" id="${sectionId(section.title)}" data-section-type="actions">
-    <div class="split-row"><h2>${escapeHtml(section.title)}</h2><button data-copy-from="#${id}">Copy actions</button></div>
+    <div class="split-row"><h2>${escapeHtml(section.title)}</h2><button data-copy-from="#${id}">复制行动项</button></div>
     <ul id="${id}">${actions.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
   </section>`;
 }
 
 function renderEvidenceSection(section, input) {
-  return `<section class="panel" id="${sectionId(section.title || "Evidence")}" data-section-type="evidence">
-    <h2>${escapeHtml(section.title || "Evidence")}</h2>
+  return `<section class="panel" id="${sectionId(section.title || "证据")}" data-section-type="evidence">
+    <h2>${escapeHtml(section.title || "证据")}</h2>
     ${renderEvidence(input.evidence || [])}
   </section>`;
 }
@@ -487,7 +670,7 @@ async function renderSection(section, mode, index, input, options) {
 function renderEvidence(items) {
   return `<div class="evidence-grid" data-evidence>
     ${items.map((item) => `<article class="interactive-card evidence-card evidence-spotlight" data-evidence-spotlight data-evidence-kind="${escapeAttr(item.kind)}">
-      <div class="split-row"><span class="meta">${escapeHtml(item.kind)}</span><span class="status-pill ${statusClass(item.status || "info")}">${escapeHtml(item.status || "info")}</span></div>
+      <div class="split-row"><span class="meta">${escapeHtml(kindLabel(item.kind))}</span><span class="status-pill ${statusClass(item.status || "info")}">${escapeHtml(statusLabel(item.status || "info"))}</span></div>
       <h3>${escapeHtml(item.label)}</h3>
       <p>${escapeHtml(item.value || "")}</p>
     </article>`).join("\n")}
@@ -497,7 +680,7 @@ function renderEvidence(items) {
 function renderVerification(items) {
   return `<div class="evidence-grid" data-verification>
     ${(items || []).map((item) => `<article class="interactive-card evidence-card evidence-spotlight" data-evidence-spotlight data-verification-status="${escapeAttr(item.status)}">
-      <div class="split-row"><span class="meta">Verification</span><span class="status-pill ${statusClass(item.status)}">${escapeHtml(item.status)}</span></div>
+      <div class="split-row"><span class="meta">验证</span><span class="status-pill ${statusClass(item.status)}">${escapeHtml(statusLabel(item.status))}</span></div>
       <h3>${escapeHtml(item.label)}</h3>
       <p>${escapeHtml(item.detail || "")}</p>
     </article>`).join("\n")}
@@ -508,9 +691,9 @@ function renderRuntimeDependencies(mode) {
   if (mode !== "runtime") return "";
   const pins = Object.entries(runtimePins).map(([name, version]) => `${name}@${version}`);
   return `<section class="panel" data-runtime-dependencies>
-    <h2>Runtime dependencies</h2>
+    <h2>运行时依赖</h2>
     <div class="evidence-grid">
-      ${pins.map((pin) => `<article class="evidence-card" data-runtime-dependency="${escapeAttr(pin)}"><strong>${escapeHtml(pin)}</strong><p>Optional post-load enhancement. Source fallbacks remain visible.</p></article>`).join("\n")}
+      ${pins.map((pin) => `<article class="evidence-card" data-runtime-dependency="${escapeAttr(pin)}"><strong>${escapeHtml(pin)}</strong><p>可选的加载后增强；源内容备用仍保持可见。</p></article>`).join("\n")}
     </div>
   </section>`;
 }
@@ -574,7 +757,7 @@ async function createReport(input, options = {}) {
     .join("");
 
   return `<!doctype html>
-<html lang="en" data-html-work-report data-render-mode="${escapeAttr(mode)}" data-template="${escapeAttr(template)}">
+<html lang="zh-CN" data-html-work-report data-render-mode="${escapeAttr(mode)}" data-template="${escapeAttr(template)}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -591,23 +774,23 @@ async function createReport(input, options = {}) {
           <div class="eyebrow">${escapeHtml(meta.label)} | ${escapeHtml(meta.useCase)}</div>
           <h1 class="report-title">${escapeHtml(input.title)}</h1>
         </div>
-        <span class="status-pill ${statusClass(input.status)}">Status: ${escapeHtml(input.status)}</span>
+        <span class="status-pill ${statusClass(input.status)}">状态：${escapeHtml(statusLabel(input.status))}</span>
       </div>
       <div class="lede-grid">
-        <article class="interactive-card evidence-card"><div class="meta">Conclusion</div><strong>${escapeHtml(input.summary)}</strong></article>
-        <article class="interactive-card evidence-card"><div class="meta">Generated</div><strong>${escapeHtml(generatedAt)}</strong></article>
-        <article class="interactive-card evidence-card"><div class="meta">Render mode</div><strong>${escapeHtml(mode)}</strong></article>
+        <article class="interactive-card evidence-card"><div class="meta">结论</div><strong>${escapeHtml(input.summary)}</strong></article>
+        <article class="interactive-card evidence-card"><div class="meta">生成时间</div><strong>${escapeHtml(generatedAt)}</strong></article>
+        <article class="interactive-card evidence-card"><div class="meta">渲染模式</div><strong>${escapeHtml(mode)}</strong></article>
       </div>
     </header>
 
-    <nav class="report-nav" aria-label="Report sections">${nav}<a href="#evidence">Evidence</a><a href="#verification">Verification</a><a href="#next-actions">Next</a></nav>
+    <nav class="report-nav" aria-label="报告章节">${nav}<a href="#evidence">证据</a><a href="#verification">验证</a><a href="#next-actions">下一步</a></nav>
 
     <div class="report-section-stack">
       ${sections.join("\n")}
       ${renderRuntimeDependencies(mode)}
-      <section class="panel" id="evidence" data-section-type="evidence"><h2>Evidence</h2>${renderEvidence(input.evidence || [])}</section>
-      <section class="panel" id="verification" data-section-type="verification"><h2>Verification</h2>${renderVerification(input.verification || [])}</section>
-      <section class="panel" id="next-actions" data-section-type="actions"><div class="split-row"><h2>Next actions</h2><button data-copy-from="#next-action-list">Copy actions</button></div><ul id="next-action-list">${(input.nextActions || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section>
+      <section class="panel" id="evidence" data-section-type="evidence"><h2>证据</h2>${renderEvidence(input.evidence || [])}</section>
+      <section class="panel" id="verification" data-section-type="verification"><h2>验证</h2>${renderVerification(input.verification || [])}</section>
+      <section class="panel" id="next-actions" data-section-type="actions"><div class="split-row"><h2>下一步行动</h2><button data-copy-from="#next-action-list">复制行动项</button></div><ul id="next-action-list">${(input.nextActions || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section>
     </div>
   </main>
   ${runtimeScriptTags(mode)}
