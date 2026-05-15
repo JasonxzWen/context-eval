@@ -287,7 +287,7 @@ def test_installed_cli_profile_map_smoke_from_init_template(tmp_path: Path) -> N
             "--config",
             str(config_path),
             "--agent",
-            "custom",
+            "coco",
             "--variant",
             "baseline",
             "--cleanup-policy",
@@ -306,12 +306,12 @@ def test_installed_cli_profile_map_smoke_from_init_template(tmp_path: Path) -> N
     ]
     assert len(results) == 1
     result = results[0]
-    assert result["agent_name"] == "custom"
-    assert result["case_id"] == "sample-task__baseline__custom"
+    assert result["agent_name"] == "coco"
+    assert result["case_id"] == "sample-task__baseline__coco"
     assert result["status"] == "completed"
     assert result["validation_status"] == "passed"
     assert result["cleanup_status"] == "succeeded"
 
     manifest = json.loads((run_dir / "run_manifest.json").read_text(encoding="utf-8"))
-    assert [agent["name"] for agent in manifest["agents"]] == ["custom"]
-    assert manifest["case_matrix"][0]["agent_name"] == "custom"
+    assert [agent["name"] for agent in manifest["agents"]] == ["coco"]
+    assert manifest["case_matrix"][0]["agent_name"] == "coco"

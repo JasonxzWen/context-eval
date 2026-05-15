@@ -270,6 +270,10 @@ validation commands, install dependencies, create commits, or create run
 workspaces. Runs still require explicit confirmation from the browser.
 
 The full local app workflow is documented in `docs/local-app-workflow.md`.
+The next Coco-focused local app workflow is specified in
+`docs/coco-visual-hybrid-evaluation.md`; it adds visual task authoring,
+expected outcomes, deterministic hard checks, optional soft evaluation payloads,
+and result review while staying local and artifact-based.
 Static HTML remains the safe offline mode. Frontend build, test, and browser
 acceptance tooling is documented in `docs/frontend-workflow.md`; maintainers can
 run it with `python scripts\validate-frontend.py --install --install-browsers`.
@@ -377,16 +381,17 @@ commands, but context-eval never commits automatically.
 
 The agent profile model is documented in `docs/agent-profiles.md`. It keeps
 this single-agent shape compatible while adding named `codex-cli`,
-`claude-code`, `traecli`, and custom noninteractive profiles such as
-`coco -p {prompt_file}`.
+`claude-code`, `traecli`, `coco`, and custom noninteractive profiles.
 
 ## Agent Profile Matrix Example
 
 `examples/agent-matrix/context-eval.yaml` shows the named `agents` map for
-Codex CLI, Claude Code, traecli, and a custom `coco -p {prompt_file}` command.
+Codex CLI, Claude Code, traecli, and a Coco unattended
+`coco -y --query-timeout 10m --bash-tool-timeout 5m -p "{prompt}"` command.
 It targets the same local fixture repository as the basic example and is meant
 to make profile-map validation and dry-run planning easy to inspect before any
 real coding agent is executed.
+The `-y` flag is part of the user-editable Coco command template, not a permission grant from context-eval; replace it with explicit `--allowed-tool` flags when you want narrower Coco authorization.
 
 ```bash
 context-eval validate-config --config examples/agent-matrix/context-eval.yaml

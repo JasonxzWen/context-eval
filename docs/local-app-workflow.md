@@ -147,6 +147,13 @@ status text, errors, empty states, preflight labels, run labels, result labels,
 and export labels should be visible in Chinese. Code identifiers, file names,
 YAML keys, artifact names, and API fields can remain English.
 
+The Coco-first visual authoring slice is specified in
+`docs/coco-visual-hybrid-evaluation.md`. It extends this workflow with Project,
+Coco Agent, Context Variants, Tasks, Expected Outcome, Hard Evaluation, Soft
+Evaluation, Run Plan, Run Execution, and Results sections. The app must keep
+these controls local-only: structured authoring may save `context-eval.yaml`
+and `tasks.yaml`, but agent execution still requires explicit run confirmation.
+
 Task editing may start as a safe `tasks.yaml` editor if a full structured task
 form would make the PR too large. In that mode, users can edit IDs, titles,
 prompts, categories, difficulty, ordering, additions, deletions, and unknown
@@ -211,6 +218,8 @@ The results view should read local run artifacts and show:
 - variant-level summaries;
 - agent-level summaries only when more than one `agent_name` exists;
 - failed, timeout, low-confidence, and telemetry-gap cases;
+- hard evaluation status, score, failed checks, and sidecar links when present;
+- soft evaluation payload/result status and sidecar links when present;
 - validation command output;
 - patch links and touched paths;
 - export controls for CSV, compact JSON, Markdown, and static HTML.

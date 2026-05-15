@@ -1,0 +1,56 @@
+tasks:
+  - id: "fix-greeting-punctuation"
+    title: "Fix greeting punctuation"
+    prompt: |
+      Fix the fixture greeting punctuation.
+      Keep the change focused and follow existing module conventions.
+    category: "runtime"
+    difficulty: "easy"
+    expected_outcome:
+      summary: "The greeting implementation changes in the fixture app and tests still pass."
+      files:
+        - path: "fixture_app/greetings.py"
+          change_type: "modified"
+          must_change: true
+          expected_snippets:
+            - "Hello"
+          forbidden_snippets:
+            - "TODO"
+      forbidden_paths:
+        - "README.md"
+      acceptance_points:
+        - "Greeting behavior is implemented in fixture_app/greetings.py."
+        - "Existing fixture tests pass."
+    hard_evaluation:
+      enabled: true
+      require_validation_pass: true
+      max_changed_files: 3
+      required_paths:
+        - "fixture_app/greetings.py"
+      forbidden_paths:
+        - "README.md"
+      expected_snippets:
+        - path: "fixture_app/greetings.py"
+          snippets:
+            - "Hello"
+      forbidden_snippets:
+        - path: "fixture_app/greetings.py"
+          snippets:
+            - "TODO"
+    soft_evaluation:
+      enabled: true
+      mode: "payload-only"
+      max_score: 10
+      rubric:
+        - name: "requirement_match"
+          weight: 4
+          description: "Patch satisfies the requested fixture behavior."
+        - name: "minimality"
+          weight: 2
+          description: "Patch avoids unrelated changes."
+        - name: "code_quality"
+          weight: 2
+          description: "Patch follows local conventions."
+        - name: "test_relevance"
+          weight: 2
+          description: "Validation is relevant to the change."

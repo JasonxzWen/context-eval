@@ -39,7 +39,7 @@ directory.
 
 The single `agent` mapping remains valid and is treated as one implicit profile.
 The multi-agent config shape is documented in `docs/agent-profiles.md` and adds
-a named `agents` map for Codex CLI, Claude Code, traecli, and custom
+a named `agents` map for Codex CLI, Claude Code, traecli, Coco, and custom
 noninteractive commands.
 
 ```yaml
@@ -51,8 +51,8 @@ agents:
     network: "disabled"
 
   coco:
-    kind: "custom"
-    command: "coco -p {prompt_file}"
+    kind: "coco"
+    command: "coco -y --query-timeout 10m --bash-tool-timeout 5m -p \"{prompt}\""
     timeout_minutes: 60
     network: "disabled"
 
@@ -68,6 +68,9 @@ rejects mixed shapes rather than guessing precedence.
 
 The profile model is still local-only. It does not install coding agents,
 manage provider credentials, or turn results into an absolute leaderboard.
+The Coco `-y` example is a user-owned command template; context-eval does not
+grant Coco permissions, and users can replace `-y` with explicit
+`--allowed-tool` flags for narrower approval.
 `context-eval run` runs every configured profile by default; repeat `--agent
 <profile>` to select specific profiles.
 

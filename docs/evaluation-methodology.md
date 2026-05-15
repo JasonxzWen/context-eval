@@ -6,6 +6,9 @@ context-eval evaluates context assets, not absolute agent intelligence. The
 core question is whether changing the context available to a configured local
 coding agent changes task outcomes in a real Git repository.
 
+It is a local Context A/B Testing Framework for real Git repositories, not a
+benchmark or absolute ranking.
+
 ## What Is Being Evaluated
 
 The evaluated variable is the context variant overlay. Examples include
@@ -41,6 +44,21 @@ When comparing variants, keep the task, repo ref, agent command, validation
 commands, trials, and cleanup policy aligned unless the change itself is the
 subject of the evaluation.
 
+## Correctness Layers
+
+The evaluation model has three layers:
+
+1. Agent execution artifacts: status, timeout, exit code, patch, touched paths,
+   logs, diff stats, and optional structured telemetry.
+2. Deterministic project checks: validation commands and hard evaluation rules
+   derived from task configuration and local artifacts.
+3. Optional soft review payloads: structured JSON for later human or local
+   judge review.
+
+Validation commands and hard evaluation are the primary machine-checkable
+signals. Soft grading is optional review evidence and does not replace tests,
+hard checks, or human review.
+
 ## Validation Defines Confidence
 
 Validation commands are the project-specific acceptance criteria. They convert
@@ -55,6 +73,36 @@ context-eval confidence levels are intentionally conservative:
 
 Patch size, touched paths, timing, and logs can help reviewers inspect a case,
 but they do not establish correctness on their own.
+
+## Hard Checks
+
+Hard checks are deterministic and local. They can require validation success,
+required changed paths, forbidden paths, changed-file limits, expected snippets,
+forbidden snippets, simple diff-stat bounds, and agent completion. Checks read
+only local case artifacts such as `results.jsonl`, patches, touched paths,
+validation results, and retained workspaces.
+
+When a hard check cannot be evaluated because a workspace was cleaned up and
+the patch does not contain enough evidence, the check is marked `skipped` with
+an explicit message instead of guessing.
+
+## Optional Soft Grading
+
+Soft grading starts as `payload-only`. context-eval writes a
+`soft_evaluation_payload.json` sidecar that includes the prompt, expected
+outcome, rubric, changed files, patch excerpt, validation status, hard
+evaluation summary, and artifact links.
+
+The first implementation does not call hosted model APIs, does not require
+provider keys, and does not make soft scores mandatory for pass/fail.
+
+## Telemetry And Metrics
+
+Telemetry is optional and must come from structured local artifacts. If Coco or
+another local agent writes JSON telemetry, context-eval can normalize fields
+such as duration, token counts, tool calls, and reasoning step count. Missing
+metrics remain unavailable. context-eval does not infer token counts, tool
+counts, or reasoning steps from unstructured logs.
 
 ## No-Validation Cases
 
@@ -74,10 +122,11 @@ the recorded local experiment, not a general ranking.
 
 ## Artifacts And Human Review
 
-Human review remains necessary because validation commands may be incomplete,
-too broad, too narrow, flaky, or unrelated to the task's real acceptance
-criteria. Reviewers should inspect patches, validation logs, stdout and stderr,
-prompts, retained workspaces, reports, and exports before acting on results.
+Human review remains necessary because validation commands and hard checks may
+be incomplete, too broad, too narrow, flaky, or unrelated to the task's real
+acceptance criteria. Reviewers should inspect patches, validation logs, stdout
+and stderr, prompts, retained workspaces, reports, exports, and sidecars before
+acting on results.
 
 The artifact model is designed to make that review reproducible and debuggable.
 

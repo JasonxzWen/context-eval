@@ -108,6 +108,7 @@ class JsonFileTelemetryCollector(TelemetryCollector):
                 "completion_tokens",
                 "total_tokens",
                 "reasoning_tokens",
+                "reasoning_step_count",
                 "tool_call_count",
             ]
         ) or bool(metrics["tool_calls_by_name"])
@@ -132,9 +133,8 @@ class JsonFileTelemetryCollector(TelemetryCollector):
                 error="no recognized telemetry fields found",
             )
 
-        complete = metrics["total_tokens"] is not None and metrics["tool_call_count"] is not None
         return TelemetryCollectionResult(
-            status="collected" if complete else "partial",
+            status="collected",
             source=self.source,
             **metrics,
         )
@@ -161,6 +161,11 @@ class JsonFileTelemetryCollector(TelemetryCollector):
             "reasoning_tokens": cls._optional_nonnegative_int(
                 data,
                 "reasoning_tokens",
+                errors,
+            ),
+            "reasoning_step_count": cls._optional_nonnegative_int(
+                data,
+                "reasoning_step_count",
                 errors,
             ),
             "tool_call_count": cls._optional_nonnegative_int(data, "tool_call_count", errors),

@@ -15,6 +15,7 @@ from context_eval.config import load_tasks
 from context_eval.contexts.overlay import OverlayError, apply_overlays
 from context_eval.evaluators.command import run_validation_commands
 from context_eval.evaluators.diff import collect_git_diff, create_diff_baseline
+from context_eval.evaluators.hybrid import run_hard_evaluation, write_soft_evaluation_payload
 from context_eval.hashing import stable_hash
 from context_eval.models import (
     RESULT_SCHEMA_VERSION,
@@ -439,6 +440,12 @@ class ContextEvalRunner:
                 result.validation_status = "skipped"
                 result.confidence = "low"
 
+            self._record_hybrid_evaluation(
+                result=result,
+                task=task,
+                run_dir=run_dir,
+                workspace=workspace,
+            )
             return self._finish_result(result, run_dir, started, errors)
         except WorkspaceError as exc:
             errors.append(str(exc))
@@ -519,6 +526,7 @@ class ContextEvalRunner:
         result.completion_tokens = telemetry.completion_tokens
         result.total_tokens = telemetry.total_tokens
         result.reasoning_tokens = telemetry.reasoning_tokens
+        result.reasoning_step_count = telemetry.reasoning_step_count
         result.tool_call_count = telemetry.tool_call_count
         result.tool_calls_by_name = telemetry.tool_calls_by_name
 
@@ -533,6 +541,27 @@ class ContextEvalRunner:
             stderr_path = run_dir / "logs" / f"{case_name}.validation.{index}.stderr.log"
             stdout_path.write_text(command_result.stdout, encoding="utf-8")
             stderr_path.write_text(command_result.stderr, encoding="utf-8")
+
+    def _record_hybrid_evaluation(
+        self,
+        *,
+        result: CaseResult,
+        task: TaskConfig,
+        run_dir: Path,
+        workspace: Path | None,
+    ) -> None:
+        hard_evaluation = run_hard_evaluation(
+            result=result,
+            task=task,
+            run_dir=run_dir,
+            workspace=workspace,
+        )
+        write_soft_evaluation_payload(
+            result=result,
+            task=task,
+            run_dir=run_dir,
+            hard_evaluation=hard_evaluation,
+        )
 
     def _record_cleanup(
         self,

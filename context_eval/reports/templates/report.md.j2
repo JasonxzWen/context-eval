@@ -32,6 +32,8 @@ These counts are local observations from recorded artifacts, not benchmark claim
 | Timeout cases | {{ overview.timeout_count }} |
 | Low-confidence cases | {{ overview.low_confidence_count }} |
 | Telemetry-gap cases | {{ overview.telemetry_gap_count }} |
+| Hard-evaluation failed cases | {{ overview.hard_evaluation_failed_count }} |
+| Soft-evaluation payloads | {{ overview.soft_evaluation_payload_count }} |
 
 ## Config Summary
 
@@ -111,6 +113,39 @@ No low-confidence cases recorded.
 {% endfor %}
 {% else -%}
 No telemetry-gap cases recorded.
+{% endif %}
+
+### Hard Evaluation Cases
+{% if hard_evaluation_cases -%}
+| Task | Variant | Agent | Trial | Hard status | Score | Failed checks | Artifact |
+| --- | --- | --- | ---: | --- | ---: | ---: | --- |
+{% for item in hard_evaluation_cases -%}
+| `{{ item.task_id }}` | `{{ item.variant }}` | `{{ item.agent_name }}` | {{ item.trial_index }} | `{{ item.hard_evaluation_status }}` | {% if item.hard_evaluation_score is not none and item.hard_evaluation_max_score is not none %}{{ item.hard_evaluation_score }}/{{ item.hard_evaluation_max_score }}{% else %}-{% endif %} | {% if item.hard_evaluation_failed_checks is not none %}{{ item.hard_evaluation_failed_checks }}{% else %}-{% endif %} | {% if item.hard_evaluation_path %}[hard]({{ item.hard_evaluation_path }}){% else %}-{% endif %} |
+{% endfor %}
+{% else -%}
+No hard evaluation sidecars recorded.
+{% endif %}
+
+### Failed Hard Checks
+{% if failed_hard_evaluation -%}
+| Task | Variant | Agent | Trial | Hard score | Artifact |
+| --- | --- | --- | ---: | ---: | --- |
+{% for item in failed_hard_evaluation -%}
+| `{{ item.task_id }}` | `{{ item.variant }}` | `{{ item.agent_name }}` | {{ item.trial_index }} | {% if item.hard_evaluation_score is not none and item.hard_evaluation_max_score is not none %}{{ item.hard_evaluation_score }}/{{ item.hard_evaluation_max_score }}{% else %}-{% endif %} | {% if item.hard_evaluation_path %}[hard]({{ item.hard_evaluation_path }}){% else %}-{% endif %} |
+{% endfor %}
+{% else -%}
+No failed hard checks recorded.
+{% endif %}
+
+### Soft Evaluation Cases
+{% if soft_evaluation_cases -%}
+| Task | Variant | Agent | Trial | Soft status | Payload | Result |
+| --- | --- | --- | ---: | --- | --- | --- |
+{% for item in soft_evaluation_cases -%}
+| `{{ item.task_id }}` | `{{ item.variant }}` | `{{ item.agent_name }}` | {{ item.trial_index }} | `{{ item.soft_evaluation_status }}` | {% if item.soft_evaluation_payload_path %}[payload]({{ item.soft_evaluation_payload_path }}){% else %}-{% endif %} | {% if item.soft_evaluation_result_path %}[result]({{ item.soft_evaluation_result_path }}){% else %}-{% endif %} |
+{% endfor %}
+{% else -%}
+No soft evaluation payloads recorded.
 {% endif %}
 
 ## Artifacts

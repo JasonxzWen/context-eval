@@ -32,8 +32,8 @@ agents:
     timeout_minutes: 60
 
   coco:
-    kind: "custom"
-    command: "coco -p {prompt_file}"
+    kind: "coco"
+    command: "coco -y --query-timeout 10m --bash-tool-timeout 5m -p \"{prompt}\""
     timeout_minutes: 60
 ```
 
@@ -66,7 +66,7 @@ Each profile has:
 
 - `name`: derived from the map key and written to result rows as `agent_name`.
 - `kind`: required for `agents` profiles and set to `codex-cli`, `claude-code`,
-  `traecli`, or `custom`; legacy `agent` configs default to `custom`.
+  `traecli`, `coco`, or `custom`; legacy `agent` configs default to `custom`.
 - `command`: the noninteractive command template.
 - `timeout_minutes`: command timeout for the coding agent process.
 - `network`: recorded in results as today; still not real network isolation.
@@ -105,7 +105,13 @@ Built-in presets help users start, but they remain editable templates:
 - `claude-code`: a Claude Code noninteractive command template.
 - `traecli`: a traecli noninteractive command template such as
   `traecli -p "{prompt}"`.
-- `custom`: a user-supplied command such as `coco -p {prompt_file}`.
+- `coco`: a Coco noninteractive command template such as
+  `coco -y --query-timeout 10m --bash-tool-timeout 5m -p "{prompt}"`. This
+  allows unattended local edits and shell commands through Coco's own CLI
+  permission mode. The preset is a user-editable `agents.coco.command`
+  template, not a permission grant from context-eval. Users who want narrower
+  approval can replace `-y` with explicit `--allowed-tool` flags.
+- `custom`: a user-supplied command such as `my-agent --prompt {prompt_file}`.
 
 The preset layer must not assume every machine has the agent installed. Preflight
 checks should verify executable availability only when requested by the user or
@@ -167,8 +173,8 @@ local observations. Agent summaries are shown only when more than one
 
 ## Non-Goals
 
-This capability does not install Codex CLI, Claude Code, traecli, coco, or any other
-agent. It does not manage provider accounts, hosted APIs, remote cost
+This capability does not install Codex CLI, Claude Code, traecli, Coco, or any
+other agent. It does not manage provider accounts, hosted APIs, remote cost
 accounting, or billing reconciliation. It does not add an LLM judge, automatic
 commits, or absolute leaderboard language.
 

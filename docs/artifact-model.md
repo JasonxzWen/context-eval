@@ -35,6 +35,36 @@ Retained workspaces are useful when a failed or surprising case needs manual
 inspection. Cleanup policy controls whether workspaces are kept or removed
 after result capture.
 
+## Expected Outcome And Evaluation Sidecars
+
+The Coco-first hybrid evaluation workflow adds case-local sidecars:
+
+- `artifacts/<case_id>/hard_evaluation.json`
+- `artifacts/<case_id>/soft_evaluation_payload.json`
+
+`hard_evaluation.json` records deterministic check results, score, max score,
+pass/fail status, evidence, and summary. Checks can cover validation success,
+required files, forbidden files, changed-file limits, expected snippets,
+forbidden snippets, diff-stat bounds, and agent completion.
+
+`soft_evaluation_payload.json` records review input for later human or local
+judge use. It is not a hosted API call and does not make soft scores mandatory
+for pass/fail.
+
+`results.jsonl` keeps compact summary fields for stable exports and UI review:
+
+- `hard_evaluation_status`
+- `hard_evaluation_score`
+- `hard_evaluation_max_score`
+- `hard_evaluation_passed_checks`
+- `hard_evaluation_failed_checks`
+- `hard_evaluation_path`
+- `soft_evaluation_status`
+- `soft_evaluation_payload_path`
+- `soft_evaluation_result_path`
+
+Older rows that lack these fields remain valid and render unavailable defaults.
+
 ## Exports
 
 `context-eval export` produces deterministic CSV or compact JSON from existing
@@ -42,7 +72,7 @@ run artifacts:
 
 - CSV is row-oriented and script-friendly.
 - Compact JSON includes export metadata, run metadata when available, case
-  rows, and summaries.
+  rows, summaries, hard evaluation summaries, and soft evaluation paths.
 
 Exports do not rerun agents, run validation commands, call hosted services, or
 infer missing data from logs.
@@ -84,10 +114,10 @@ counts, or billing data from logs.
 ## How Artifacts Support Review
 
 Reproducibility comes from recorded config summaries, task and variant hashes,
-the manifest, prompt files, and deterministic result rows.
+the manifest, prompt files, deterministic result rows, and evaluation sidecars.
 
 Debugging comes from stdout, stderr, validation logs, patches, status fields,
-timeouts, retained workspaces, and cleanup metadata.
+timeouts, retained workspaces, hard-check evidence, and cleanup metadata.
 
 Downstream analysis comes from CSV and compact JSON exports. Those exports stay
 grounded in `results.jsonl` and optional `run_metadata.json`, so scripts can

@@ -90,6 +90,15 @@ def render_markdown_report(run_dir: Path) -> Path:
     ]
     low_confidence = [result for result in results if result.confidence == "low"]
     telemetry_gaps = [result for result in results if has_telemetry_gap(result)]
+    hard_evaluation_cases = [
+        result for result in results if result.hard_evaluation_status != "not_configured"
+    ]
+    failed_hard_evaluation = [
+        result for result in results if result.hard_evaluation_status == "failed"
+    ]
+    soft_evaluation_cases = [
+        result for result in results if result.soft_evaluation_status != "not_configured"
+    ]
 
     templates_dir = Path(__file__).parent / "templates"
     env = Environment(
@@ -113,6 +122,9 @@ def render_markdown_report(run_dir: Path) -> Path:
         failed_cases=failed_cases,
         low_confidence=low_confidence,
         telemetry_gaps=telemetry_gaps,
+        hard_evaluation_cases=hard_evaluation_cases,
+        failed_hard_evaluation=failed_hard_evaluation,
+        soft_evaluation_cases=soft_evaluation_cases,
     )
     report_path = run_dir / "report.md"
     report_path.write_text(body, encoding="utf-8")

@@ -221,6 +221,278 @@ def test_runner_records_json_file_agent_telemetry(tmp_path: Path) -> None:
     }
 
 
+def test_runner_records_coco_structured_telemetry_reasoning_steps(
+    tmp_path: Path,
+) -> None:
+    repo = _create_repo(tmp_path)
+    overlay_source = tmp_path / "ctx" / "AGENTS.md"
+    overlay_source.parent.mkdir()
+    overlay_source.write_text("# Instructions\n", encoding="utf-8")
+
+    agent_script = tmp_path / "agent.py"
+    agent_script.write_text(
+        "import json\n"
+        "import sys\n"
+        "from pathlib import Path\n"
+        "telemetry = Path(sys.argv[1])\n"
+        "telemetry.parent.mkdir(parents=True, exist_ok=True)\n"
+        "telemetry.write_text(json.dumps({\n"
+        "    'agent_duration_seconds': 123.4,\n"
+        "    'prompt_tokens': 10000,\n"
+        "    'completion_tokens': 2000,\n"
+        "    'reasoning_tokens': 3000,\n"
+        "    'tool_call_count': 18,\n"
+        "    'tool_calls_by_name': {'read_file': 6, 'edit_file': 3},\n"
+        "    'reasoning_step_count': 12,\n"
+        "}), encoding='utf-8')\n"
+        "Path('README.md').write_text('base\\ntelemetry\\n', encoding='utf-8')\n",
+        encoding="utf-8",
+    )
+    task_file = TaskFile(tasks=[TaskConfig(id="coco-telemetry", prompt="Append a line.")])
+    config = _base_config(
+        tmp_path=tmp_path,
+        repo=repo,
+        agent_command=f'"{sys.executable}" "{agent_script}" "{{telemetry_file}}"',
+        overlay_source=overlay_source,
+    )
+    config.agent.kind = "coco"
+    config.agent.telemetry = AgentTelemetryConfig(collector="json-file")
+
+    run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        cleanup=True,
+        console=_quiet_console(),
+    ).run()
+    result = json.loads((run_dir / "results.jsonl").read_text(encoding="utf-8"))
+
+    assert result["telemetry_status"] == "collected"
+    assert result["agent_duration_seconds"] == 123.4
+    assert result["prompt_tokens"] == 10000
+    assert result["completion_tokens"] == 2000
+    assert result["reasoning_tokens"] == 3000
+    assert result["tool_call_count"] == 18
+    assert result["tool_calls_by_name"] == {"read_file": 6, "edit_file": 3}
+    assert result["reasoning_step_count"] == 12
+
+
+def test_runner_writes_hard_and_soft_evaluation_sidecars(tmp_path: Path) -> None:
+    repo = _create_repo(tmp_path)
+    overlay_source = tmp_path / "ctx" / "AGENTS.md"
+    overlay_source.parent.mkdir()
+    overlay_source.write_text("# Instructions\n", encoding="utf-8")
+
+    agent_script = tmp_path / "agent.py"
+    agent_script.write_text(
+        "from pathlib import Path\n"
+        "p = Path('README.md')\n"
+        "p.write_text(p.read_text(encoding='utf-8') + 'fixed marker\\n', encoding='utf-8')\n",
+        encoding="utf-8",
+    )
+    task_file = TaskFile.model_validate(
+        {
+            "tasks": [
+                {
+                    "id": "hybrid-pass",
+                    "prompt": "Add fixed marker.",
+                    "expected_outcome": {
+                        "summary": "README contains fixed marker.",
+                        "acceptance_points": ["The marker is present."],
+                    },
+                    "hard_evaluation": {
+                        "enabled": True,
+                        "require_validation_pass": False,
+                        "required_paths": ["README.md"],
+                        "forbidden_paths": ["docs/notes.md"],
+                        "expected_snippets": [
+                            {"path": "README.md", "snippets": ["fixed marker"]}
+                        ],
+                        "forbidden_snippets": [
+                            {"path": "README.md", "snippets": ["TODO"]}
+                        ],
+                    },
+                    "soft_evaluation": {
+                        "enabled": True,
+                        "mode": "payload-only",
+                        "rubric": [
+                            {
+                                "name": "quality",
+                                "weight": 1,
+                                "description": "Patch is clear.",
+                            }
+                        ],
+                    },
+                }
+            ]
+        }
+    )
+    config = _base_config(
+        tmp_path=tmp_path,
+        repo=repo,
+        agent_command=f'"{sys.executable}" "{agent_script}"',
+        overlay_source=overlay_source,
+    )
+
+    run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        cleanup_policy="never",
+        console=_quiet_console(),
+    ).run()
+    result = json.loads((run_dir / "results.jsonl").read_text(encoding="utf-8"))
+
+    assert result["hard_evaluation_status"] == "passed"
+    assert result["hard_evaluation_score"] == result["hard_evaluation_max_score"]
+    assert result["hard_evaluation_failed_checks"] == 0
+    assert result["soft_evaluation_status"] == "payload_generated"
+    hard = json.loads((run_dir / result["hard_evaluation_path"]).read_text(encoding="utf-8"))
+    soft_payload_path = run_dir / result["soft_evaluation_payload_path"]
+    soft = json.loads(soft_payload_path.read_text(encoding="utf-8"))
+    assert hard["passed"] is True
+    assert hard["summary"] == "passed"
+    assert {check["name"] for check in hard["checks"]} >= {
+        "required_path:README.md",
+        "forbidden_paths",
+        "expected_snippet:README.md",
+        "forbidden_snippet:README.md",
+    }
+    assert soft["task"]["prompt"] == "Add fixed marker."
+    assert soft["expected_outcome"]["summary"] == "README contains fixed marker."
+    assert soft["hard_evaluation"]["status"] == "passed"
+    assert "fixed marker" in soft["patch_excerpt"]
+
+
+def test_runner_hard_evaluation_deduplicates_repeated_snippet_checks(
+    tmp_path: Path,
+) -> None:
+    repo = _create_repo(tmp_path)
+    overlay_source = tmp_path / "ctx" / "AGENTS.md"
+    overlay_source.parent.mkdir()
+    overlay_source.write_text("# Instructions\n", encoding="utf-8")
+
+    agent_script = tmp_path / "agent.py"
+    agent_script.write_text(
+        "from pathlib import Path\n"
+        "p = Path('README.md')\n"
+        "p.write_text(p.read_text(encoding='utf-8') + 'fixed marker\\n', encoding='utf-8')\n",
+        encoding="utf-8",
+    )
+    task_file = TaskFile.model_validate(
+        {
+            "tasks": [
+                {
+                    "id": "hybrid-dedupe",
+                    "prompt": "Add fixed marker.",
+                    "expected_outcome": {
+                        "files": [
+                            {
+                                "path": "README.md",
+                                "expected_snippets": ["fixed marker"],
+                                "forbidden_snippets": ["TODO"],
+                            }
+                        ],
+                    },
+                    "hard_evaluation": {
+                        "enabled": True,
+                        "expected_snippets": [
+                            {"path": "README.md", "snippets": ["fixed marker"]}
+                        ],
+                        "forbidden_snippets": [
+                            {"path": "README.md", "snippets": ["TODO"]}
+                        ],
+                    },
+                }
+            ]
+        }
+    )
+    config = _base_config(
+        tmp_path=tmp_path,
+        repo=repo,
+        agent_command=f'"{sys.executable}" "{agent_script}"',
+        overlay_source=overlay_source,
+    )
+
+    run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        cleanup_policy="never",
+        console=_quiet_console(),
+    ).run()
+    result = json.loads((run_dir / "results.jsonl").read_text(encoding="utf-8"))
+    hard = json.loads((run_dir / result["hard_evaluation_path"]).read_text(encoding="utf-8"))
+
+    expected_checks = [
+        check
+        for check in hard["checks"]
+        if check["name"] == "expected_snippet:README.md"
+    ]
+    forbidden_checks = [
+        check
+        for check in hard["checks"]
+        if check["name"] == "forbidden_snippet:README.md"
+    ]
+
+    assert len(expected_checks) == 1
+    assert len(forbidden_checks) == 1
+    assert expected_checks[0]["evidence"]["snippet"] == "fixed marker"
+    assert forbidden_checks[0]["evidence"]["snippet"] == "TODO"
+    assert result["hard_evaluation_score"] == 3
+    assert result["hard_evaluation_max_score"] == 3
+
+
+def test_runner_hard_evaluation_reports_failed_required_and_forbidden_paths(
+    tmp_path: Path,
+) -> None:
+    repo = _create_repo(tmp_path)
+    overlay_source = tmp_path / "ctx" / "AGENTS.md"
+    overlay_source.parent.mkdir()
+    overlay_source.write_text("# Instructions\n", encoding="utf-8")
+
+    agent_script = tmp_path / "agent.py"
+    agent_script.write_text(
+        "from pathlib import Path\nPath('docs').mkdir(exist_ok=True)\n"
+        "Path('docs/notes.md').write_text('unexpected\\n', encoding='utf-8')\n",
+        encoding="utf-8",
+    )
+    task_file = TaskFile.model_validate(
+        {
+            "tasks": [
+                {
+                    "id": "hybrid-fail",
+                    "prompt": "Change README only.",
+                    "hard_evaluation": {
+                        "enabled": True,
+                        "required_paths": ["README.md"],
+                        "forbidden_paths": ["docs/notes.md"],
+                        "max_changed_files": 1,
+                    },
+                }
+            ]
+        }
+    )
+    config = _base_config(
+        tmp_path=tmp_path,
+        repo=repo,
+        agent_command=f'"{sys.executable}" "{agent_script}"',
+        overlay_source=overlay_source,
+    )
+
+    run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        cleanup_policy="never",
+        console=_quiet_console(),
+    ).run()
+    result = json.loads((run_dir / "results.jsonl").read_text(encoding="utf-8"))
+    hard = json.loads((run_dir / result["hard_evaluation_path"]).read_text(encoding="utf-8"))
+
+    assert result["hard_evaluation_status"] == "failed"
+    assert result["hard_evaluation_failed_checks"] >= 2
+    failed = {check["name"] for check in hard["checks"] if check["status"] == "failed"}
+    assert "required_path:README.md" in failed
+    assert "forbidden_paths" in failed
+
+
 def test_runner_writes_custom_prompt_template(tmp_path: Path) -> None:
     repo = _create_repo(tmp_path)
     overlay_source = tmp_path / "ctx" / "AGENTS.md"

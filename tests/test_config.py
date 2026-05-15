@@ -229,7 +229,7 @@ agents:
     command: "codex exec -C {workspace} - < {prompt_file}"
     prompt_template: "./prompts/codex.md"
   coco:
-    kind: "custom"
+    kind: "coco"
     command: "coco -p {prompt_file}"
     timeout_minutes: 15
   trae:
@@ -255,7 +255,7 @@ variants:
     assert profiles["codex"].name == "codex"
     assert profiles["codex"].kind == "codex-cli"
     assert profiles["codex"].prompt_template == prompt_template.resolve()
-    assert profiles["coco"].kind == "custom"
+    assert profiles["coco"].kind == "coco"
     assert profiles["coco"].timeout_minutes == 15
     assert profiles["trae"].kind == "traecli"
     assert profiles["trae"].command == 'traecli -p "{prompt}"'
@@ -455,6 +455,71 @@ def test_yaml_config_rejects_unsafe_telemetry_file(tmp_path: Path) -> None:
 
     with pytest.raises(ConfigError, match="telemetry file must be a safe relative path"):
         load_config(config_path)
+
+
+def test_load_tasks_parses_hybrid_evaluation_fields(tmp_path: Path) -> None:
+    tasks_path = tmp_path / "tasks.yaml"
+    tasks_path.write_text(
+        """
+tasks:
+  - id: "task-1"
+    prompt: "Fix the bug."
+    expected_outcome:
+      summary: "README contains the fix marker."
+      files:
+        - path: "README.md"
+          must_change: true
+          expected_snippets:
+            - "fixed"
+      acceptance_points:
+        - "The marker is present."
+    hard_evaluation:
+      enabled: true
+      require_validation_pass: true
+      required_paths:
+        - "README.md"
+    soft_evaluation:
+      enabled: true
+      mode: "payload-only"
+      rubric:
+        - name: "quality"
+          weight: 1
+          description: "Patch is clear."
+    x_unknown: "kept"
+""",
+        encoding="utf-8",
+    )
+
+    task_file = load_tasks(tasks_path)
+    task = task_file.tasks[0]
+
+    assert task.expected_outcome.summary == "README contains the fix marker."
+    assert task.expected_outcome.files[0].must_change is True
+    assert task.hard_evaluation.require_validation_pass is True
+    assert task.soft_evaluation.rubric[0].name == "quality"
+    assert task.model_extra == {"x_unknown": "kept"}
+
+
+def test_load_tasks_rejects_unsafe_hybrid_evaluation_paths(tmp_path: Path) -> None:
+    tasks_path = tmp_path / "tasks.yaml"
+    tasks_path.write_text(
+        """
+tasks:
+  - id: "task-1"
+    prompt: "Fix the bug."
+    hard_evaluation:
+      required_paths:
+        - "../escape.py"
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConfigError) as excinfo:
+        load_tasks(tasks_path)
+
+    message = str(excinfo.value)
+    assert "tasks.yaml: tasks[task-1].hard_evaluation.required_paths" in message
+    assert "safe repository-relative path" in message
 
 
 def _write_config_fixture(

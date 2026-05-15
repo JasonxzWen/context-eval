@@ -16,15 +16,15 @@ export type MatrixFixture = {
 export const localAppFixture: MatrixFixture = {
   agents: [
     {
-      name: 'codex',
-      kind: 'codex-cli',
-      command: 'codex exec -C {workspace} - < {prompt_file}',
+      name: 'coco',
+      kind: 'coco',
+      command: 'coco -y --query-timeout 10m --bash-tool-timeout 5m -p "{prompt}"',
       state: 'ready',
     },
     {
-      name: 'trae',
-      kind: 'traecli',
-      command: 'traecli -p "{prompt}"',
+      name: 'custom',
+      kind: 'custom',
+      command: 'agent -p {prompt_file}',
       state: 'needs-check',
     },
   ],
