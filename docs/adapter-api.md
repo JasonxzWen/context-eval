@@ -28,8 +28,8 @@ changes automatically.
 
 Named local agent profiles are specified in `docs/agent-profiles.md`. Profiles
 keep the command-template adapter as the baseline while making Codex CLI,
-Claude Code, traecli, and custom commands such as `coco -p {prompt_file}`
-first-class noninteractive configurations.
+Claude Code, traecli, Coco, and custom commands first-class noninteractive
+configurations.
 
 Existing configs with a single `agent` mapping remain the compatibility shape.
 The `agents` map is for multi-agent matrices and does not install or manage
@@ -53,14 +53,17 @@ agents:
     timeout_minutes: 60
 
   coco:
-    kind: "custom"
-    command: "coco -p {prompt_file}"
+    kind: "coco"
+    command: "coco -y --query-timeout 10m --bash-tool-timeout 5m -p \"{prompt}\""
     timeout_minutes: 60
 ```
 
 `context-eval run` runs every configured profile by default. Repeat `--agent
 <profile>` to select a subset from the map. Unknown template variables fail
 during config validation, before an agent process starts.
+The Coco `-y` example remains inside the user-owned command template. It does
+not mean context-eval grants permissions; users can replace it with explicit
+`--allowed-tool` flags when they want narrower Coco authorization.
 
 ## Prompt Templates
 

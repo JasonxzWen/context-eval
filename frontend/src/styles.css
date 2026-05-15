@@ -96,7 +96,7 @@ button:disabled {
 
 .topbar h1 {
   margin: 0;
-  font-size: clamp(28px, 4vw, 44px);
+  font-size: 38px;
   line-height: 1.02;
 }
 
@@ -379,6 +379,40 @@ pre {
   gap: 10px;
 }
 
+.single-list {
+  grid-template-columns: 1fr;
+}
+
+.compact-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.compact-list div {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 9px;
+  background: #fbfcfb;
+}
+
+.compact-list dt {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.compact-list dd {
+  overflow-wrap: anywhere;
+  margin: 4px 0 0;
+  font-family:
+    "Cascadia Code",
+    Consolas,
+    monospace;
+  font-size: 12px;
+}
+
 .log-box {
   display: grid;
   gap: 4px;
@@ -485,6 +519,10 @@ th {
   .metric-grid,
   .two-column-list {
     grid-template-columns: 1fr;
+  }
+
+  .topbar h1 {
+    font-size: 30px;
   }
 
   .content-grid {

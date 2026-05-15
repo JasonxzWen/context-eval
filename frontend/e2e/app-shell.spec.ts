@@ -43,8 +43,25 @@ function copyFixtureRepo(workspace: string) {
 
 function writeWorkflowFiles(workspace: string, fixture: string) {
   const contextDir = path.join(workspace, 'contexts', 'baseline');
+  const agentScript = path.join(workspace, 'fake-coco.py');
   fs.mkdirSync(contextDir, { recursive: true });
   fs.writeFileSync(path.join(contextDir, 'AGENTS.md'), '# Browser workflow instructions\n');
+  fs.writeFileSync(
+    agentScript,
+    [
+      'from pathlib import Path',
+      'p = Path("fixture_app/greetings.py")',
+      'text = p.read_text(encoding="utf-8")',
+      'p.write_text(',
+      '    text.replace(',
+      '        \'return f"Hello, {name}"\',',
+      '        \'return f"Hello, {name}!"  # context-eval\',',
+      '    ),',
+      '    encoding="utf-8",',
+      ')',
+      '',
+    ].join('\n'),
+  );
   fs.writeFileSync(
     path.join(workspace, 'tasks.yaml'),
     [
@@ -54,6 +71,25 @@ function writeWorkflowFiles(workspace: string, fixture: string) {
       '    prompt: Fix the fixture greeting punctuation.',
       '    category: runtime',
       '    difficulty: easy',
+      '    expected_outcome:',
+      '      summary: Greeting uses context-eval wording.',
+      '      acceptance_points:',
+      '        - Greeting output changes.',
+      '    hard_evaluation:',
+      '      enabled: true',
+      '      required_paths:',
+      '        - fixture_app/greetings.py',
+      '      expected_snippets:',
+      '        - path: fixture_app/greetings.py',
+      '          snippets:',
+      '            - context-eval',
+      '    soft_evaluation:',
+      '      enabled: true',
+      '      mode: payload-only',
+      '      rubric:',
+      '        - name: quality',
+      '          weight: 1',
+      '          description: Patch is clear.',
       '',
     ].join('\n'),
   );
@@ -63,11 +99,12 @@ function writeWorkflowFiles(workspace: string, fixture: string) {
       'repo:',
       `  path: "${toPosix(fixture)}"`,
       '  base_ref: main',
-      'agent:',
-      '  name: browser-fake-agent',
-      `  command: '"${toPosix(python)}" scripts/example_agent.py "{prompt_file}"'`,
-      '  timeout_minutes: 1',
-      '  network: disabled',
+      'agents:',
+      '  coco:',
+      '    kind: coco',
+      `    command: '"${toPosix(python)}" "${toPosix(agentScript)}"'`,
+      '    timeout_minutes: 1',
+      '    network: disabled',
       'tasks: ./tasks.yaml',
       'output_dir: ./runs',
       'variants:',
@@ -146,13 +183,15 @@ async function stopLocalApp(child: ChildProcessWithoutNullStreams) {
   });
 }
 
-test('renders the fixture-backed local app shell', async ({ page }) => {
+test('renders the fixture-backed Coco hybrid shell', async ({ page }) => {
   await page.goto('/');
 
   await expect(page.getByRole('heading', { name: 'context-eval 本地工作台' })).toBeVisible();
-  await expect(page.getByText('仅使用本地产物')).toBeVisible();
   await expect(page.getByTestId('matrix-count')).toHaveText('8');
-  await expect(page.getByText('traecli', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Coco Agent' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Expected Outcome' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Hard Evaluation' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Soft Evaluation' })).toBeVisible();
 
   const hasHorizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
@@ -160,7 +199,7 @@ test('renders the fixture-backed local app shell', async ({ page }) => {
   expect(hasHorizontalOverflow).toBe(false);
 });
 
-test('completes the local server workflow with fixture repo and fake agent', async ({ page }) => {
+test('completes the local server workflow with fake Coco and hybrid evaluation', async ({ page }) => {
   test.setTimeout(90_000);
   const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'context-eval-app-'));
   const fixture = copyFixtureRepo(workspace);
@@ -173,39 +212,23 @@ test('completes the local server workflow with fixture repo and fake agent', asy
     await expect(page.getByRole('heading', { name: 'context-eval 本地工作台' })).toBeVisible();
     await page.getByRole('button', { name: '加载配置' }).click();
     await expect(page.getByLabel('仓库路径')).toHaveValue(toPosix(fixture));
-    await expect(page.locator('.profile-list strong').filter({ hasText: 'browser-fake-agent' })).toBeVisible();
-
-    const tasksEditor = page.locator('#tasks-yaml');
-    await tasksEditor.fill(
-      [
-        'tasks:',
-        '  - id: fix-greeting-punctuation',
-        '    title: 修复问候标点',
-        '    prompt: Fix the fixture greeting punctuation.',
-        '    category: runtime',
-        '    difficulty: medium',
-        '    x_unknown_task_field: keep-me',
-        '',
-      ].join('\n'),
-    );
-    await page.getByRole('button', { name: '保存并重载' }).click();
-    await expect(page.getByTestId('save-status')).toContainText('已保存并从磁盘重载');
-    await expect(page.locator('.two-column-list span').filter({ hasText: '修复问候标点' })).toBeVisible();
-    expect(fs.readFileSync(path.join(workspace, 'tasks.yaml'), 'utf-8')).toContain('x_unknown_task_field');
-    await page.getByRole('button', { name: '加载配置' }).click();
-    await expect(page.locator('.two-column-list span').filter({ hasText: '修复问候标点' })).toBeVisible();
+    await expect(
+      page.locator('.status-line', { hasText: 'Greeting uses context-eval wording.' }),
+    ).toBeVisible();
 
     await page.getByRole('button', { name: '运行预检' }).click();
     await expect(page.getByTestId('preflight-status')).toContainText('预检通过');
 
     await page.getByRole('button', { name: '生成计划' }).click();
     await expect(page.getByTestId('planned-case-count')).toHaveText('1');
+    await expect(page.getByText('hard on')).toBeVisible();
+    await expect(page.getByText('soft on')).toBeVisible();
 
     await page.getByRole('button', { name: '开始运行' }).click();
     await expect(page.getByTestId('run-status')).toContainText('已完成', { timeout: 60000 });
 
-    await expect(page.getByRole('cell', { name: 'fix-greeting-punctuation' })).toBeVisible();
-    await expect(page.getByRole('cell', { name: '已完成' })).toBeVisible();
+    await expect(page.getByText('hard passed')).toBeVisible();
+    await expect(page.getByText('soft payload_generated')).toBeVisible();
 
     await page.getByRole('button', { name: '导出 JSON' }).click();
     await expect(page.getByTestId('export-output')).toContainText('"case_count": 1');

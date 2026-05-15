@@ -10,13 +10,52 @@ type EditableAgent = {
   network: string;
 };
 
+type SnippetCheck = {
+  path: string;
+  snippets: string[];
+};
+
+type ExpectedOutcome = {
+  summary?: string | null;
+  forbidden_paths?: string[];
+  acceptance_points?: string[];
+  files?: {
+    path: string;
+    change_type?: string;
+    must_change?: boolean;
+    expected_snippets?: string[];
+    forbidden_snippets?: string[];
+  }[];
+};
+
+type HardEvaluation = {
+  enabled: boolean;
+  require_validation_pass?: boolean;
+  max_changed_files?: number | null;
+  required_paths?: string[];
+  forbidden_paths?: string[];
+  expected_snippets?: SnippetCheck[];
+  forbidden_snippets?: SnippetCheck[];
+};
+
+type SoftEvaluation = {
+  enabled: boolean;
+  mode: 'payload-only';
+  max_score?: number;
+  rubric?: { name: string; weight: number; description: string }[];
+};
+
 type EditableTask = {
   id: string;
   title?: string | null;
   prompt: string;
   category?: string | null;
   difficulty?: string | null;
+  repo_ref?: string | null;
   validation_commands: string[];
+  expected_outcome?: ExpectedOutcome | null;
+  hard_evaluation?: HardEvaluation | null;
+  soft_evaluation?: SoftEvaluation | null;
 };
 
 type EditableVariant = {
@@ -75,6 +114,9 @@ type RunPlan = {
     trial_index: number;
     repo_ref: string;
     command_preview: string;
+    expected_outcome_summary?: string | null;
+    hard_evaluation_enabled?: boolean;
+    soft_evaluation_enabled?: boolean;
   }[];
 };
 
@@ -103,6 +145,12 @@ type ResultsPayload = {
     status: string;
     validation_status: string;
     confidence: string;
+    changed_files?: number;
+    hard_evaluation_status?: string;
+    hard_evaluation_score?: number | null;
+    hard_evaluation_max_score?: number | null;
+    soft_evaluation_status?: string;
+    soft_evaluation_payload_path?: string | null;
     patch_path?: string | null;
     stdout_path?: string | null;
     stderr_path?: string | null;
@@ -121,7 +169,7 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   });
   const data = await response.json();
   if (!response.ok || data.ok === false) {
-    throw new Error(data.error || `请求失败：${response.status}`);
+    throw new Error(data.error || `请求失败: ${response.status}`);
   }
   return data as T;
 }
@@ -137,8 +185,26 @@ function fallbackConfig(): LoadedConfig {
   const fallbackTasks: EditableTask[] = localAppFixture.tasks.map((task) => ({
     id: task,
     title: task,
-    prompt: task,
+    prompt: `Run ${task}.`,
     validation_commands: [],
+    expected_outcome: {
+      summary: '示例任务会生成本地补丁证据。',
+      acceptance_points: ['本地结果可审查。'],
+    },
+    hard_evaluation: {
+      enabled: true,
+      require_validation_pass: false,
+      required_paths: ['README.md'],
+      forbidden_paths: [],
+      expected_snippets: [],
+      forbidden_snippets: [],
+    },
+    soft_evaluation: {
+      enabled: true,
+      mode: 'payload-only',
+      max_score: 10,
+      rubric: [{ name: 'quality', weight: 1, description: 'Patch is clear.' }],
+    },
   }));
   const fallbackVariants: EditableVariant[] = localAppFixture.variants.map((variant) => ({
     name: variant,
@@ -175,6 +241,14 @@ function fallbackConfig(): LoadedConfig {
       `  - id: ${task.id}`,
       `    title: ${task.title}`,
       `    prompt: ${task.prompt}`,
+      '    expected_outcome:',
+      `      summary: ${task.expected_outcome?.summary}`,
+      '    hard_evaluation:',
+      '      enabled: true',
+      '      required_paths: [README.md]',
+      '    soft_evaluation:',
+      '      enabled: true',
+      '      mode: payload-only',
     ]),
     '',
   ].join('\n');
@@ -220,7 +294,7 @@ const checkLabels: Record<string, string> = {
   prompt_templates: '提示模板',
   agent_command_variables: '本地代理命令变量',
   agent_executables: '本地代理可执行文件',
-  agent_executables_skipped: '跳过本地代理可执行文件检查',
+  agent_executables_skipped: '跳过可执行文件检查',
   output_dir_writable: '输出目录可写',
   side_effect_free: '无执行副作用',
 };
@@ -240,7 +314,7 @@ const resultStatusLabels: Record<string, string> = {
   timeout: '超时',
   overlay_failed: '覆盖失败',
   workspace_failed: '工作区失败',
-  validation_failed: '验收失败',
+  validation_failed: '验证失败',
   internal_error: '内部错误',
 };
 
@@ -250,15 +324,27 @@ const validationLabels: Record<string, string> = {
   skipped: '跳过',
 };
 
-const confidenceLabels: Record<string, string> = {
-  high: '高',
-  medium: '中',
-  low: '低',
-};
-
 function labelFor(labels: Record<string, string>, value: string | undefined | null) {
   if (!value) return '未知';
   return labels[value] ?? value;
+}
+
+function agentsFrom(loaded: LoadedConfig) {
+  return loaded.editable.agent_shape === 'agents'
+    ? loaded.editable.agents
+    : [loaded.editable.agent];
+}
+
+function primaryTask(loaded: LoadedConfig) {
+  return loaded.editable.tasks[0];
+}
+
+function primaryCocoAgent(loaded: LoadedConfig) {
+  return agentsFrom(loaded).find((agent) => agent.kind === 'coco') || agentsFrom(loaded)[0];
+}
+
+function listText(values: string[] | undefined, fallback = '未配置') {
+  return values && values.length > 0 ? values.join(', ') : fallback;
 }
 
 export function App() {
@@ -280,9 +366,9 @@ export function App() {
 
   const fixtureCaseCount = useMemo(() => plannedCaseCount(localAppFixture), []);
   const visibleCaseCount = plan?.case_count ?? fixtureCaseCount;
-  const agents = loaded.editable.agent_shape === 'agents'
-    ? loaded.editable.agents
-    : [loaded.editable.agent];
+  const agents = agentsFrom(loaded);
+  const cocoAgent = primaryCocoAgent(loaded);
+  const task = primaryTask(loaded);
 
   function applyLoadedConfig(payload: LoadedConfig) {
     setLoaded(payload);
@@ -295,7 +381,7 @@ export function App() {
     setError('');
     if (serverMode === 'fixture') {
       applyLoadedConfig(fallbackConfig());
-      setSaveStatus('fixture 配置已加载');
+      setSaveStatus('示例配置已加载');
       return;
     }
     const payload = await apiRequest<LoadedConfig>('/api/config/load', {
@@ -322,7 +408,7 @@ export function App() {
     } else {
       await loadConfig(saved.config_path);
     }
-    setSaveStatus(`已保存并从磁盘重载：${saved.config_path} / ${saved.tasks_path}`);
+    setSaveStatus(`已保存并从磁盘重载: ${saved.config_path} / ${saved.tasks_path}`);
   }
 
   async function runPreflight() {
@@ -347,10 +433,8 @@ export function App() {
     setPlan(payload);
   }
 
-  async function refreshRunStatus(appRunId: string) {
-    const status = await apiRequest<RunStatus>(`/api/runs/${appRunId}`);
-    setRun(status);
-    const logPayload = await apiRequest<LogPayload>(`/api/runs/${appRunId}/logs`);
+  async function loadResultsForRun(status: RunStatus) {
+    const logPayload = await apiRequest<LogPayload>(`/api/runs/${status.app_run_id}/logs`);
     setLogs(logPayload);
     if (status.run_dir && status.status === 'completed') {
       const resultPayload = await apiRequest<ResultsPayload>(
@@ -358,6 +442,12 @@ export function App() {
       );
       setResults(resultPayload);
     }
+  }
+
+  async function refreshRunStatus(appRunId: string) {
+    const status = await apiRequest<RunStatus>(`/api/runs/${appRunId}`);
+    setRun(status);
+    await loadResultsForRun(status);
     return status;
   }
 
@@ -372,6 +462,7 @@ export function App() {
       }),
     });
     setRun(payload);
+    await loadResultsForRun(payload);
   }
 
   async function stopRun() {
@@ -456,15 +547,15 @@ export function App() {
         </div>
       </header>
 
-      {error && <div className="notice error">错误：{error}</div>}
+      {error && <div className="notice error">错误: {error}</div>}
 
       <section className="workflow-band" aria-label="工作流状态">
         {[
-          ['项目', loaded.resolved.repo_path],
-          ['本地代理', String(agents.length)],
-          ['预检', preflightStatus === '预检通过' ? '通过' : '等待'],
-          ['运行', runLabel],
-          ['结果', results ? '已加载' : '本地'],
+          ['Project', loaded.resolved.repo_path],
+          ['Coco Agent', cocoAgent?.name || '未配置'],
+          ['Preflight', preflightStatus === '预检通过' ? '通过' : '等待'],
+          ['Run', runLabel],
+          ['Results', results ? '已加载' : '本地'],
         ].map(([label, state]) => (
           <div className="workflow-step" key={label}>
             <span>{label}</span>
@@ -476,7 +567,7 @@ export function App() {
       <section className="content-grid">
         <section className="panel project-panel">
           <div className="panel-heading">
-            <h2>项目设置</h2>
+            <h2>Project</h2>
             <span>{modeLabel}</span>
           </div>
           <div className="form-grid">
@@ -492,9 +583,9 @@ export function App() {
               仓库路径
               <input id="repo-path" value={loaded.editable.repo.path} readOnly />
             </label>
-            <label htmlFor="tasks-path">
-              任务路径
-              <input id="tasks-path" value={loaded.editable.tasks_path} readOnly />
+            <label htmlFor="base-ref">
+              base ref
+              <input id="base-ref" value={loaded.editable.repo.base_ref} readOnly />
             </label>
             <label htmlFor="output-dir">
               输出目录
@@ -516,32 +607,45 @@ export function App() {
 
         <section className="panel matrix-panel">
           <div className="panel-heading">
-            <h2>运行矩阵</h2>
+            <h2>Run Plan</h2>
             <span data-testid="matrix-count">{visibleCaseCount}</span>
           </div>
           <dl className="metric-grid">
             <div>
-              <dt>本地代理</dt>
+              <dt>agents</dt>
               <dd>{agents.length}</dd>
             </div>
             <div>
-              <dt>任务</dt>
+              <dt>tasks</dt>
               <dd>{loaded.editable.tasks.length}</dd>
             </div>
             <div>
-              <dt>变体</dt>
+              <dt>variants</dt>
               <dd>{loaded.editable.variants.length}</dd>
             </div>
             <div>
-              <dt>轮次</dt>
+              <dt>trials</dt>
               <dd>{plan?.trials ?? localAppFixture.trials}</dd>
             </div>
           </dl>
+          <ul className="check-list">
+            {(plan?.cases || []).slice(0, 4).map((caseItem) => (
+              <li key={caseItem.case_id}>
+                <strong>{caseItem.case_id}</strong>
+                <span>{caseItem.expected_outcome_summary || '无 expected_outcome summary'}</span>
+                <small>
+                  {caseItem.hard_evaluation_enabled ? 'hard on' : 'hard off'} /{' '}
+                  {caseItem.soft_evaluation_enabled ? 'soft on' : 'soft off'}
+                </small>
+              </li>
+            ))}
+          </ul>
         </section>
 
         <section className="panel">
           <div className="panel-heading">
-            <h2>本地代理配置</h2>
+            <h2>Coco Agent</h2>
+            <span>{cocoAgent?.kind || 'unknown'}</span>
           </div>
           <ul className="profile-list">
             {agents.map((profile) => (
@@ -558,29 +662,91 @@ export function App() {
 
         <section className="panel">
           <div className="panel-heading">
-            <h2>任务与变体</h2>
+            <h2>Context Variants</h2>
           </div>
-          <div className="two-column-list">
-            <ul>
-              {loaded.editable.tasks.map((task) => (
-                <li key={task.id}>
-                  <strong>{task.id}</strong>
-                  <span>{task.title || task.prompt}</span>
-                  {(task.category || task.difficulty) && (
-                    <small>{[task.category, task.difficulty].filter(Boolean).join(' / ')}</small>
-                  )}
-                </li>
-              ))}
-            </ul>
-            <ul>
-              {loaded.editable.variants.map((variant) => (
-                <li key={variant.name}>
-                  <strong>{variant.name}</strong>
-                  <span>{variant.description || '变体'}</span>
-                </li>
-              ))}
-            </ul>
+          <ul className="two-column-list single-list">
+            {loaded.editable.variants.map((variant) => (
+              <li key={variant.name}>
+                <strong>{variant.name}</strong>
+                <span>{variant.description || '未描述'}</span>
+                <small>{variant.overlays.length} overlay(s)</small>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="panel">
+          <div className="panel-heading">
+            <h2>Tasks</h2>
+            <span>{loaded.editable.tasks.length}</span>
           </div>
+          <ul className="two-column-list single-list">
+            {loaded.editable.tasks.map((item) => (
+              <li key={item.id}>
+                <strong>{item.id}</strong>
+                <span>{item.title || item.prompt}</span>
+                <small>{[item.category, item.difficulty].filter(Boolean).join(' / ')}</small>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="panel">
+          <div className="panel-heading">
+            <h2>Expected Outcome</h2>
+          </div>
+          <p className="status-line">{task?.expected_outcome?.summary || '未配置 summary'}</p>
+          <ul className="check-list">
+            {(task?.expected_outcome?.acceptance_points || []).map((point) => (
+              <li key={point}>{point}</li>
+            ))}
+            {task?.expected_outcome?.files?.map((file) => (
+              <li key={file.path}>
+                <strong>{file.path}</strong>
+                <span>{file.must_change ? 'must_change' : file.change_type || 'expected'}</span>
+              </li>
+            ))}
+            {(!task?.expected_outcome?.acceptance_points?.length
+              && !task?.expected_outcome?.files?.length) && <li>未配置 acceptance_points 或 files</li>}
+          </ul>
+        </section>
+
+        <section className="panel">
+          <div className="panel-heading">
+            <h2>Hard Evaluation</h2>
+            <span>{task?.hard_evaluation?.enabled ? 'enabled' : 'disabled'}</span>
+          </div>
+          <dl className="compact-list">
+            <div>
+              <dt>require_validation_pass</dt>
+              <dd>{String(Boolean(task?.hard_evaluation?.require_validation_pass))}</dd>
+            </div>
+            <div>
+              <dt>required_paths</dt>
+              <dd>{listText(task?.hard_evaluation?.required_paths)}</dd>
+            </div>
+            <div>
+              <dt>forbidden_paths</dt>
+              <dd>{listText(task?.hard_evaluation?.forbidden_paths)}</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section className="panel">
+          <div className="panel-heading">
+            <h2>Soft Evaluation</h2>
+            <span>{task?.soft_evaluation?.mode || 'not_configured'}</span>
+          </div>
+          <ul className="check-list">
+            {(task?.soft_evaluation?.rubric || []).map((rubric) => (
+              <li key={rubric.name}>
+                <strong>{rubric.name}</strong>
+                <span>{rubric.description}</span>
+                <small>weight={rubric.weight}</small>
+              </li>
+            ))}
+            {!task?.soft_evaluation?.rubric?.length && <li>未配置 rubric</li>}
+          </ul>
         </section>
 
         <section className="panel yaml-panel">
@@ -609,26 +775,7 @@ export function App() {
 
         <section className="panel">
           <div className="panel-heading">
-            <h2>验收命令</h2>
-          </div>
-          <ul className="command-list">
-            {(loaded.editable.evaluation_commands.length > 0
-              ? loaded.editable.evaluation_commands
-              : splitLines(configYaml).filter((line) => line.includes('pytest'))
-            ).map((command) => (
-              <li key={command}>
-                <code>{command}</code>
-              </li>
-            ))}
-            {loaded.editable.evaluation_commands.length === 0
-              && !splitLines(configYaml).some((line) => line.includes('pytest'))
-              && <li>未配置验收命令</li>}
-          </ul>
-        </section>
-
-        <section className="panel">
-          <div className="panel-heading">
-            <h2>预检与运行</h2>
+            <h2>Run Execution</h2>
           </div>
           <label htmlFor="cleanup-policy">
             清理策略
@@ -661,7 +808,7 @@ export function App() {
             {preflightStatus}
           </p>
           <p className="status-line">
-            计划用例：<strong data-testid="planned-case-count">{plan?.case_count ?? 0}</strong>
+            计划用例: <strong data-testid="planned-case-count">{plan?.case_count ?? 0}</strong>
           </p>
           <ul className="check-list">
             {preflightChecks.map((check) => (
@@ -695,37 +842,38 @@ export function App() {
 
         <section className="panel results-panel">
           <div className="panel-heading">
-            <h2>结果与导出</h2>
+            <h2>Results</h2>
             <span>{results?.overview.case_count ?? 0}</span>
           </div>
           {results ? (
             <>
               <dl className="metric-grid">
                 <div>
-                  <dt>失败</dt>
+                  <dt>failed</dt>
                   <dd>{results.overview.failed_count}</dd>
                 </div>
                 <div>
-                  <dt>超时</dt>
+                  <dt>timeouts</dt>
                   <dd>{results.overview.timeout_count}</dd>
                 </div>
                 <div>
-                  <dt>低置信度</dt>
+                  <dt>low confidence</dt>
                   <dd>{results.overview.low_confidence_count}</dd>
                 </div>
                 <div>
-                  <dt>遥测缺口</dt>
+                  <dt>telemetry gaps</dt>
                   <dd>{results.overview.telemetry_gap_count}</dd>
                 </div>
               </dl>
               <table>
                 <thead>
                   <tr>
-                    <th>用例</th>
-                    <th>本地代理</th>
-                    <th>状态</th>
-                    <th>验收</th>
-                    <th>置信度</th>
+                    <th>case</th>
+                    <th>agent</th>
+                    <th>status</th>
+                    <th>validation</th>
+                    <th>hard</th>
+                    <th>soft</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -735,7 +883,13 @@ export function App() {
                       <td>{result.agent_name}</td>
                       <td>{labelFor(resultStatusLabels, result.status)}</td>
                       <td>{labelFor(validationLabels, result.validation_status)}</td>
-                      <td>{labelFor(confidenceLabels, result.confidence)}</td>
+                      <td>
+                        hard {result.hard_evaluation_status || 'not_configured'}{' '}
+                        {result.hard_evaluation_score ?? '-'}
+                        /
+                        {result.hard_evaluation_max_score ?? '-'}
+                      </td>
+                      <td>soft {result.soft_evaluation_status || 'not_configured'}</td>
                     </tr>
                   ))}
                 </tbody>

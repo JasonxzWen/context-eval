@@ -28,6 +28,9 @@ package.
 - The active roadmap now includes an explicit local app mode for visual
   configuration, preflight, run orchestration, and result review. This is a
   local loopback app, not a hosted or multi-user dashboard.
+- The next active capability is `coco-visual-hybrid-evaluation`: a Coco-first
+  local app workflow for authoring tasks, expected outcomes, deterministic hard
+  checks, optional soft evaluation payloads, run execution, and result review.
 - The active roadmap does not include an LLM judge, hosted or multi-user web
   dashboard, issue miner, real network isolation, automatic agent installation,
   provider account management, or automatic commits.
@@ -99,8 +102,8 @@ loss of SDD/TDD discipline.
 7. PR G: Release Candidate Install Smoke And Changelog Finalization, before
    tagging or publishing the first 0.1.0 release candidate.
 8. PR H: Agent Profiles And Noninteractive Agent Matrix, before full Web UI
-   work. This unblocks Codex CLI, Claude Code, traecli, and custom commands
-   such as `coco -p {prompt_file}` as first-class local profiles.
+   work. This unblocks Codex CLI, Claude Code, traecli, Coco, and custom
+   commands as first-class local profiles.
 9. PR I: Frontend Build/Test/Acceptance Foundation, before local app server and
    full Web UI work depend on browser tooling.
 10. PR J: Local App Server And Run Orchestration, after agent profiles are
@@ -112,6 +115,12 @@ loss of SDD/TDD discipline.
     reference.
 12. PR L: No-CLI Launcher And Packaging, after the local app workflow is stable
     and browser-verified.
+
+Current active capability: `coco-visual-hybrid-evaluation`, after the local app
+server and frontend workflow are in place. This adds
+`docs/coco-visual-hybrid-evaluation.md`, `kind: "coco"`, structured task
+authoring, expected outcomes, deterministic hard checks, optional soft
+evaluation payload generation, and local artifact review.
 
 ## Capability Epic A: Config Diagnostics And Strict Validation Hardening
 
@@ -586,8 +595,9 @@ would make it too easy to tag a commit that has only partial release evidence.
 
 ### Goal
 
-Make Codex CLI, Claude Code, traecli, and custom local commands first-class
-noninteractive agent profiles before building the full visual workflow.
+Make Codex CLI, Claude Code, traecli, Coco, and custom local commands
+first-class noninteractive agent profiles before building the full visual
+workflow.
 
 ### Scope
 
@@ -596,7 +606,7 @@ noninteractive agent profiles before building the full visual workflow.
 - Preserve the existing single `agent` config as a backwards-compatible
   implicit profile.
 - Add a new `agents` profile map for `codex-cli`, `claude-code`, `traecli`,
-  and `custom` profile kinds.
+  `coco`, and `custom` profile kinds.
 - Validate command template variables and provide rendered command previews
   before an agent process starts.
 - Add optional side-effect-free executable availability checks for configured
@@ -619,8 +629,9 @@ noninteractive agent profiles before building the full visual workflow.
 - The capability PR includes spec, tests, implementation, docs, verification.
 - Existing single-agent configs continue to work unchanged.
 - Mixed `agent` and `agents` config shapes fail with a clear diagnostic.
-- traecli commands such as `traecli -p "{prompt}"` and custom commands such as
-  `coco -p {prompt_file}` are supported through the command-template adapter.
+- traecli commands such as `traecli -p "{prompt}"`, Coco commands such as
+  `coco -y --query-timeout 10m --bash-tool-timeout 5m -p "{prompt}"`, and custom commands are supported through the
+  command-template adapter.
 - `validate-config --check-agents` catches missing local agent executables
   without running agents, installers, validation commands, or workspaces.
 - Multi-agent runs produce deterministic manifests, result rows, logs, patches,
@@ -647,7 +658,7 @@ noninteractive agent profiles before building the full visual workflow.
 - Adapter tests for supported and unknown command template variables.
 - Runner integration tests with fake local agents for multi-profile matrices.
 - CLI tests for optional agent executable checks.
-- Local-e2e smoke for `init --agent-profiles` plus a selected fake custom
+- Local-e2e smoke for `init --agent-profiles` plus a selected fake Coco
   profile.
 - Report/export/static UI tests proving agent summaries appear only when more
   than one `agent_name` exists.

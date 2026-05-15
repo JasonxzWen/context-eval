@@ -53,6 +53,12 @@ def run_matrix_overview(results: list[CaseResult]) -> dict[str, int]:
         "timeout_count": sum(1 for result in results if is_timeout_result(result)),
         "low_confidence_count": sum(1 for result in results if result.confidence == "low"),
         "telemetry_gap_count": sum(1 for result in results if has_telemetry_gap(result)),
+        "hard_evaluation_failed_count": sum(
+            1 for result in results if result.hard_evaluation_status == "failed"
+        ),
+        "soft_evaluation_payload_count": sum(
+            1 for result in results if result.soft_evaluation_status == "payload_generated"
+        ),
     }
 
 
@@ -66,7 +72,9 @@ def format_matrix_overview_inline(overview: dict[str, int]) -> str:
         f"failed={overview['failed_count']} "
         f"timeouts={overview['timeout_count']} "
         f"low_confidence={overview['low_confidence_count']} "
-        f"telemetry_gaps={overview['telemetry_gap_count']}"
+        f"telemetry_gaps={overview['telemetry_gap_count']} "
+        f"hard_failed={overview.get('hard_evaluation_failed_count', 0)} "
+        f"soft_payloads={overview.get('soft_evaluation_payload_count', 0)}"
     )
 
 

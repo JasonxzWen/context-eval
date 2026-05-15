@@ -326,7 +326,7 @@ def _config_section(
         "Agent kind",
         editor.agent.kind,
         "agent.kind",
-        ["custom", "codex-cli", "claude-code", "traecli"],
+        ["coco", "custom", "codex-cli", "claude-code", "traecli"],
     )}
     {_input("Agent command", editor.agent.command, "agent.command")}
     {_input(
@@ -1011,10 +1011,10 @@ def _editor_script(editor: EditableConfigModel | None) -> str:
     requireText(editableModel.agent.name, "agent.name");
     requireText(editableModel.agent.command, "agent.command");
     if (
-      !["custom", "codex-cli", "claude-code", "traecli"]
+      !["custom", "codex-cli", "claude-code", "traecli", "coco"]
         .includes(String(editableModel.agent.kind))
     ) {{
-      issues.push("agent.kind must be custom, codex-cli, claude-code, or traecli");
+      issues.push("agent.kind must be custom, codex-cli, claude-code, traecli, or coco");
     }}
     requireText(editableModel.tasks_path, "tasks path");
 
@@ -1042,12 +1042,12 @@ def _editor_script(editor: EditableConfigModel | None) -> str:
         }}
         requireText(profile.command, "agent profile " + String(index + 1) + " command");
         if (
-          !["custom", "codex-cli", "claude-code", "traecli"]
+          !["custom", "codex-cli", "claude-code", "traecli", "coco"]
             .includes(String(profile.kind))
         ) {{
           issues.push(
             "agent profile " + String(index + 1) +
-              " kind must be custom, codex-cli, claude-code, or traecli"
+              " kind must be custom, codex-cli, claude-code, traecli, or coco"
           );
         }}
       }});

@@ -354,3 +354,157 @@ def test_local_app_plans_runs_and_executes_fixture_workflow(tmp_path: Path) -> N
     export = service.export(run_dir=status["run_dir"], export_format="json")
     payload = json.loads(export["content"])
     assert payload["case_count"] == 1
+
+
+def test_local_app_plan_and_results_include_hybrid_evaluation(tmp_path: Path) -> None:
+    repo = _create_git_repo(tmp_path / "repo")
+    agent_script = tmp_path / "agent.py"
+    agent_script.write_text(
+        "from pathlib import Path\n"
+        "p = Path('README.md')\n"
+        "p.write_text(p.read_text(encoding='utf-8') + 'fixed marker\\n', encoding='utf-8')\n",
+        encoding="utf-8",
+    )
+    context_dir = tmp_path / "contexts" / "baseline"
+    context_dir.mkdir(parents=True)
+    (context_dir / "AGENTS.md").write_text("# Hybrid instructions\n", encoding="utf-8")
+    (tmp_path / "tasks.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "tasks": [
+                    {
+                        "id": "hybrid-task",
+                        "prompt": "Add the fixed marker.",
+                        "expected_outcome": {
+                            "summary": "README contains fixed marker.",
+                            "acceptance_points": ["The fixed marker is present."],
+                        },
+                        "hard_evaluation": {
+                            "enabled": True,
+                            "require_validation_pass": False,
+                            "required_paths": ["README.md"],
+                            "expected_snippets": [
+                                {"path": "README.md", "snippets": ["fixed marker"]}
+                            ],
+                        },
+                        "soft_evaluation": {
+                            "enabled": True,
+                            "mode": "payload-only",
+                            "rubric": [
+                                {
+                                    "name": "quality",
+                                    "weight": 1,
+                                    "description": "Patch is clear.",
+                                }
+                            ],
+                        },
+                        "x_unknown_task_field": "keep-me",
+                    }
+                ]
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+    config_path = tmp_path / "context-eval.yaml"
+    config_path.write_text(
+        yaml.safe_dump(
+            {
+                "repo": {"path": repo.as_posix(), "base_ref": "main"},
+                "agents": {
+                    "coco": {
+                        "kind": "coco",
+                        "command": (
+                            f'"{Path(sys.executable).as_posix()}" '
+                            f'"{agent_script.as_posix()}"'
+                        ),
+                        "timeout_minutes": 1,
+                        "network": "disabled",
+                    }
+                },
+                "tasks": "./tasks.yaml",
+                "output_dir": "./runs",
+                "variants": {
+                    "baseline": {
+                        "description": "Hybrid baseline",
+                        "overlays": [
+                            {
+                                "source": "./contexts/baseline/AGENTS.md",
+                                "target": "AGENTS.md",
+                            }
+                        ],
+                    }
+                },
+                "evaluation": {"commands": []},
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+    service = LocalAppService(workspace_root=tmp_path)
+
+    loaded = service.load_config(config_path="context-eval.yaml")
+    assert "x_unknown_task_field" in loaded["tasks_yaml"]
+    plan = service.plan_run(config_path="context-eval.yaml", cleanup_policy="never")
+    case = plan["cases"][0]
+    assert case["agent_name"] == "coco"
+    assert case["agent_kind"] == "coco"
+    assert case["expected_outcome_summary"] == "README contains fixed marker."
+    assert case["hard_evaluation_enabled"] is True
+    assert case["soft_evaluation_enabled"] is True
+
+    started = service.start_run(
+        config_path="context-eval.yaml",
+        confirm=True,
+        cleanup_policy="never",
+    )
+    app_run_id = started["app_run_id"]
+    deadline = time.time() + 60
+    status = service.get_run(app_run_id)
+    while status["status"] in {"queued", "running"} and time.time() < deadline:
+        time.sleep(0.1)
+        status = service.get_run(app_run_id)
+
+    results = service.results(run_dir=status["run_dir"])
+    result_case = results["cases"][0]
+    assert result_case["hard_evaluation_status"] == "passed"
+    assert result_case["hard_evaluation_score"] == result_case["hard_evaluation_max_score"]
+    assert result_case["soft_evaluation_status"] == "payload_generated"
+    assert result_case["hard_evaluation"]["passed"] is True
+    assert result_case["soft_evaluation"]["payload_path"].endswith(
+        "soft_evaluation_payload.json"
+    )
+
+    hard_artifact = service.read_artifact(
+        run_dir=status["run_dir"],
+        artifact_path=result_case["hard_evaluation_path"],
+    )
+    assert '"passed": true' in hard_artifact["content"]
+
+
+def test_local_app_results_rejects_unsafe_hard_evaluation_path(tmp_path: Path) -> None:
+    service = LocalAppService(workspace_root=tmp_path)
+    run_dir = tmp_path / "runs" / "run-1"
+    run_dir.mkdir(parents=True)
+    secret = tmp_path / "secret-hard-evaluation.json"
+    secret.write_text('{"leaked": true}\n', encoding="utf-8")
+    result = {
+        "run_id": "run-1",
+        "case_id": "task-a__baseline",
+        "task_id": "task-a",
+        "variant": "baseline",
+        "repo_ref": "main",
+        "agent_name": "coco",
+        "network": "disabled",
+        "status": "completed",
+        "hard_evaluation_status": "passed",
+        "hard_evaluation_path": "../../secret-hard-evaluation.json",
+    }
+    (run_dir / "results.jsonl").write_text(json.dumps(result) + "\n", encoding="utf-8")
+
+    payload = service.results(run_dir="runs/run-1")
+    hard_evaluation = payload["cases"][0]["hard_evaluation"]
+
+    assert hard_evaluation["path"] == "../../secret-hard-evaluation.json"
+    assert "path traversal" in hard_evaluation["error"]
+    assert "leaked" not in hard_evaluation

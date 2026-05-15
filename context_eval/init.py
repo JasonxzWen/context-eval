@@ -7,6 +7,11 @@ import yaml
 
 from context_eval.config import ConfigError
 
+GENERIC_AGENT_COMMAND = "agent -p {prompt_file}"
+COCO_UNATTENDED_COMMAND = (
+    'coco -y --query-timeout 10m --bash-tool-timeout 5m -p "{prompt}"'
+)
+
 
 def create_starter_files(
     *,
@@ -51,6 +56,11 @@ def _agent_profile(kind: str, command: str) -> dict[str, object]:
 def _config_yaml(repo_path: str, agent_command: str, *, agent_profiles: bool) -> str:
     agent_section: dict[str, object]
     if agent_profiles:
+        coco_command = (
+            COCO_UNATTENDED_COMMAND
+            if agent_command == GENERIC_AGENT_COMMAND
+            else agent_command
+        )
         agent_section = {
             "agents": {
                 "codex": _agent_profile(
@@ -59,7 +69,7 @@ def _config_yaml(repo_path: str, agent_command: str, *, agent_profiles: bool) ->
                 ),
                 "claude": _agent_profile("claude-code", "claude -p {prompt_file}"),
                 "trae": _agent_profile("traecli", 'traecli -p "{prompt}"'),
-                "custom": _agent_profile("custom", agent_command),
+                "coco": _agent_profile("coco", coco_command),
             }
         }
     else:

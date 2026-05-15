@@ -4,7 +4,7 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 from string import Formatter
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from context_eval import __version__
 
@@ -24,7 +24,15 @@ CleanupStatus = Literal["skipped", "succeeded", "failed"]
 CleanupPolicy = Literal["never", "always", "successful", "failed"]
 TelemetryStatus = Literal["unavailable", "collected", "partial", "error"]
 TelemetryCollectorKind = Literal["none", "json-file"]
-AgentProfileKind = Literal["codex-cli", "claude-code", "traecli", "custom"]
+AgentProfileKind = Literal["codex-cli", "claude-code", "traecli", "coco", "custom"]
+HardEvaluationStatus = Literal["not_configured", "passed", "failed", "skipped"]
+SoftEvaluationStatus = Literal[
+    "not_configured",
+    "payload_generated",
+    "result_available",
+    "skipped",
+    "error",
+]
 
 SUPPORTED_AGENT_COMMAND_VARIABLES = frozenset(
     {
@@ -96,6 +104,24 @@ def render_agent_command_preview(
         variables.update(extra_variables)
     validate_agent_command_template(template, allowed_variables=set(variables))
     return template.format(**variables)
+
+
+def validate_repo_relative_path(value: str) -> str:
+    normalized = value.replace("\\", "/").strip()
+    if not normalized:
+        raise ValueError("path must not be empty")
+    path = PurePosixPath(normalized)
+    if (
+        path.is_absolute()
+        or PureWindowsPath(normalized).is_absolute()
+        or ".." in path.parts
+    ):
+        raise ValueError("path must be a safe repository-relative path")
+    return path.as_posix()
+
+
+def _validate_repo_relative_paths(values: list[str]) -> list[str]:
+    return [validate_repo_relative_path(value) for value in values]
 
 
 class RepoConfig(BaseModel):
@@ -266,7 +292,92 @@ class ValidationConfig(BaseModel):
     timeout_seconds: int | None = Field(default=None, ge=1)
 
 
+class ExpectedOutcomeFile(BaseModel):
+    path: str
+    change_type: str = "modified"
+    must_change: bool = False
+    expected_snippets: list[str] = Field(default_factory=list)
+    forbidden_snippets: list[str] = Field(default_factory=list)
+
+    @field_validator("path")
+    @classmethod
+    def validate_path(cls, value: str) -> str:
+        return validate_repo_relative_path(value)
+
+
+class ExpectedOutcomeConfig(BaseModel):
+    summary: str | None = None
+    files: list[ExpectedOutcomeFile] = Field(default_factory=list)
+    forbidden_paths: list[str] = Field(default_factory=list)
+    acceptance_points: list[str] = Field(default_factory=list)
+
+    @field_validator("forbidden_paths")
+    @classmethod
+    def validate_forbidden_paths(cls, value: list[str]) -> list[str]:
+        return _validate_repo_relative_paths(value)
+
+
+class SnippetCheckConfig(BaseModel):
+    path: str
+    snippets: list[str] = Field(default_factory=list)
+
+    @field_validator("path")
+    @classmethod
+    def validate_path(cls, value: str) -> str:
+        return validate_repo_relative_path(value)
+
+    @field_validator("snippets")
+    @classmethod
+    def validate_snippets(cls, value: list[str]) -> list[str]:
+        for snippet in value:
+            if not snippet:
+                raise ValueError("snippet must not be empty")
+        return value
+
+
+class HardEvaluationConfig(BaseModel):
+    enabled: bool = True
+    require_validation_pass: bool = False
+    max_changed_files: int | None = Field(default=None, ge=0)
+    required_paths: list[str] = Field(default_factory=list)
+    forbidden_paths: list[str] = Field(default_factory=list)
+    expected_snippets: list[SnippetCheckConfig] = Field(default_factory=list)
+    forbidden_snippets: list[SnippetCheckConfig] = Field(default_factory=list)
+    min_insertions: int | None = Field(default=None, ge=0)
+    max_insertions: int | None = Field(default=None, ge=0)
+    min_deletions: int | None = Field(default=None, ge=0)
+    max_deletions: int | None = Field(default=None, ge=0)
+
+    @field_validator("required_paths", "forbidden_paths")
+    @classmethod
+    def validate_paths(cls, value: list[str]) -> list[str]:
+        return _validate_repo_relative_paths(value)
+
+
+class SoftRubricItem(BaseModel):
+    name: str
+    weight: float = Field(default=1, gt=0)
+    description: str = ""
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("rubric name must not be empty")
+        return stripped
+
+
+class SoftEvaluationConfig(BaseModel):
+    enabled: bool = True
+    mode: Literal["payload-only"] = "payload-only"
+    max_score: float = Field(default=10, gt=0)
+    rubric: list[SoftRubricItem] = Field(default_factory=list)
+
+
 class TaskConfig(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     id: str
     prompt: str
     repo_ref: str | None = None
@@ -274,6 +385,9 @@ class TaskConfig(BaseModel):
     category: str | None = None
     difficulty: str | None = None
     validation: ValidationConfig = Field(default_factory=ValidationConfig)
+    expected_outcome: ExpectedOutcomeConfig | None = None
+    hard_evaluation: HardEvaluationConfig | None = None
+    soft_evaluation: SoftEvaluationConfig | None = None
 
     @field_validator("id")
     @classmethod
@@ -347,6 +461,7 @@ class CaseResult(BaseModel):
     completion_tokens: int | None = Field(default=None, ge=0)
     total_tokens: int | None = Field(default=None, ge=0)
     reasoning_tokens: int | None = Field(default=None, ge=0)
+    reasoning_step_count: int | None = Field(default=None, ge=0)
     tool_call_count: int | None = Field(default=None, ge=0)
     tool_calls_by_name: dict[str, int] = Field(default_factory=dict)
     workspace_path: str | None = None
@@ -363,6 +478,15 @@ class CaseResult(BaseModel):
     validation_status: ValidationStatus = "skipped"
     confidence: Confidence = "low"
     validation_results: list[CommandResult] = Field(default_factory=list)
+    hard_evaluation_status: HardEvaluationStatus = "not_configured"
+    hard_evaluation_score: int | None = Field(default=None, ge=0)
+    hard_evaluation_max_score: int | None = Field(default=None, ge=0)
+    hard_evaluation_passed_checks: int | None = Field(default=None, ge=0)
+    hard_evaluation_failed_checks: int | None = Field(default=None, ge=0)
+    hard_evaluation_path: str | None = None
+    soft_evaluation_status: SoftEvaluationStatus = "not_configured"
+    soft_evaluation_payload_path: str | None = None
+    soft_evaluation_result_path: str | None = None
     errors: list[str] = Field(default_factory=list)
 
     @field_validator("tool_calls_by_name")

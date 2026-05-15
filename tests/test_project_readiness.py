@@ -122,9 +122,9 @@ def test_release_version_metadata_matches_changelog() -> None:
     init_text = Path("context_eval/__init__.py").read_text(encoding="utf-8")
     changelog_text = Path("CHANGELOG.md").read_text(encoding="utf-8")
 
-    assert pyproject["project"]["version"] == "0.1.2"
-    assert '__version__ = "0.1.2"' in init_text
-    assert "## v0.1.2 - 2026-05-14" in changelog_text
+    assert pyproject["project"]["version"] == "0.1.3"
+    assert '__version__ = "0.1.3"' in init_text
+    assert "## v0.1.3 - 2026-05-15" in changelog_text
 
 
 def test_release_checklist_documents_package_build_scope() -> None:
@@ -471,7 +471,9 @@ def test_readme_documents_agent_profile_matrix_example() -> None:
         "codex-cli",
         "claude-code",
         "traecli",
-        "coco -p {prompt_file}",
+        'coco -y --query-timeout 10m --bash-tool-timeout 5m -p "{prompt}"',
+        "not a permission grant from context-eval",
+        "--allowed-tool",
         "context-eval run --config examples/agent-matrix/context-eval.yaml --dry-run --agent trae",
         "local observations",
         "not an absolute agent leaderboard",

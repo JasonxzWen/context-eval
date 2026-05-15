@@ -9,7 +9,11 @@ from context_eval.models import (
     AgentProfileConfig,
     CaseResult,
     ContextEvalConfig,
+    HardEvaluationConfig,
     RepoConfig,
+    SoftEvaluationConfig,
+    TaskConfig,
+    TaskFile,
     VariantConfig,
     render_agent_command_preview,
     validate_agent_command_template,
@@ -148,7 +152,7 @@ def test_context_config_exposes_named_profiles_from_agents_map() -> None:
                 command="codex exec -C {workspace} - < {prompt_file}",
             ),
             "coco": AgentProfileConfig(
-                kind="custom",
+                kind="coco",
                 command="coco -p {prompt_file}",
                 timeout_minutes=15,
             ),
@@ -167,6 +171,7 @@ def test_context_config_exposes_named_profiles_from_agents_map() -> None:
     assert profiles["codex"].name == "codex"
     assert profiles["codex"].kind == "codex-cli"
     assert profiles["coco"].name == "coco"
+    assert profiles["coco"].kind == "coco"
     assert profiles["coco"].timeout_minutes == 15
     assert profiles["trae"].kind == "traecli"
     assert profiles["trae"].command == 'traecli -p "{prompt}"'
@@ -178,6 +183,100 @@ def test_context_config_exposes_named_profiles_from_agents_map() -> None:
 def test_agent_profile_rejects_unsupported_kind() -> None:
     with pytest.raises(ValidationError):
         AgentProfileConfig(kind="hosted-agent", command="agent -p {prompt_file}")
+
+
+def test_old_task_model_remains_valid_without_hybrid_evaluation() -> None:
+    task_file = TaskFile.model_validate(
+        {"tasks": [{"id": "task-1", "prompt": "Fix the bug.", "x_keep": "value"}]}
+    )
+
+    task = task_file.tasks[0]
+
+    assert task.expected_outcome is None
+    assert task.hard_evaluation is None
+    assert task.soft_evaluation is None
+    assert task.model_extra == {"x_keep": "value"}
+
+
+def test_task_model_accepts_expected_outcome_hard_and_soft_evaluation() -> None:
+    task = TaskConfig.model_validate(
+        {
+            "id": "mail-expire-attachment",
+            "prompt": "Fix expired attachment claims.",
+            "expected_outcome": {
+                "summary": "Expired attachments cannot be claimed.",
+                "files": [
+                    {
+                        "path": "src/mail/attachment.py",
+                        "change_type": "modified",
+                        "must_change": True,
+                        "expected_snippets": ["expires_at"],
+                        "forbidden_snippets": ["TODO"],
+                    }
+                ],
+                "forbidden_paths": ["README.md"],
+                "acceptance_points": ["Expired attachments fail."],
+            },
+            "hard_evaluation": {
+                "enabled": True,
+                "require_validation_pass": True,
+                "max_changed_files": 5,
+                "required_paths": ["src/mail/attachment.py"],
+                "forbidden_paths": ["README.md"],
+                "expected_snippets": [
+                    {"path": "src/mail/attachment.py", "snippets": ["expires_at"]}
+                ],
+                "forbidden_snippets": [
+                    {"path": "src/mail/attachment.py", "snippets": ["TODO"]}
+                ],
+            },
+            "soft_evaluation": {
+                "enabled": True,
+                "mode": "payload-only",
+                "max_score": 10,
+                "rubric": [
+                    {
+                        "name": "requirement_match",
+                        "weight": 4,
+                        "description": "Patch satisfies the requested behavior.",
+                    }
+                ],
+            },
+        }
+    )
+
+    assert task.expected_outcome is not None
+    assert task.expected_outcome.files[0].path == "src/mail/attachment.py"
+    assert task.hard_evaluation is not None
+    assert isinstance(task.hard_evaluation, HardEvaluationConfig)
+    assert task.hard_evaluation.require_validation_pass is True
+    assert task.hard_evaluation.required_paths == ["src/mail/attachment.py"]
+    assert task.hard_evaluation.expected_snippets[0].snippets == ["expires_at"]
+    assert task.soft_evaluation is not None
+    assert isinstance(task.soft_evaluation, SoftEvaluationConfig)
+    assert task.soft_evaluation.mode == "payload-only"
+    assert task.soft_evaluation.max_score == 10
+    assert task.soft_evaluation.rubric[0].name == "requirement_match"
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"expected_outcome": {"files": [{"path": "../escape.py"}]}},
+        {"expected_outcome": {"forbidden_paths": ["C:/repo/README.md"]}},
+        {"hard_evaluation": {"required_paths": ["/abs/path.py"]}},
+        {"hard_evaluation": {"expected_snippets": [{"path": "../x.py", "snippets": ["x"]}]}},
+    ],
+)
+def test_task_model_rejects_unsafe_expected_paths(payload: dict[str, object]) -> None:
+    with pytest.raises(ValidationError, match="safe repository-relative path"):
+        TaskConfig.model_validate(
+            {
+                "id": "task-1",
+                "prompt": "Fix the bug.",
+                **payload,
+            }
+        )
 
 
 def test_agent_command_template_validator_rejects_unknown_variables() -> None:

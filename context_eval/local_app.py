@@ -340,6 +340,17 @@ class LocalAppService:
                                     variant=variant_name,
                                     case_id=case_id,
                                 ),
+                                "expected_outcome_summary": (
+                                    task.expected_outcome.summary
+                                    if task.expected_outcome is not None
+                                    else None
+                                ),
+                                "hard_evaluation_enabled": bool(
+                                    task.hard_evaluation and task.hard_evaluation.enabled
+                                ),
+                                "soft_evaluation_enabled": bool(
+                                    task.soft_evaluation and task.soft_evaluation.enabled
+                                ),
                             }
                         )
         return {
@@ -475,16 +486,24 @@ class LocalAppService:
         metadata = _load_metadata(path)
         risks = {
             "failed": [
-                self._case_payload(result) for result in results if is_failed_result(result)
+                self._case_payload(result, run_dir=path)
+                for result in results
+                if is_failed_result(result)
             ],
             "timeouts": [
-                self._case_payload(result) for result in results if is_timeout_result(result)
+                self._case_payload(result, run_dir=path)
+                for result in results
+                if is_timeout_result(result)
             ],
             "low_confidence": [
-                self._case_payload(result) for result in results if result.confidence == "low"
+                self._case_payload(result, run_dir=path)
+                for result in results
+                if result.confidence == "low"
             ],
             "telemetry_gaps": [
-                self._case_payload(result) for result in results if has_telemetry_gap(result)
+                self._case_payload(result, run_dir=path)
+                for result in results
+                if has_telemetry_gap(result)
             ],
         }
         return {
@@ -492,7 +511,7 @@ class LocalAppService:
             "run_dir": str(path),
             "metadata": metadata,
             "overview": run_matrix_overview(results),
-            "cases": [self._case_payload(result) for result in results],
+            "cases": [self._case_payload(result, run_dir=path) for result in results],
             "risks": risks,
             "agent_summaries": agent_summary_rows(results),
         }
@@ -762,8 +781,63 @@ class LocalAppService:
         lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
         return "\n".join(lines[-line_count:])
 
-    def _case_payload(self, result: CaseResult) -> dict[str, Any]:
-        return result.model_dump(mode="json")
+    def _case_payload(self, result: CaseResult, *, run_dir: Path | None = None) -> dict[str, Any]:
+        payload = result.model_dump(mode="json")
+        if run_dir is None:
+            return payload
+        payload["hard_evaluation"] = self._hard_evaluation_payload(run_dir, result)
+        payload["soft_evaluation"] = self._soft_evaluation_payload(result)
+        return payload
+
+    def _hard_evaluation_payload(
+        self,
+        run_dir: Path,
+        result: CaseResult,
+    ) -> dict[str, Any] | None:
+        if result.hard_evaluation_path is None:
+            return None
+        try:
+            relative = self.guard.require_safe_artifact_path(
+                result.hard_evaluation_path,
+                field="hard_evaluation_path",
+            )
+        except LocalAppError as exc:
+            return {
+                "status": result.hard_evaluation_status,
+                "path": result.hard_evaluation_path,
+                "error": str(exc),
+            }
+        path = (run_dir / relative).resolve()
+        if not _is_relative_to(path, run_dir):
+            return {
+                "status": result.hard_evaluation_status,
+                "path": result.hard_evaluation_path,
+                "error": "hard_evaluation_path must stay inside run_dir",
+            }
+        if not path.exists() or not path.is_file():
+            return {
+                "status": result.hard_evaluation_status,
+                "path": result.hard_evaluation_path,
+                "error": "hard evaluation artifact not found",
+            }
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            return {
+                "status": result.hard_evaluation_status,
+                "path": result.hard_evaluation_path,
+                "error": str(exc),
+            }
+        return data if isinstance(data, dict) else None
+
+    def _soft_evaluation_payload(self, result: CaseResult) -> dict[str, Any] | None:
+        if result.soft_evaluation_status == "not_configured":
+            return None
+        return {
+            "status": result.soft_evaluation_status,
+            "payload_path": result.soft_evaluation_payload_path,
+            "result_path": result.soft_evaluation_result_path,
+        }
 
 
 def create_local_app_server(

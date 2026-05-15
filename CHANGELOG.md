@@ -5,6 +5,15 @@
 - Add a project documentation site entry, demo workflow, architecture overview,
   evaluation methodology, artifact model, FAQ, and GitHub Pages setup notes.
 
+## v0.1.3 - 2026-05-15
+
+- Add the Coco-first visual hybrid evaluation spec for local app authoring,
+  expected outcomes, deterministic hard checks, optional soft evaluation
+  payloads, and local result review.
+- Fix duplicate hard evaluation snippet scoring when the same expected or
+  forbidden snippet is configured through both `expected_outcome.files` and
+  `hard_evaluation`.
+
 ## v0.1.2 - 2026-05-14
 
 - Add a Windows portable local app package builder that bundles the release

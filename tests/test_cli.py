@@ -4,6 +4,7 @@ from typer.testing import CliRunner
 
 from context_eval.cli import app
 from context_eval.config import validate_config_files
+from context_eval.init import COCO_UNATTENDED_COMMAND
 from context_eval.models import CaseResult
 
 
@@ -452,7 +453,7 @@ agents:
     kind: "codex-cli"
     command: "codex exec - < {{prompt_file}}"
   coco:
-    kind: "custom"
+    kind: "coco"
     command: "coco -p {{prompt_file}}"
   trae:
     kind: "traecli"
@@ -529,8 +530,6 @@ def test_init_can_generate_named_agent_profiles(tmp_path: Path) -> None:
             str(tmp_path),
             "--repo-path",
             ".",
-            "--agent-command",
-            "coco -p {prompt_file}",
             "--agent-profiles",
         ],
     )
@@ -542,11 +541,12 @@ def test_init_can_generate_named_agent_profiles(tmp_path: Path) -> None:
 
     config, task_file = validate_config_files(tmp_path / "context-eval.yaml")
     assert config.agent is None
-    assert list(config.agents) == ["codex", "claude", "trae", "custom"]
+    assert list(config.agents) == ["codex", "claude", "trae", "coco"]
     assert config.agents["codex"].kind == "codex-cli"
     assert config.agents["claude"].kind == "claude-code"
     assert config.agents["trae"].command == 'traecli -p "{prompt}"'
-    assert config.agents["custom"].command == "coco -p {prompt_file}"
+    assert config.agents["coco"].kind == "coco"
+    assert config.agents["coco"].command == COCO_UNATTENDED_COMMAND
     assert task_file.tasks[0].id == "sample-task"
 
 
@@ -1327,7 +1327,7 @@ evaluation:
     assert " is required" in html
     assert '" prompt"' in html
     assert "agent.network must be disabled or enabled" in html
-    assert "agent.kind must be custom, codex-cli, claude-code, or traecli" in html
+    assert "agent.kind must be custom, codex-cli, claude-code, traecli, or coco" in html
     assert "target must be a safe relative path" in html
     assert "function renderMatrix" in html
     assert "function validateEditedConfiguration" in html
@@ -1378,7 +1378,7 @@ agents:
     kind: "codex-cli"
     command: "codex exec - < {prompt_file}"
   coco:
-    kind: "custom"
+    kind: "coco"
     command: "coco -p {prompt_file}"
   trae:
     kind: "traecli"
@@ -1408,6 +1408,7 @@ variants:
     assert "task-1__baseline__trae" in html
     assert '"agent_shape": "agents"' in html
     assert '"kind": "codex-cli"' in html
+    assert '"kind": "coco"' in html
     assert '"kind": "traecli"' in html
     assert 'editableModel.agent_shape === "agents" ? "agents:" : "agent:"' in html
 

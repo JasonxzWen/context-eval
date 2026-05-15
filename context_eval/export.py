@@ -35,6 +35,17 @@ CASE_COLUMNS = [
     "reasoning_tokens",
     "tool_call_count",
     "tool_calls_by_name",
+    "reasoning_step_count",
+    "hard_evaluation_status",
+    "hard_evaluation_score",
+    "hard_evaluation_max_score",
+    "hard_evaluation_passed_checks",
+    "hard_evaluation_failed_checks",
+    "soft_evaluation_status",
+    "changed_files",
+    "insertions",
+    "deletions",
+    "touched_paths",
 ]
 
 
@@ -177,6 +188,20 @@ def _case_csv_row(result: CaseResult) -> dict[str, str | int]:
         "status": result.status,
         "validation_status": result.validation_status,
         "confidence": result.confidence,
+        "hard_evaluation_status": result.hard_evaluation_status,
+        "hard_evaluation_score": _format_optional_int(result.hard_evaluation_score),
+        "hard_evaluation_max_score": _format_optional_int(result.hard_evaluation_max_score),
+        "hard_evaluation_passed_checks": _format_optional_int(
+            result.hard_evaluation_passed_checks
+        ),
+        "hard_evaluation_failed_checks": _format_optional_int(
+            result.hard_evaluation_failed_checks
+        ),
+        "soft_evaluation_status": result.soft_evaluation_status,
+        "changed_files": result.changed_files,
+        "insertions": result.insertions,
+        "deletions": result.deletions,
+        "touched_paths": _format_list_csv(result.touched_paths),
         "telemetry_status": result.telemetry_status,
         "telemetry_source": result.telemetry_source,
         "telemetry_error": result.telemetry_error or "",
@@ -186,6 +211,7 @@ def _case_csv_row(result: CaseResult) -> dict[str, str | int]:
         "completion_tokens": _format_optional_int(result.completion_tokens),
         "total_tokens": _format_optional_int(result.total_tokens),
         "reasoning_tokens": _format_optional_int(result.reasoning_tokens),
+        "reasoning_step_count": _format_optional_int(result.reasoning_step_count),
         "tool_call_count": _format_optional_int(result.tool_call_count),
         "tool_calls_by_name": _format_tool_calls_csv(result.tool_calls_by_name),
     }
@@ -202,6 +228,19 @@ def _case_json_row(result: CaseResult) -> dict[str, Any]:
         "status": result.status,
         "validation_status": result.validation_status,
         "confidence": result.confidence,
+        "hard_evaluation_status": result.hard_evaluation_status,
+        "hard_evaluation_score": result.hard_evaluation_score,
+        "hard_evaluation_max_score": result.hard_evaluation_max_score,
+        "hard_evaluation_passed_checks": result.hard_evaluation_passed_checks,
+        "hard_evaluation_failed_checks": result.hard_evaluation_failed_checks,
+        "hard_evaluation_path": result.hard_evaluation_path,
+        "soft_evaluation_status": result.soft_evaluation_status,
+        "soft_evaluation_payload_path": result.soft_evaluation_payload_path,
+        "soft_evaluation_result_path": result.soft_evaluation_result_path,
+        "changed_files": result.changed_files,
+        "insertions": result.insertions,
+        "deletions": result.deletions,
+        "touched_paths": list(result.touched_paths),
         "telemetry_status": result.telemetry_status,
         "telemetry_source": result.telemetry_source,
         "telemetry_error": result.telemetry_error,
@@ -211,6 +250,7 @@ def _case_json_row(result: CaseResult) -> dict[str, Any]:
         "completion_tokens": result.completion_tokens,
         "total_tokens": result.total_tokens,
         "reasoning_tokens": result.reasoning_tokens,
+        "reasoning_step_count": result.reasoning_step_count,
         "tool_call_count": result.tool_call_count,
         "tool_calls_by_name": dict(sorted(result.tool_calls_by_name.items())),
     }
@@ -243,6 +283,12 @@ def _format_optional_int(value: int | None) -> str:
 
 
 def _format_tool_calls_csv(value: dict[str, int]) -> str:
+    if not value:
+        return ""
+    return json.dumps(value, ensure_ascii=True, separators=(",", ":"), sort_keys=True)
+
+
+def _format_list_csv(value: list[str]) -> str:
     if not value:
         return ""
     return json.dumps(value, ensure_ascii=True, separators=(",", ":"), sort_keys=True)

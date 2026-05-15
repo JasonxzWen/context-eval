@@ -56,6 +56,22 @@ def test_agent_matrix_example_validates_profiles_and_cli_filter() -> None:
     assert "agent=codex" not in result.stdout
 
 
+def test_coco_visual_example_validates_hybrid_task_shape() -> None:
+    config, task_file = validate_config_files(Path("examples/coco-visual/context-eval.yaml"))
+
+    assert list(config.agents) == ["coco"]
+    assert config.agents["coco"].kind == "coco"
+    assert (
+        config.agents["coco"].command
+        == 'coco -y --query-timeout 10m --bash-tool-timeout 5m -p "{prompt}"'
+    )
+    task = task_file.tasks[0]
+    assert task.expected_outcome.summary
+    assert task.hard_evaluation.enabled is True
+    assert task.soft_evaluation.mode == "payload-only"
+    assert task.hard_evaluation.required_paths == ["fixture_app/greetings.py"]
+
+
 def test_fixture_repo_setup_initializes_local_git_history(tmp_path: Path) -> None:
     source = Path("examples/fixture-repo")
     fixture = tmp_path / "fixture-repo"

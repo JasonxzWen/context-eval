@@ -60,7 +60,7 @@ template that is validated before agent execution.
 #### Scenario: Custom agent command is supported
 
 - **WHEN** a user configures a custom profile command such as
-  `coco -p {prompt_file}`
+  `my-agent --prompt {prompt_file}`
 - **THEN** the runner executes it from the prepared workspace for selected cases
 
 #### Scenario: traecli command is supported

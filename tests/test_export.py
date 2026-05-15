@@ -80,17 +80,20 @@ def test_export_run_csv_is_deterministic_and_preserves_missing_telemetry(
         "validation_status,confidence,telemetry_status,telemetry_source,telemetry_error,"
         "duration_seconds,agent_duration_seconds,"
         "prompt_tokens,completion_tokens,total_tokens,reasoning_tokens,"
-        "tool_call_count,tool_calls_by_name"
+        "tool_call_count,tool_calls_by_name,reasoning_step_count,"
+        "hard_evaluation_status,hard_evaluation_score,hard_evaluation_max_score,"
+        "hard_evaluation_passed_checks,hard_evaluation_failed_checks,"
+        "soft_evaluation_status,changed_files,insertions,deletions,touched_paths"
     )
     assert lines[1] == (
         'run-1,task-a__baseline__trial-1,agent-a,task-a,baseline,1,completed,'
         'passed,high,collected,json-file,,3.00,2.50,10,20,30,4,2,'
-        '"{""read"":1,""write"":1}"'
+        '"{""read"":1,""write"":1}",,not_configured,,,,,not_configured,0,0,0,'
     )
     assert lines[2] == (
         'run-1,task-b__experiment__trial-2,agent-b,task-b,experiment,2,timeout,'
         'failed,medium,unavailable,none,telemetry file not found: artifacts/telemetry.json,'
-        "5.00,,,,,,,"
+        "5.00,,,,,,,,,not_configured,,,,,not_configured,0,0,0,"
     )
 
 
@@ -177,6 +180,8 @@ def test_export_run_json_contains_sorted_cases_and_agent_summaries(tmp_path: Pat
     ]
     assert payload["cases"][0]["trial_index"] == 1
     assert payload["cases"][0]["agent_duration_seconds"] == 1.5
+    assert payload["cases"][0]["hard_evaluation_status"] == "not_configured"
+    assert payload["cases"][0]["soft_evaluation_status"] == "not_configured"
     assert payload["cases"][1]["telemetry_status"] == "partial"
     assert payload["cases"][1]["telemetry_source"] == "json-file"
     assert (
@@ -212,6 +217,58 @@ def test_export_run_json_contains_sorted_cases_and_agent_summaries(tmp_path: Pat
             "common_tool_names": [],
         },
     ]
+
+
+def test_export_run_json_contains_hard_and_soft_evaluation_fields(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    _write_run(
+        run_dir,
+        [
+            CaseResult(
+                run_id="run-1",
+                case_id="task-a__baseline",
+                task_id="task-a",
+                variant="baseline",
+                repo_ref="main",
+                agent_name="coco",
+                network="disabled",
+                status="completed",
+                validation_status="passed",
+                confidence="high",
+                hard_evaluation_status="passed",
+                hard_evaluation_score=4,
+                hard_evaluation_max_score=4,
+                hard_evaluation_passed_checks=4,
+                hard_evaluation_failed_checks=0,
+                hard_evaluation_path="artifacts/task-a__baseline/hard_evaluation.json",
+                soft_evaluation_status="payload_generated",
+                soft_evaluation_payload_path=(
+                    "artifacts/task-a__baseline/soft_evaluation_payload.json"
+                ),
+                changed_files=1,
+                touched_paths=["README.md"],
+                reasoning_step_count=12,
+            ),
+        ],
+    )
+
+    payload = json.loads(
+        export_run_json(
+            run_dir,
+            exported_at=datetime(2026, 5, 14, 5, 30, tzinfo=UTC),
+        )
+    )
+    case = payload["cases"][0]
+
+    assert case["hard_evaluation_status"] == "passed"
+    assert case["hard_evaluation_score"] == 4
+    assert case["hard_evaluation_max_score"] == 4
+    assert case["hard_evaluation_path"].endswith("hard_evaluation.json")
+    assert case["soft_evaluation_status"] == "payload_generated"
+    assert case["soft_evaluation_payload_path"].endswith("soft_evaluation_payload.json")
+    assert case["changed_files"] == 1
+    assert case["touched_paths"] == ["README.md"]
+    assert case["reasoning_step_count"] == 12
 
 
 def test_export_run_json_metadata_handles_missing_run_metadata(tmp_path: Path) -> None:

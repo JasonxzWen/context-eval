@@ -7,7 +7,13 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, Field
 
-from context_eval.models import ContextEvalConfig, TaskFile
+from context_eval.models import (
+    ContextEvalConfig,
+    ExpectedOutcomeConfig,
+    HardEvaluationConfig,
+    SoftEvaluationConfig,
+    TaskFile,
+)
 
 
 class EditableRepo(BaseModel):
@@ -43,6 +49,10 @@ class EditableTask(BaseModel):
     difficulty: str | None = None
     validation_timeout_seconds: int | None = None
     validation_commands: list[str] = Field(default_factory=list)
+    expected_outcome: ExpectedOutcomeConfig | None = None
+    hard_evaluation: HardEvaluationConfig | None = None
+    soft_evaluation: SoftEvaluationConfig | None = None
+    extra_fields: dict[str, Any] = Field(default_factory=dict)
 
 
 class EditableConfigModel(BaseModel):
@@ -124,6 +134,10 @@ def build_editable_model(
                 difficulty=task.difficulty,
                 validation_timeout_seconds=task.validation.timeout_seconds,
                 validation_commands=list(task.validation.commands),
+                expected_outcome=task.expected_outcome,
+                hard_evaluation=task.hard_evaluation,
+                soft_evaluation=task.soft_evaluation,
+                extra_fields=dict(task.model_extra or {}),
             )
             for task in tasks.tasks
         ],
@@ -229,10 +243,10 @@ def validate_editable_model(model: EditableConfigModel) -> list[str]:
         for index, agent in enumerate(agents, start=1):
             _require_text(agent.name, f"agent profile {index} name", issues)
             _require_text(agent.command, f"agent profile {index} command", issues)
-            if agent.kind not in {"codex-cli", "claude-code", "traecli", "custom"}:
+            if agent.kind not in {"codex-cli", "claude-code", "traecli", "coco", "custom"}:
                 issues.append(
                     f"agent profile {index} kind must be codex-cli, "
-                    "claude-code, traecli, or custom"
+                    "claude-code, traecli, coco, or custom"
                 )
             if agent.timeout_minutes < 1:
                 issues.append(
@@ -274,9 +288,8 @@ def validate_editable_model(model: EditableConfigModel) -> list[str]:
 
 
 def _task_to_yaml_data(task: EditableTask) -> dict[str, Any]:
-    data: dict[str, Any] = {
-        "id": task.id,
-    }
+    data: dict[str, Any] = dict(task.extra_fields)
+    data["id"] = task.id
     if task.title is not None:
         data["title"] = task.title
     data["prompt"] = task.prompt
@@ -292,6 +305,21 @@ def _task_to_yaml_data(task: EditableTask) -> dict[str, Any]:
             validation["timeout_seconds"] = task.validation_timeout_seconds
         validation["commands"] = list(task.validation_commands)
         data["validation"] = validation
+    if task.expected_outcome is not None:
+        data["expected_outcome"] = task.expected_outcome.model_dump(
+            mode="json",
+            exclude_none=True,
+        )
+    if task.hard_evaluation is not None:
+        data["hard_evaluation"] = task.hard_evaluation.model_dump(
+            mode="json",
+            exclude_none=True,
+        )
+    if task.soft_evaluation is not None:
+        data["soft_evaluation"] = task.soft_evaluation.model_dump(
+            mode="json",
+            exclude_none=True,
+        )
     return data
 
 
