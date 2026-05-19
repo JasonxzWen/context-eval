@@ -47,6 +47,29 @@ const emptySoftEvaluation: SoftEvaluation = {
   rubric: [],
 };
 
+const categoryOptions = [
+  { value: 'bugfix', label: '缺陷修复' },
+  { value: 'feature', label: '功能' },
+  { value: 'runtime', label: '运行时' },
+  { value: 'documentation', label: '文档' },
+  { value: 'refactor', label: '重构' },
+  { value: 'test', label: '测试' },
+  { value: 'gameplay', label: '玩法' },
+  { value: 'sample', label: '示例' },
+];
+
+const difficultyOptions = [
+  { value: 'easy', label: '简单' },
+  { value: 'medium', label: '中等' },
+  { value: 'hard', label: '困难' },
+];
+
+const changeTypeOptions = [
+  { value: 'modified', label: '修改' },
+  { value: 'created', label: '新增' },
+  { value: 'deleted', label: '删除' },
+];
+
 export function TaskEditor({
   tasks,
   variants,
@@ -66,12 +89,12 @@ export function TaskEditor({
     return (
       <section className="panel task-editor-panel">
         <div className="panel-heading">
-          <h2>评测用例编辑器</h2>
-          <span>0 tasks</span>
+          <h2>评测任务编辑器</h2>
+          <span>0 个任务</span>
         </div>
-        <p className="status-line">当前配置没有 task。新建一个任务后再保存。</p>
+        <p className="status-line">当前配置没有评测任务。新建一个任务后再保存。</p>
         <button type="button" onClick={onAddTask}>
-          新建 task
+          新建任务
         </button>
       </section>
     );
@@ -104,10 +127,10 @@ export function TaskEditor({
   const rubric = soft.rubric || [];
 
   return (
-    <section className="panel task-editor-panel" aria-label="评测用例编辑器">
+    <section className="panel task-editor-panel" aria-label="评测任务编辑器">
       <div className="panel-heading">
-        <h2>评测用例编辑器</h2>
-        <span>{tasks.length} tasks</span>
+        <h2>评测任务编辑器</h2>
+        <span>{tasks.length} 个任务</span>
       </div>
 
       <div className="task-editor-layout">
@@ -167,27 +190,24 @@ export function TaskEditor({
                   onChange={(event) => updateTask({ title: event.target.value })}
                 />
               </label>
-              <label htmlFor="task-category">
-                category
-                <input
-                  id="task-category"
-                  value={task.category || ''}
-                  onChange={(event) => updateTask({ category: event.target.value })}
-                />
-              </label>
-              <label htmlFor="task-difficulty">
-                difficulty
-                <input
-                  id="task-difficulty"
-                  value={task.difficulty || ''}
-                  onChange={(event) => updateTask({ difficulty: event.target.value })}
-                />
-              </label>
+              <SegmentedField
+                label="任务分类"
+                value={task.category || ''}
+                options={categoryOptions}
+                onChange={(value) => updateTask({ category: value })}
+              />
+              <SegmentedField
+                label="难度"
+                value={task.difficulty || ''}
+                options={difficultyOptions}
+                onChange={(value) => updateTask({ difficulty: value })}
+              />
             </div>
             <label htmlFor="task-prompt">
-              Prompt
+              任务说明
               <textarea
                 id="task-prompt"
+                aria-label="任务说明"
                 value={task.prompt}
                 onChange={(event) => updateTask({ prompt: event.target.value })}
               />
@@ -195,7 +215,7 @@ export function TaskEditor({
           </fieldset>
 
           <fieldset>
-            <legend>Context variants</legend>
+            <legend>适用的上下文版本</legend>
             <div className="variant-chip-row">
               {variants.map((variant) => (
                 <span className="variant-chip" key={variant.name}>
@@ -203,24 +223,25 @@ export function TaskEditor({
                   {variant.description && <small>{variant.description}</small>}
                 </span>
               ))}
-              {variants.length === 0 && <span className="status-line">未配置 variant</span>}
+              {variants.length === 0 && <span className="status-line">未配置上下文版本</span>}
             </div>
           </fieldset>
 
           <fieldset>
-            <legend>Expected outcome</legend>
+            <legend>期望结果</legend>
             <label htmlFor="expected-summary">
-              Expected outcome summary
+              期望结果摘要
               <textarea
                 id="expected-summary"
+                aria-label="期望结果摘要"
                 value={expected.summary || ''}
                 onChange={(event) => updateExpected({ summary: event.target.value })}
               />
             </label>
             <ListEditor
-              title="Acceptance points"
+              title="验收点"
               values={acceptancePoints}
-              placeholder="例如：README 包含 fixed marker"
+              placeholder="例如：验证脚本确认问候语已经更新"
               onChange={(values) => updateExpected({ acceptance_points: values })}
             />
             <ExpectedFileEditor
@@ -230,7 +251,8 @@ export function TaskEditor({
           </fieldset>
 
           <fieldset>
-            <legend>Validation commands</legend>
+            <legend>验证命令</legend>
+            <p className="field-help">运行结束后执行项目自己的测试或脚本，用来确认改动是否真的可用。</p>
             <ListEditor
               title="命令"
               values={validationCommands}
@@ -240,7 +262,8 @@ export function TaskEditor({
           </fieldset>
 
           <fieldset>
-            <legend>Hard checks</legend>
+            <legend>硬性检查</legend>
+            <p className="field-help">确定性检查文件、片段或命令输出；失败时会直接降低本次评测可信度。</p>
             <label className="checkbox-label" htmlFor="hard-enabled">
               <input
                 id="hard-enabled"
@@ -248,7 +271,7 @@ export function TaskEditor({
                 checked={hard.enabled}
                 onChange={(event) => updateHard({ enabled: event.target.checked })}
               />
-              启用 hard evaluation
+              启用硬性检查
             </label>
             <label className="checkbox-label" htmlFor="require-validation-pass">
               <input
@@ -257,7 +280,7 @@ export function TaskEditor({
                 checked={Boolean(hard.require_validation_pass)}
                 onChange={(event) => updateHard({ require_validation_pass: event.target.checked })}
               />
-              需要 validation 通过
+              要求验证命令通过
             </label>
             <CommandCheckEditor
               checks={commandChecks}
@@ -266,7 +289,8 @@ export function TaskEditor({
           </fieldset>
 
           <fieldset>
-            <legend>Soft review rubric</legend>
+            <legend>人工评审规则</legend>
+            <p className="field-help">给人工复核或后续软性评分使用，不会替代验证命令和硬性检查。</p>
             <RubricEditor items={rubric} onChange={(items) => updateSoft({ rubric: items })} />
           </fieldset>
 
@@ -330,6 +354,41 @@ function ListEditor({ title, values, placeholder, onChange }: ListEditorProps) {
   );
 }
 
+type SegmentedFieldProps = {
+  label: string;
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (value: string) => void;
+};
+
+function SegmentedField({ label, value, options, onChange }: SegmentedFieldProps) {
+  const known = options.some((option) => option.value === value);
+  return (
+    <div className="field-block">
+      <span className="field-label">{label}</span>
+      <div className="segmented-control" role="radiogroup" aria-label={label}>
+        {options.map((option) => (
+          <button
+            type="button"
+            className={option.value === value ? 'segment active' : 'segment'}
+            role="radio"
+            aria-checked={option.value === value}
+            key={option.value}
+            onClick={() => onChange(option.value)}
+          >
+            {option.label}
+          </button>
+        ))}
+        {!known && value && (
+          <button type="button" className="segment active" role="radio" aria-checked="true">
+            {value}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 type ExpectedFileEditorProps = {
   files: NonNullable<ExpectedOutcome['files']>;
   onChange: (files: NonNullable<ExpectedOutcome['files']>) => void;
@@ -339,7 +398,7 @@ function ExpectedFileEditor({ files, onChange }: ExpectedFileEditorProps) {
   return (
     <div className="list-editor">
       <div className="subsection-heading">
-        <strong>Expected files</strong>
+        <strong>期望变更文件</strong>
         <button
           type="button"
           className="secondary compact-button"
@@ -351,9 +410,9 @@ function ExpectedFileEditor({ files, onChange }: ExpectedFileEditorProps) {
       {files.map((file, index) => (
         <div className="structured-row expected-file-row" key={`expected-file:${index}`}>
           <label>
-            path
+            文件路径
             <input
-              aria-label={`expected file path ${index + 1}`}
+              aria-label={`期望文件路径 ${index + 1}`}
               value={file.path}
               onChange={(event) =>
                 onChange(files.map((item, itemIndex) => (itemIndex === index ? { ...item, path: event.target.value } : item)))
@@ -361,14 +420,20 @@ function ExpectedFileEditor({ files, onChange }: ExpectedFileEditorProps) {
             />
           </label>
           <label>
-            change type
-            <input
-              aria-label={`expected file change type ${index + 1}`}
-              value={file.change_type || ''}
+            变更类型
+            <select
+              aria-label={`期望文件变更类型 ${index + 1}`}
+              value={file.change_type || 'modified'}
               onChange={(event) =>
                 onChange(files.map((item, itemIndex) => (itemIndex === index ? { ...item, change_type: event.target.value } : item)))
               }
-            />
+            >
+              {changeTypeOptions.map((option) => (
+                <option value={option.value} key={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="checkbox-label">
             <input
@@ -378,7 +443,7 @@ function ExpectedFileEditor({ files, onChange }: ExpectedFileEditorProps) {
                 onChange(files.map((item, itemIndex) => (itemIndex === index ? { ...item, must_change: event.target.checked } : item)))
               }
             />
-            must change
+            必须变更
           </label>
           <button
             type="button"
@@ -389,7 +454,7 @@ function ExpectedFileEditor({ files, onChange }: ExpectedFileEditorProps) {
           </button>
         </div>
       ))}
-      {files.length === 0 && <p className="status-line">未指定文件。</p>}
+      {files.length === 0 && <p className="status-line">未指定期望变更文件。</p>}
     </div>
   );
 }
@@ -403,7 +468,7 @@ function CommandCheckEditor({ checks, onChange }: CommandCheckEditorProps) {
   return (
     <div className="list-editor">
       <div className="subsection-heading">
-        <strong>Command checks</strong>
+        <strong>命令检查</strong>
         <button
           type="button"
           className="secondary compact-button"
@@ -415,9 +480,9 @@ function CommandCheckEditor({ checks, onChange }: CommandCheckEditorProps) {
       {checks.map((check, index) => (
         <div className="structured-row command-check-row" key={`command-check:${index}`}>
           <label>
-            label
+            名称
             <input
-              aria-label={`hard check label ${index + 1}`}
+              aria-label={`命令检查名称 ${index + 1}`}
               value={check.label}
               onChange={(event) =>
                 onChange(checks.map((item, itemIndex) => (itemIndex === index ? { ...item, label: event.target.value } : item)))
@@ -425,9 +490,9 @@ function CommandCheckEditor({ checks, onChange }: CommandCheckEditorProps) {
             />
           </label>
           <label>
-            command
+            命令
             <textarea
-              aria-label={`hard check command ${index + 1}`}
+              aria-label={`命令检查命令 ${index + 1}`}
               value={check.command}
               onChange={(event) =>
                 onChange(checks.map((item, itemIndex) => (itemIndex === index ? { ...item, command: event.target.value } : item)))
@@ -435,9 +500,9 @@ function CommandCheckEditor({ checks, onChange }: CommandCheckEditorProps) {
             />
           </label>
           <label>
-            expected
+            期望输出
             <input
-              aria-label={`hard check expected ${index + 1}`}
+              aria-label={`命令检查期望输出 ${index + 1}`}
               value={check.expected}
               onChange={(event) =>
                 onChange(checks.map((item, itemIndex) => (itemIndex === index ? { ...item, expected: event.target.value } : item)))
@@ -453,7 +518,7 @@ function CommandCheckEditor({ checks, onChange }: CommandCheckEditorProps) {
           </button>
         </div>
       ))}
-      {checks.length === 0 && <p className="status-line">未添加 command check。</p>}
+      {checks.length === 0 && <p className="status-line">未添加命令检查。</p>}
     </div>
   );
 }
@@ -467,7 +532,7 @@ function RubricEditor({ items, onChange }: RubricEditorProps) {
   return (
     <div className="list-editor">
       <div className="subsection-heading">
-        <strong>Rubric</strong>
+        <strong>评分规则</strong>
         <button
           type="button"
           className="secondary compact-button"
@@ -479,9 +544,9 @@ function RubricEditor({ items, onChange }: RubricEditorProps) {
       {items.map((item, index) => (
         <div className="structured-row rubric-row" key={`rubric:${index}`}>
           <label>
-            name
+            名称
             <input
-              aria-label={`rubric name ${index + 1}`}
+              aria-label={`评分规则名称 ${index + 1}`}
               value={item.name}
               onChange={(event) =>
                 onChange(items.map((entry, itemIndex) => (itemIndex === index ? { ...entry, name: event.target.value } : entry)))
@@ -489,9 +554,9 @@ function RubricEditor({ items, onChange }: RubricEditorProps) {
             />
           </label>
           <label>
-            description
+            说明
             <textarea
-              aria-label={`rubric description ${index + 1}`}
+              aria-label={`评分规则说明 ${index + 1}`}
               value={item.description}
               onChange={(event) =>
                 onChange(items.map((entry, itemIndex) => (itemIndex === index ? { ...entry, description: event.target.value } : entry)))
@@ -499,9 +564,9 @@ function RubricEditor({ items, onChange }: RubricEditorProps) {
             />
           </label>
           <label>
-            weight
+            权重
             <input
-              aria-label={`rubric weight ${index + 1}`}
+              aria-label={`评分规则权重 ${index + 1}`}
               type="number"
               min="0.1"
               step="0.1"
@@ -520,7 +585,7 @@ function RubricEditor({ items, onChange }: RubricEditorProps) {
           </button>
         </div>
       ))}
-      {items.length === 0 && <p className="status-line">未添加 rubric。</p>}
+      {items.length === 0 && <p className="status-line">未添加评分规则。</p>}
     </div>
   );
 }

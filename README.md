@@ -525,7 +525,9 @@ when the dev dependencies and Windows PowerShell are available. See
 When touching the planned local app frontend, run
 `python scripts\validate-frontend.py --install --install-browsers`; see
 `docs/frontend-workflow.md` for the frontend build, test, and browser
-acceptance workflow.
+acceptance workflow. User-visible frontend work must also pass direct
+agent-operated browser acceptance before delivery; automated checks alone are
+not enough.
 
 The default pytest command covers unit and integration tests and excludes the
 installed CLI smoke marked `local_e2e`. Run the local-e2e layer explicitly when

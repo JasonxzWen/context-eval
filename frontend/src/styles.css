@@ -283,7 +283,7 @@ button:disabled {
 .scope-group > strong {
   color: var(--blue);
   font-size: 12px;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .scope-options {
@@ -304,9 +304,7 @@ button:disabled {
 }
 
 .scope-option span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .brief-actions .button-row {
@@ -399,7 +397,7 @@ button:disabled {
 
 .content-grid > .variant-editor-panel,
 .content-grid > .agent-editor-panel {
-  grid-column: span 6;
+  grid-column: span 12;
   order: 4;
 }
 
@@ -473,9 +471,9 @@ label {
   gap: 6px;
   min-width: 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 input,
@@ -488,10 +486,7 @@ textarea {
   padding: 9px 10px;
   background: #fbfcfb;
   color: var(--ink);
-  font-family:
-    "Cascadia Code",
-    Consolas,
-    monospace;
+  font-family: inherit;
   font-size: 13px;
   transition:
     border-color 140ms ease,
@@ -537,7 +532,7 @@ textarea {
 
 .run-prep-summary {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin: 14px 0 0;
 }
@@ -551,7 +546,7 @@ textarea {
   color: var(--muted);
   font-size: 12px;
   font-weight: 850;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .run-prep-summary dd {
@@ -615,7 +610,7 @@ textarea {
   color: var(--muted);
   font-size: 12px;
   font-weight: 800;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .metric-grid dd {
@@ -832,7 +827,7 @@ td small {
 th {
   color: var(--muted);
   font-size: 11px;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .selected-row {
@@ -858,7 +853,7 @@ th {
 
 .editor-split {
   display: grid;
-  grid-template-columns: minmax(150px, 0.34fr) minmax(0, 1fr);
+  grid-template-columns: minmax(180px, 0.26fr) minmax(0, 1fr);
   gap: 12px;
   align-items: start;
   min-width: 0;
@@ -903,7 +898,7 @@ th {
 
 .rail-actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr;
 }
 
 .task-editor-form {
@@ -935,6 +930,48 @@ fieldset {
   border-radius: 8px;
   padding: 12px;
   background: #fbfcfb;
+}
+
+.field-help {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.field-block {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.field-label {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.segmented-control {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  gap: 6px;
+  min-width: 0;
+}
+
+.segment {
+  min-height: 34px;
+  border-color: var(--line);
+  background: #ffffff;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.segment.active {
+  border-color: var(--teal);
+  background: #e7f4ef;
+  color: var(--teal);
+  box-shadow: inset 0 -3px 0 var(--teal);
 }
 
 legend {
@@ -1011,7 +1048,7 @@ legend {
 
 .overlay-row {
   display: grid;
-  grid-template-columns: minmax(150px, 1fr) minmax(120px, 0.75fr) auto;
+  grid-template-columns: minmax(220px, 1fr) minmax(160px, 0.75fr) auto;
   gap: 8px;
   align-items: end;
   min-width: 0;
@@ -1111,7 +1148,41 @@ legend {
   color: var(--muted);
   font-size: 10px;
   font-weight: 850;
-  text-transform: uppercase;
+  text-transform: none;
+}
+
+.evaluation-guide {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+  border: 1px solid #9ec5b0;
+  border-radius: 6px;
+  padding: 12px;
+  background: #f3faf6;
+}
+
+.evaluation-guide strong {
+  color: var(--green);
+}
+
+.evaluation-guide ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+#agent-command,
+#config-yaml,
+#tasks-yaml,
+.command-check-row textarea {
+  font-family:
+    "Cascadia Code",
+    Consolas,
+    monospace;
 }
 
 .compare-card dd {
@@ -1301,7 +1372,7 @@ legend {
     color: var(--muted);
     font-size: 10px;
     font-weight: 850;
-    text-transform: uppercase;
+    text-transform: none;
   }
 
   .results-panel td:last-child {

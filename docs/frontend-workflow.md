@@ -70,6 +70,31 @@ Acceptance should cover load, edit, save, reload, preflight, plan, run,
 results, and exports through the local server API. UI changes must not copy
 runner or config parsing logic into the browser.
 
+## Agent Delivery Gate
+
+Every user-visible local app or frontend feature must pass direct
+agent-operated browser acceptance before delivery. Automated checks are still
+required, but they are not a substitute for the agent opening the actual UI and
+using it like a user.
+
+For each feature, the implementing agent must:
+
+- start or connect to the relevant local app or frontend server;
+- open the app in a real browser through Codex browser tooling or Playwright;
+- click, type, save, run, navigate, and inspect the changed workflow directly;
+- verify desktop and narrow viewport layouts, including no horizontal overflow
+  or unreadable narrow columns;
+- verify the visible copy, labels, errors, empty states, and result summaries
+  that the user will see;
+- capture screenshots or equivalent browser evidence for the final handoff;
+- fix any issue found during this browser pass before claiming the feature is
+  ready.
+
+If browser acceptance cannot be completed, the agent must state the blocker and
+must not present the feature as fully accepted. Passing `npm run test`,
+`npm run build`, or `npm run e2e` alone is not enough for delivery when the
+feature has a browser-visible path.
+
 Lightweight motion is allowed for hover, focus, active, loading, progress, and
 log-update states. CSS must include a `prefers-reduced-motion` path.
 

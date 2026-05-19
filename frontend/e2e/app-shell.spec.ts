@@ -180,25 +180,31 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
     await expect(page.getByRole('heading', { name: '开始使用' })).toBeVisible();
     await expect(page.getByText('./fixture-repo')).toHaveCount(0);
 
-    await page.getByRole('button', { name: '试用 demo' }).click();
+    await page.getByRole('button', { name: '试用示例' }).click();
     await expect(page.getByLabel('仓库路径')).toHaveValue('./demo-repo');
 
     await expect(page.locator('.run-brief-panel')).toContainText('baseline vs experiment');
-    await expect(page.getByRole('heading', { name: '评测用例编辑器' })).toBeVisible();
-    await page.getByLabel('Expected outcome summary').fill('Visual editor saved summary.');
+    await expect(page.getByRole('heading', { name: '评测任务编辑器' })).toBeVisible();
+    await expect(page.getByRole('radiogroup', { name: '任务分类' })).toBeVisible();
+    await expect(page.getByRole('radio', { name: '缺陷修复' })).toHaveAttribute('aria-checked', 'true');
+    await expect(page.getByRole('radio', { name: '简单' })).toHaveAttribute('aria-checked', 'true');
+    await page.getByLabel('期望结果摘要').fill('Visual editor saved summary.');
     await page.getByRole('button', { name: '保存任务' }).click();
-    await expect(page.getByTestId('task-save-status')).toContainText('已保存任务并刷新 run plan');
+    await expect(page.getByTestId('task-save-status')).toContainText('已保存任务并刷新执行计划');
     await expect(page.locator('.matrix-panel')).toContainText('Visual editor saved summary.');
 
-    await page.getByLabel('选择 variant experiment').click();
-    await page.getByLabel('variant description').fill('Edited experiment instructions');
-    await page.getByLabel('agent timeout minutes').fill('3');
-    await page.getByRole('button', { name: '保存 variant 配置' }).click();
-    await expect(page.getByTestId('variant-save-status')).toContainText('已保存配置并刷新 run plan');
-    await expect(page.getByLabel('variant description')).toHaveValue('Edited experiment instructions');
+    await page.getByLabel('选择上下文版本 experiment').click();
+    await page.getByLabel('版本说明').fill('Edited experiment instructions');
+    await page.getByLabel('执行器超时分钟').fill('3');
+    await page.getByRole('button', { name: '保存执行器配置' }).click();
+    await expect(page.getByTestId('agent-save-status')).toContainText('已保存配置并刷新执行计划');
+    await expect(page.getByLabel('执行器超时分钟')).toHaveValue('3');
+    await page.getByRole('button', { name: '保存上下文版本' }).click();
+    await expect(page.getByTestId('variant-save-status')).toContainText('已保存配置并刷新执行计划');
+    await expect(page.getByLabel('版本说明')).toHaveValue('Edited experiment instructions');
 
-    await page.getByRole('checkbox', { name: 'variant baseline' }).uncheck();
-    await page.getByRole('button', { name: '刷新 run plan' }).click();
+    await page.getByRole('checkbox', { name: '上下文版本 baseline' }).uncheck();
+    await page.getByRole('button', { name: '刷新执行计划' }).click();
     await expect(page.getByTestId('planned-case-count')).toHaveText('1');
 
     await page.getByRole('button', { name: '开始运行' }).click();
@@ -206,20 +212,20 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
     await expect(page.getByTestId('planned-case-count')).toHaveText('1');
     await expect(page.getByTestId('run-status')).toContainText('已完成', { timeout: 60000 });
     await expect(page.getByText('结果已生成')).toBeVisible();
-    await expect(page.getByRole('cell', { name: 'hard passed 4/4' })).toBeVisible();
+    await expect(page.getByRole('cell', { name: '通过 4/4' })).toBeVisible();
 
     const experimentRow = page.locator('tbody tr', { hasText: 'experiment' });
     await experimentRow.getByRole('button').click();
-    await expect(page.getByRole('heading', { name: 'Case Detail' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '用例详情' })).toBeVisible();
     await expect(page.locator('.case-detail-panel')).toContainText('experiment');
     await expect(page.locator('.artifact-pane').first()).toBeVisible();
 
-    await page.getByLabel('review decision').selectOption('pass');
-    await page.getByLabel('review confidence').selectOption('high');
-    await page.getByLabel('reviewer').fill('manual');
-    await page.getByLabel('review notes').fill('Experiment result accepted.');
+    await page.getByLabel('复核结论').selectOption('pass');
+    await page.getByLabel('复核可信度').selectOption('high');
+    await page.getByLabel('复核人').fill('manual');
+    await page.getByLabel('复核备注').fill('Experiment result accepted.');
     await page.locator('.review-form button[type="submit"]').click();
-    await expect(page.locator('.review-form .status-line')).toContainText('Review');
+    await expect(page.locator('.review-form .status-line')).toContainText('复核');
 
     await page.getByRole('button', { name: /JSON/ }).click();
     await expect(page.getByTestId('export-output')).toContainText('"manual_reviews"');
@@ -254,10 +260,10 @@ test('renders the fixture-backed Coco hybrid shell', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'context-eval 本地工作台' })).toBeVisible();
   await expect(page.getByTestId('matrix-count')).toHaveText('8');
   await page.getByText('配置与任务细节').click();
-  await expect(page.getByRole('heading', { name: 'Agent', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Expected Outcome' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Hard Evaluation' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Soft Evaluation' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '执行器', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '期望结果' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '硬性检查' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '人工评审规则' })).toBeVisible();
 
   const hasHorizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
@@ -289,8 +295,8 @@ test('completes the local server workflow with fake Coco and hybrid evaluation',
     await expect(page.getByTestId('run-status')).toContainText('已完成', { timeout: 60000 });
     await expect(page.getByText('结果已生成')).toBeVisible();
 
-    await expect(page.getByText('hard passed')).toBeVisible();
-    await expect(page.getByText('soft payload_generated')).toBeVisible();
+    await expect(page.locator('tbody tr').first()).toContainText('通过 3/3');
+    await expect(page.locator('tbody tr').first()).toContainText('已生成待复核材料');
 
     await page.getByRole('button', { name: '导出 JSON' }).click();
     await expect(page.getByTestId('export-output')).toContainText('"case_count": 1');

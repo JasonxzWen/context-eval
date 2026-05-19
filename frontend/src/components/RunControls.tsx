@@ -62,7 +62,7 @@ export function RunControls({
   return (
     <section className="panel run-brief-panel">
       <div className="panel-heading">
-        <h2>本次评测</h2>
+        <h2>本次运行</h2>
         <span>{results ? '已出结果' : isRunActive ? '运行中' : '待运行'}</span>
       </div>
       <div className="brief-layout">
@@ -74,27 +74,27 @@ export function RunControls({
         <fieldset className="scope-panel">
           <legend>运行范围</legend>
           <ScopeGroup
-            title="tasks"
-            emptyLabel="未配置 task"
+            title="任务"
+            emptyLabel="未配置任务"
             values={tasks.map((task) => task.id).filter(Boolean)}
             selected={runScope.task_ids}
-            labelPrefix="task"
+            labelPrefix="任务"
             onToggle={(value, checked) => onToggleScope('task_ids', value, checked)}
           />
           <ScopeGroup
-            title="variants"
-            emptyLabel="未配置 variant"
+            title="上下文版本"
+            emptyLabel="未配置上下文版本"
             values={variants.map((variant) => variant.name).filter(Boolean)}
             selected={runScope.variants}
-            labelPrefix="variant"
+            labelPrefix="上下文版本"
             onToggle={(value, checked) => onToggleScope('variants', value, checked)}
           />
           <ScopeGroup
-            title="agents"
-            emptyLabel="未配置 agent"
+            title="执行器"
+            emptyLabel="未配置执行器"
             values={agents.map((agent) => agent.name).filter(Boolean)}
             selected={runScope.agents}
-            labelPrefix="agent"
+            labelPrefix="执行器"
             onToggle={(value, checked) => onToggleScope('agents', value, checked)}
           />
         </fieldset>
@@ -114,7 +114,7 @@ export function RunControls({
           </label>
           <div className="button-row">
             <button type="button" className="secondary" onClick={onPlan} disabled={!canRun}>
-              刷新 run plan
+              刷新执行计划
             </button>
             <button type="button" onClick={onStart} disabled={!canRun}>
               {isRunActive ? '运行中' : '开始运行'}
@@ -131,14 +131,14 @@ export function RunControls({
           <dd data-testid="preflight-status">{preflightStatus}</dd>
         </div>
         <div>
-          <dt>当前 scope</dt>
+          <dt>当前选择</dt>
           <dd>
-            {runScope.task_ids.length} task / {runScope.variants.length} variant /{' '}
-            {runScope.agents.length} agent
+            {runScope.task_ids.length} 个任务 / {runScope.variants.length} 个上下文版本 /{' '}
+            {runScope.agents.length} 个执行器
           </dd>
         </div>
         <div>
-          <dt>待执行 case</dt>
+          <dt>预计用例</dt>
           <dd>
             <strong data-testid="planned-case-count">{plannedCount}</strong>
             {!plan && plannedCount > 0 && <small>预计</small>}
@@ -160,14 +160,14 @@ export function RunControls({
           <div>
             <strong>结果已生成</strong>
             <span>
-              {results.overview.case_count} 个 case，validation failed{' '}
-              {resultSummary?.validationFailed ?? 0}，hard failed{' '}
-              {resultSummary?.hardFailed ?? 0}，telemetry gaps{' '}
+              {results.overview.case_count} 个用例，验证失败{' '}
+              {resultSummary?.validationFailed ?? 0}，硬性检查失败{' '}
+              {resultSummary?.hardFailed ?? 0}，遥测缺口{' '}
               {results.overview.telemetry_gap_count}
             </span>
           </div>
           <button type="button" className="secondary" onClick={onRevealResults}>
-            查看 Results
+            查看结果
           </button>
         </div>
       )}

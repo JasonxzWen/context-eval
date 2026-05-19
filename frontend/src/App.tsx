@@ -79,6 +79,33 @@ const validationLabels: Record<string, string> = {
   skipped: '跳过',
 };
 
+const evaluationLabels: Record<string, string> = {
+  passed: '通过',
+  failed: '失败',
+  skipped: '跳过',
+  payload_generated: '已生成待复核材料',
+  not_configured: '未配置',
+};
+
+const telemetryLabels: Record<string, string> = {
+  collected: '已采集',
+  unavailable: '不可用',
+};
+
+const reviewDecisionLabels: Record<string, string> = {
+  not_reviewed: '未复核',
+  pass: '通过',
+  fail: '失败',
+  needs_review: '需要复核',
+};
+
+const confidenceLabels: Record<string, string> = {
+  unknown: '未知',
+  low: '低',
+  medium: '中',
+  high: '高',
+};
+
 function labelFor(labels: Record<string, string>, value: string | undefined | null) {
   if (!value) return '未知';
   return labels[value] ?? value;
@@ -148,7 +175,7 @@ export function App() {
     availableScopeRef.current = nextAvailable;
     scopeInitializedRef.current = true;
     setRunScope(reconciled.scope);
-    setScopeNotice(reconciled.changed ? '运行范围已按最新配置自动清理，请确认本次 scope。' : '');
+    setScopeNotice(reconciled.changed ? '运行范围已按最新配置自动清理，请确认本次选择。' : '');
     loadedRef.current = payload;
     setLoaded(payload);
     setConfigPath(payload.config_path);
@@ -204,7 +231,7 @@ export function App() {
     setSaveStatus(`已保存并从磁盘重载: ${saved.config_path} / ${saved.tasks_path}`);
   }
 
-  async function saveEditableConfig(message = '已保存配置并刷新 run plan') {
+  async function saveEditableConfig(message = '已保存配置并刷新执行计划') {
     setError('');
     const currentLoaded = loadedRef.current;
     const issues = validateEditableConfig(currentLoaded.editable);
@@ -277,7 +304,7 @@ export function App() {
     const duplicate = {
       ...structuredClone(source),
       id: uniqueTaskId(`${source.id || 'task'}-copy`, loaded.editable.tasks),
-      title: source.title ? `${source.title} copy` : 'Copied evaluation task',
+      title: source.title ? `${source.title} 副本` : '复制的评测任务',
     };
     updateEditable((editable) => ({ ...editable, tasks: [...editable.tasks, duplicate] }));
     setSelectedTaskIndex(loaded.editable.tasks.length);
@@ -286,7 +313,7 @@ export function App() {
   function deleteTask(index: number) {
     const source = loaded.editable.tasks[index];
     if (!source || loaded.editable.tasks.length <= 1) return;
-    const confirmed = window.confirm(`删除 task "${source.id}"？`);
+    const confirmed = window.confirm(`删除任务 "${source.id}"？`);
     if (!confirmed) return;
     updateEditable((editable) => ({
       ...editable,
@@ -348,7 +375,7 @@ export function App() {
     } else {
       await loadConfig(payload.config_path || 'context-eval.yaml');
     }
-    setSaveStatus('真实项目配置已创建，请检查 agent 命令和任务');
+    setSaveStatus('真实项目配置已创建，请检查执行器命令和评测任务');
   }
 
   async function runPreflight() {
@@ -428,7 +455,7 @@ export function App() {
     setReviewDraft(payload.review);
     await loadResults(run.run_dir);
     await loadCaseDetail(selectedCaseId);
-    setReviewStatus('Review 已保存');
+    setReviewStatus('复核已保存');
   }
 
   async function refreshRunStatus(appRunId: string) {
@@ -442,7 +469,7 @@ export function App() {
     setError('');
     const scope = runScopeRef.current;
     if (scope.task_ids.length === 0 || scope.variants.length === 0 || scope.agents.length === 0) {
-      throw new Error('请至少选择一个 task、variant 和 agent');
+      throw new Error('请至少选择一个任务、上下文版本和执行器');
     }
     setResults(null);
     setSelectedCaseId('');
@@ -603,11 +630,11 @@ export function App() {
         ? '自动'
         : preflightStatus;
   const taskTitle = task?.title || task?.id || '未配置任务';
-  const variantSummary = runScope.variants.join(' vs ') || '未选择 context';
-  const agentSummary = runScope.agents.join(', ') || cocoAgent?.name || '未配置 agent';
+  const variantSummary = runScope.variants.join(' vs ') || '未选择上下文版本';
+  const agentSummary = runScope.agents.join(', ') || cocoAgent?.name || '未配置执行器';
   const runBrief = configLoaded
-    ? `用 ${agentSummary} 在 ${variantSummary} 上执行 ${runScope.task_ids.length} 个任务，共 ${visibleCaseCount} 个 case。`
-    : '先试用 demo 或打开一个本地 Git 项目。';
+    ? `用 ${agentSummary} 在 ${variantSummary} 上执行 ${runScope.task_ids.length} 个任务，预计 ${visibleCaseCount} 个评测用例。`
+    : '先试用示例或打开一个本地 Git 项目。';
 
   const isFirstRun = serverMode === 'connected' && workspaceState?.state === 'empty' && !configLoaded;
 
@@ -627,11 +654,11 @@ export function App() {
 
       <WorkflowBand
         steps={[
-          ['Project', loaded.resolved.repo_path],
-          ['Agent', cocoAgent?.name || '未配置'],
-          ['Preflight', preflightStepLabel],
-          ['Run', runLabel],
-          ['Results', results ? '已加载' : '本地'],
+          ['项目', loaded.resolved.repo_path],
+          ['执行器', cocoAgent?.name || '未配置'],
+          ['运行检查', preflightStepLabel],
+          ['运行', runLabel],
+          ['结果', results ? '已加载' : '本地'],
         ]}
       />
 
@@ -670,7 +697,7 @@ export function App() {
           serverMode={serverMode}
           onSelectVariant={setSelectedVariantIndex}
           onUpdateVariants={updateVariants}
-          onSave={() => guarded(() => saveEditableConfig('已保存配置并刷新 run plan'))}
+          onSave={() => guarded(() => saveEditableConfig('已保存配置并刷新执行计划'))}
         />
         <AgentEditor
           agents={agents}
@@ -679,7 +706,7 @@ export function App() {
           serverMode={serverMode}
           onSelectAgent={setSelectedAgentIndex}
           onUpdateAgents={updateAgents}
-          onSave={() => guarded(() => saveEditableConfig('已保存配置并刷新 run plan'))}
+          onSave={() => guarded(() => saveEditableConfig('已保存配置并刷新执行计划'))}
         />
         <TaskEditor
           tasks={loaded.editable.tasks}
@@ -693,7 +720,7 @@ export function App() {
           onAddTask={addTask}
           onDuplicateTask={duplicateTask}
           onDeleteTask={deleteTask}
-          onSave={() => guarded(() => saveEditableConfig('已保存任务并刷新 run plan'))}
+          onSave={() => guarded(() => saveEditableConfig('已保存任务并刷新执行计划'))}
         />
         <AdvancedConfigDetails
           agents={agents}
@@ -724,7 +751,7 @@ export function App() {
           runScope={runScope}
           selectedCaseCount={visibleCaseCount}
           serverMode={serverMode}
-          taskSummary={task?.expected_outcome?.summary || '未配置 expected_outcome summary'}
+          taskSummary={task?.expected_outcome?.summary || '未配置期望结果摘要'}
           taskTitle={taskTitle}
           tasks={loaded.editable.tasks}
           variants={loaded.editable.variants}
@@ -763,33 +790,42 @@ export function App() {
 
         <section className="panel results-panel" ref={resultsPanelRef}>
           <div className="panel-heading">
-            <h2>Results</h2>
+            <h2>评测结果</h2>
             <span>{results?.overview.case_count ?? 0}</span>
           </div>
           {results ? (
             <>
+              <div className="evaluation-guide" aria-label="评测指标说明">
+                <strong>如何判断效果</strong>
+                <ul>
+                  <li>验证命令：运行项目自己的测试或脚本，确认改动能否工作。</li>
+                  <li>硬性检查：检查文件、片段或命令输出，给出确定性的通过/失败。</li>
+                  <li>人工评审规则：给人工复核用的维度，不自动假装理解质量。</li>
+                  <li>遥测缺口：执行器没有提供耗时、token 或工具调用数据时保持为空，不猜测。</li>
+                </ul>
+              </div>
               <dl className="metric-grid">
                 <div>
-                  <dt>failed</dt>
+                  <dt>失败用例</dt>
                   <dd>{results.overview.failed_count}</dd>
                 </div>
                 <div>
-                  <dt>timeouts</dt>
+                  <dt>超时</dt>
                   <dd>{results.overview.timeout_count}</dd>
                 </div>
                 <div>
-                  <dt>low confidence</dt>
+                  <dt>低可信度</dt>
                   <dd>{results.overview.low_confidence_count}</dd>
                 </div>
                 <div>
-                  <dt>telemetry gaps</dt>
+                  <dt>遥测缺口</dt>
                   <dd>{results.overview.telemetry_gap_count}</dd>
                 </div>
               </dl>
               {(results.compare_groups || []).length > 0 && (
                 <section className="compare-summary" aria-label="baseline experiment compare">
                   <div className="panel-heading compact-heading">
-                    <h3>Compare Summary</h3>
+                    <h3>对比摘要</h3>
                     <span>{results.compare_groups?.length ?? 0}</span>
                   </div>
                   <div className="compare-grid">
@@ -801,21 +837,21 @@ export function App() {
                         </div>
                         <dl>
                           <div>
-                            <dt>task</dt>
+                            <dt>任务</dt>
                             <dd>{group.task_id}</dd>
                           </div>
                           <div>
-                            <dt>hard delta</dt>
+                            <dt>硬性差值</dt>
                             <dd>{group.hard_delta > 0 ? `+${group.hard_delta}` : group.hard_delta}</dd>
                           </div>
                           <div>
-                            <dt>validation delta</dt>
+                            <dt>验证差值</dt>
                             <dd>
                               {group.validation_delta > 0 ? `+${group.validation_delta}` : group.validation_delta}
                             </dd>
                           </div>
                           <div>
-                            <dt>tokens delta</dt>
+                            <dt>令牌差值</dt>
                             <dd>{group.total_tokens_delta ?? '-'}</dd>
                           </div>
                         </dl>
@@ -827,55 +863,59 @@ export function App() {
               <table>
                 <thead>
                   <tr>
-                    <th>case</th>
-                    <th>agent</th>
-                    <th>status</th>
-                    <th>validation</th>
-                    <th>telemetry</th>
-                    <th>tokens</th>
-                    <th>tools</th>
-                    <th>hard</th>
-                    <th>soft</th>
-                    <th>review</th>
-                    <th>detail</th>
+                    <th>用例</th>
+                    <th>执行器</th>
+                    <th>状态</th>
+                    <th>验证</th>
+                    <th>遥测</th>
+                    <th>令牌</th>
+                    <th>工具</th>
+                    <th>硬性检查</th>
+                    <th>人工评审</th>
+                    <th>复核</th>
+                    <th>详情</th>
                   </tr>
                 </thead>
                 <tbody>
                   {results.cases.map((result) => (
                     <tr key={result.case_id} className={selectedCaseId === result.case_id ? 'selected-row' : ''}>
-                      <td data-label="case">
+                      <td data-label="用例">
                         {result.task_id}
                         <small>{result.variant}</small>
                       </td>
-                      <td data-label="agent">{result.agent_name}</td>
-                      <td data-label="status">{labelFor(resultStatusLabels, result.status)}</td>
-                      <td data-label="validation">{labelFor(validationLabels, result.validation_status)}</td>
-                      <td data-label="telemetry">
-                        {result.telemetry_status || 'unavailable'}
+                      <td data-label="执行器">{result.agent_name}</td>
+                      <td data-label="状态">{labelFor(resultStatusLabels, result.status)}</td>
+                      <td data-label="验证">{labelFor(validationLabels, result.validation_status)}</td>
+                      <td data-label="遥测">
+                        {labelFor(telemetryLabels, result.telemetry_status || 'unavailable')}
                         {result.agent_duration_seconds != null && (
                           <small>{result.agent_duration_seconds.toFixed(1)}s</small>
                         )}
                       </td>
-                      <td data-label="tokens">
+                      <td data-label="令牌">
                         {result.total_tokens ?? '-'}
-                        {result.reasoning_tokens != null && <small>reasoning {result.reasoning_tokens}</small>}
+                        {result.reasoning_tokens != null && <small>推理 {result.reasoning_tokens}</small>}
                       </td>
-                      <td data-label="tools">
+                      <td data-label="工具">
                         {result.tool_call_count ?? '-'}
-                        {result.reasoning_step_count != null && <small>rounds {result.reasoning_step_count}</small>}
+                        {result.reasoning_step_count != null && <small>轮次 {result.reasoning_step_count}</small>}
                       </td>
-                      <td data-label="hard">
-                        hard {result.hard_evaluation_status || 'not_configured'}{' '}
+                      <td data-label="硬性检查">
+                        {labelFor(evaluationLabels, result.hard_evaluation_status || 'not_configured')}{' '}
                         {result.hard_evaluation_score ?? '-'}
                         /
                         {result.hard_evaluation_max_score ?? '-'}
                       </td>
-                      <td data-label="soft">soft {result.soft_evaluation_status || 'not_configured'}</td>
-                      <td data-label="review">
-                        {result.manual_review?.decision || 'not_reviewed'}
-                        {result.manual_review?.confidence && <small>{result.manual_review.confidence}</small>}
+                      <td data-label="人工评审">
+                        {labelFor(evaluationLabels, result.soft_evaluation_status || 'not_configured')}
                       </td>
-                      <td data-label="detail">
+                      <td data-label="复核">
+                        {labelFor(reviewDecisionLabels, result.manual_review?.decision || 'not_reviewed')}
+                        {result.manual_review?.confidence && (
+                          <small>{labelFor(confidenceLabels, result.manual_review.confidence)}</small>
+                        )}
+                      </td>
+                      <td data-label="详情">
                         <button
                           type="button"
                           className="secondary compact-button"
@@ -891,27 +931,27 @@ export function App() {
               {caseDetail && (
                 <section className="case-detail-panel">
                   <div className="panel-heading compact-heading">
-                    <h3>Case Detail</h3>
+                    <h3>用例详情</h3>
                     <span>{caseDetail.case.variant}</span>
                   </div>
                   <div className="detail-grid">
                     <dl className="compact-list">
                       <div>
-                        <dt>case_id</dt>
+                        <dt>用例 ID</dt>
                         <dd>{caseDetail.case.case_id}</dd>
                       </div>
                       <div>
-                        <dt>status</dt>
-                        <dd>{caseDetail.case.status}</dd>
+                        <dt>状态</dt>
+                        <dd>{labelFor(resultStatusLabels, caseDetail.case.status)}</dd>
                       </div>
                       <div>
-                        <dt>validation</dt>
-                        <dd>{caseDetail.case.validation_status}</dd>
+                        <dt>验证</dt>
+                        <dd>{labelFor(validationLabels, caseDetail.case.validation_status)}</dd>
                       </div>
                       <div>
-                        <dt>hard</dt>
+                        <dt>硬性检查</dt>
                         <dd>
-                          {caseDetail.case.hard_evaluation_status}{' '}
+                          {labelFor(evaluationLabels, caseDetail.case.hard_evaluation_status)}{' '}
                           {caseDetail.case.hard_evaluation_score ?? '-'}/
                           {caseDetail.case.hard_evaluation_max_score ?? '-'}
                         </dd>
@@ -925,42 +965,42 @@ export function App() {
                       }}
                     >
                       <label htmlFor="review-decision">
-                        decision
+                        复核结论
                         <select
                           id="review-decision"
-                          aria-label="review decision"
+                          aria-label="复核结论"
                           value={reviewDraft.decision}
                           onChange={(event) =>
                             setReviewDraft((current) => ({ ...current, decision: event.target.value }))
                           }
                         >
-                          <option value="not_reviewed">not_reviewed</option>
-                          <option value="pass">pass</option>
-                          <option value="fail">fail</option>
-                          <option value="needs_review">needs_review</option>
+                          <option value="not_reviewed">未复核</option>
+                          <option value="pass">通过</option>
+                          <option value="fail">失败</option>
+                          <option value="needs_review">需要复核</option>
                         </select>
                       </label>
                       <label htmlFor="review-confidence">
-                        confidence
+                        可信度
                         <select
                           id="review-confidence"
-                          aria-label="review confidence"
+                          aria-label="复核可信度"
                           value={reviewDraft.confidence}
                           onChange={(event) =>
                             setReviewDraft((current) => ({ ...current, confidence: event.target.value }))
                           }
                         >
-                          <option value="unknown">unknown</option>
-                          <option value="low">low</option>
-                          <option value="medium">medium</option>
-                          <option value="high">high</option>
+                          <option value="unknown">未知</option>
+                          <option value="low">低</option>
+                          <option value="medium">中</option>
+                          <option value="high">高</option>
                         </select>
                       </label>
                       <label htmlFor="reviewer">
-                        reviewer
+                        复核人
                         <input
                           id="reviewer"
-                          aria-label="reviewer"
+                          aria-label="复核人"
                           value={reviewDraft.reviewer}
                           onChange={(event) =>
                             setReviewDraft((current) => ({ ...current, reviewer: event.target.value }))
@@ -968,10 +1008,10 @@ export function App() {
                         />
                       </label>
                       <label htmlFor="review-notes">
-                        notes
+                        备注
                         <textarea
                           id="review-notes"
-                          aria-label="review notes"
+                          aria-label="复核备注"
                           value={reviewDraft.notes}
                           onChange={(event) =>
                             setReviewDraft((current) => ({ ...current, notes: event.target.value }))
@@ -979,7 +1019,7 @@ export function App() {
                         />
                       </label>
                       <div className="button-row">
-                        <button type="submit">保存 Review</button>
+                        <button type="submit">保存复核</button>
                         {reviewStatus && <span className="status-line">{reviewStatus}</span>}
                       </div>
                     </form>
@@ -988,7 +1028,7 @@ export function App() {
                     {caseDetail.patch && (
                       <article className="artifact-pane">
                         <strong>{caseDetail.patch.path}</strong>
-                        <pre>{caseDetail.patch.content || caseDetail.patch.error || 'empty patch'}</pre>
+                        <pre>{caseDetail.patch.content || caseDetail.patch.error || '空补丁'}</pre>
                       </article>
                     )}
                     {caseDetail.logs.slice(0, 4).map((log) => (
@@ -996,7 +1036,7 @@ export function App() {
                         <strong>
                           {log.kind}: {log.path}
                         </strong>
-                        <pre>{log.content || log.error || 'empty log'}</pre>
+                        <pre>{log.content || log.error || '空日志'}</pre>
                       </article>
                     ))}
                   </div>
