@@ -190,6 +190,133 @@ def test_app_command_exposes_loopback_server_options() -> None:
     assert {"--workspace", "--host", "--port"}.issubset(option_names)
 
 
+def test_local_app_reports_empty_workspace_and_bootstraps_demo(tmp_path: Path) -> None:
+    service = LocalAppService(workspace_root=tmp_path)
+
+    status = service.workspace_state()
+
+    assert status["state"] == "empty"
+    assert status["has_config"] is False
+    assert status["default_config_path"].endswith("context-eval.yaml")
+
+    bootstrapped = service.bootstrap_demo_workspace()
+
+    assert bootstrapped["state"] == "configured"
+    assert bootstrapped["config_path"].endswith("context-eval.yaml")
+    assert (tmp_path / "context-eval.yaml").exists()
+    assert (tmp_path / "tasks.yaml").exists()
+    assert (tmp_path / "demo-repo" / ".git").exists()
+
+    loaded = service.load_config(config_path="context-eval.yaml")
+    assert loaded["editable"]["repo"]["path"] == "./demo-repo"
+    assert loaded["resolved"]["agents"] == ["demo-agent"]
+    assert loaded["resolved"]["variants"] == ["baseline", "experiment"]
+
+    plan = service.plan_run(config_path="context-eval.yaml", cleanup_policy="successful")
+    assert plan["case_count"] == 2
+    assert {case["variant"] for case in plan["cases"]} == {"baseline", "experiment"}
+
+    started = service.start_run(
+        config_path="context-eval.yaml",
+        confirm=True,
+        cleanup_policy="successful",
+    )
+    app_run_id = started["app_run_id"]
+    deadline = time.time() + 60
+    run_status = service.get_run(app_run_id)
+    while run_status["status"] in {"queued", "running"} and time.time() < deadline:
+        time.sleep(0.1)
+        run_status = service.get_run(app_run_id)
+
+    assert run_status["status"] == "completed"
+    results = service.results(run_dir=run_status["run_dir"])
+    assert results["overview"]["case_count"] == 2
+    by_variant = {case["variant"]: case for case in results["cases"]}
+    assert by_variant["baseline"]["validation_status"] == "passed"
+    assert by_variant["experiment"]["validation_status"] == "passed"
+    assert by_variant["baseline"]["hard_evaluation_status"] == "failed"
+    assert by_variant["experiment"]["hard_evaluation_status"] == "passed"
+    assert by_variant["experiment"]["telemetry_status"] == "collected"
+    assert by_variant["experiment"]["total_tokens"] == 180
+    assert by_variant["experiment"]["tool_calls_by_name"]["edit_file"] == 1
+    assert results["compare_groups"] == [
+        {
+            "group_id": "fix-greeting-demo__demo-agent__trial-1",
+            "task_id": "fix-greeting-demo",
+            "agent_name": "demo-agent",
+            "trial_index": 1,
+            "baseline_variant": "baseline",
+            "experiment_variant": "experiment",
+            "baseline_case_id": by_variant["baseline"]["case_id"],
+            "experiment_case_id": by_variant["experiment"]["case_id"],
+            "verdict": "experiment_improved",
+            "hard_delta": 1,
+            "validation_delta": 0,
+            "total_tokens_delta": 0,
+            "summary": "experiment improved hard evaluation without changing validation status",
+        }
+    ]
+
+    detail = service.case_detail(
+        run_dir=run_status["run_dir"],
+        case_id=by_variant["experiment"]["case_id"],
+    )
+    assert detail["case"]["variant"] == "experiment"
+    assert detail["patch"]["path"].endswith(".patch")
+    assert "context-eval-demo" in detail["patch"]["content"]
+    assert {item["kind"] for item in detail["logs"]} >= {"agent_stdout", "agent_stderr"}
+    assert detail["manual_review"]["decision"] == "not_reviewed"
+
+    saved_review = service.save_manual_review(
+        run_dir=run_status["run_dir"],
+        case_id=by_variant["experiment"]["case_id"],
+        review={
+            "decision": "pass",
+            "confidence": "high",
+            "reviewer": "manual",
+            "notes": "Experiment carries the required marker and validation passed.",
+        },
+    )
+    assert saved_review["review"]["decision"] == "pass"
+    assert (Path(run_status["run_dir"]) / "manual_reviews.json").exists()
+
+    reviewed_results = service.results(run_dir=run_status["run_dir"])
+    reviewed_by_variant = {case["variant"]: case for case in reviewed_results["cases"]}
+    assert reviewed_by_variant["experiment"]["manual_review"]["decision"] == "pass"
+    reviewed_detail = service.case_detail(
+        run_dir=run_status["run_dir"],
+        case_id=by_variant["experiment"]["case_id"],
+    )
+    assert reviewed_detail["manual_review"]["notes"].startswith("Experiment carries")
+
+    exported = json.loads(
+        service.export(run_dir=run_status["run_dir"], export_format="json")["content"]
+    )
+    exported_cases = {case["case_id"]: case for case in exported["cases"]}
+    assert exported["manual_reviews"]["reviews"][
+        by_variant["experiment"]["case_id"]
+    ]["decision"] == "pass"
+    assert exported_cases[by_variant["experiment"]["case_id"]]["manual_review"][
+        "confidence"
+    ] == "high"
+
+
+def test_local_app_initializes_existing_project_without_overwriting(tmp_path: Path) -> None:
+    repo = _create_git_repo(tmp_path / "target-repo")
+    service = LocalAppService(workspace_root=tmp_path / "workspace")
+
+    initialized = service.initialize_project_workspace(repo_path=str(repo))
+
+    assert initialized["state"] == "configured"
+    loaded = service.load_config(config_path="context-eval.yaml")
+    assert loaded["editable"]["repo"]["path"] == repo.as_posix()
+    assert loaded["resolved"]["variants"] == ["baseline", "experiment"]
+    assert (tmp_path / "workspace" / "tasks.yaml").exists()
+
+    with pytest.raises(LocalAppError, match="refusing to overwrite"):
+        service.initialize_project_workspace(repo_path=str(repo))
+
+
 def test_local_app_save_reloads_and_preserves_raw_unknown_fields(tmp_path: Path) -> None:
     repo = _create_git_repo(tmp_path / "repo")
     _write_eval_files(tmp_path, repo)
