@@ -18,6 +18,39 @@ type AdvancedConfigDetailsProps = {
   onTasksYamlChange: (value: string) => void;
 };
 
+const categoryLabels: Record<string, string> = {
+  bugfix: '缺陷修复',
+  feature: '功能',
+  runtime: '运行时',
+  documentation: '文档',
+  refactor: '重构',
+  test: '测试',
+  gameplay: '玩法',
+  sample: '示例',
+};
+
+const difficultyLabels: Record<string, string> = {
+  easy: '简单',
+  medium: '中等',
+  hard: '困难',
+};
+
+const agentKindLabels: Record<string, string> = {
+  custom: '自定义命令',
+  coco: 'Coco',
+  'codex-cli': 'Codex CLI',
+  'claude-code': 'Claude Code',
+  traecli: 'Trae CLI',
+};
+
+const softModeLabels: Record<string, string> = {
+  'payload-only': '仅生成复核材料',
+};
+
+function labelFor(labels: Record<string, string>, value: string | null | undefined) {
+  return value ? labels[value] || value : '未配置';
+}
+
 export function AdvancedConfigDetails({
   agents,
   configPath,
@@ -40,12 +73,12 @@ export function AdvancedConfigDetails({
     <details className="advanced-workbench">
       <summary>
         <span>配置与任务细节</span>
-        <small>Agent、Context、验收标准和 YAML</small>
+        <small>执行器、上下文、验收标准和 YAML</small>
       </summary>
       <div className="advanced-grid">
         <section className="panel project-panel">
           <div className="panel-heading">
-            <h2>Project</h2>
+            <h2>项目</h2>
             <span>{modeLabel}</span>
           </div>
           <div className="form-grid">
@@ -62,7 +95,7 @@ export function AdvancedConfigDetails({
               <input id="repo-path" value={loaded.editable.repo.path} readOnly />
             </label>
             <label htmlFor="base-ref">
-              base ref
+              基准分支
               <input id="base-ref" value={loaded.editable.repo.base_ref} readOnly />
             </label>
             <label htmlFor="output-dir">
@@ -85,15 +118,15 @@ export function AdvancedConfigDetails({
 
         <section className="panel">
           <div className="panel-heading">
-            <h2>Agent</h2>
-            <span>{cocoAgent?.kind || 'unknown'}</span>
+            <h2>执行器</h2>
+            <span>{labelFor(agentKindLabels, cocoAgent?.kind)}</span>
           </div>
           <ul className="profile-list">
             {agents.map((profile) => (
               <li key={profile.name}>
                 <div>
                   <strong>{profile.name}</strong>
-                  <span>{profile.kind}</span>
+                  <span>{labelFor(agentKindLabels, profile.kind)}</span>
                 </div>
                 <code>{profile.command}</code>
               </li>
@@ -103,14 +136,14 @@ export function AdvancedConfigDetails({
 
         <section className="panel">
           <div className="panel-heading">
-            <h2>Context Variants</h2>
+            <h2>上下文版本</h2>
           </div>
           <ul className="two-column-list single-list">
             {loaded.editable.variants.map((variant) => (
               <li key={variant.name}>
                 <strong>{variant.name}</strong>
                 <span>{variant.description || '未描述'}</span>
-                <small>{variant.overlays.length} overlay(s)</small>
+                <small>{variant.overlays.length} 个覆盖文件</small>
               </li>
             ))}
           </ul>
@@ -118,7 +151,7 @@ export function AdvancedConfigDetails({
 
         <section className="panel">
           <div className="panel-heading">
-            <h2>Tasks</h2>
+            <h2>任务</h2>
             <span>{loaded.editable.tasks.length}</span>
           </div>
           <ul className="two-column-list single-list">
@@ -126,7 +159,11 @@ export function AdvancedConfigDetails({
               <li key={item.id}>
                 <strong>{item.id}</strong>
                 <span>{item.title || item.prompt}</span>
-                <small>{[item.category, item.difficulty].filter(Boolean).join(' / ')}</small>
+                <small>
+                  {[labelFor(categoryLabels, item.category), labelFor(difficultyLabels, item.difficulty)]
+                    .filter((value) => value !== '未配置')
+                    .join(' / ')}
+                </small>
               </li>
             ))}
           </ul>
@@ -134,9 +171,9 @@ export function AdvancedConfigDetails({
 
         <section className="panel">
           <div className="panel-heading">
-            <h2>Expected Outcome</h2>
+            <h2>期望结果</h2>
           </div>
-          <p className="status-line">{task?.expected_outcome?.summary || '未配置 summary'}</p>
+          <p className="status-line">{task?.expected_outcome?.summary || '未配置摘要'}</p>
           <ul className="check-list">
             {(task?.expected_outcome?.acceptance_points || []).map((point) => (
               <li key={point}>{point}</li>
@@ -144,30 +181,30 @@ export function AdvancedConfigDetails({
             {task?.expected_outcome?.files?.map((file) => (
               <li key={file.path}>
                 <strong>{file.path}</strong>
-                <span>{file.must_change ? 'must_change' : file.change_type || 'expected'}</span>
+                <span>{file.must_change ? '必须变更' : file.change_type || '期望存在'}</span>
               </li>
             ))}
             {(!task?.expected_outcome?.acceptance_points?.length
-              && !task?.expected_outcome?.files?.length) && <li>未配置 acceptance_points 或 files</li>}
+              && !task?.expected_outcome?.files?.length) && <li>未配置验收点或期望文件</li>}
           </ul>
         </section>
 
         <section className="panel">
           <div className="panel-heading">
-            <h2>Hard Evaluation</h2>
-            <span>{task?.hard_evaluation?.enabled ? 'enabled' : 'disabled'}</span>
+            <h2>硬性检查</h2>
+            <span>{task?.hard_evaluation?.enabled ? '已启用' : '未启用'}</span>
           </div>
           <dl className="compact-list">
             <div>
-              <dt>require_validation_pass</dt>
-              <dd>{String(Boolean(task?.hard_evaluation?.require_validation_pass))}</dd>
+              <dt>要求验证通过</dt>
+              <dd>{task?.hard_evaluation?.require_validation_pass ? '是' : '否'}</dd>
             </div>
             <div>
-              <dt>required_paths</dt>
+              <dt>必须存在路径</dt>
               <dd>{listText(task?.hard_evaluation?.required_paths)}</dd>
             </div>
             <div>
-              <dt>forbidden_paths</dt>
+              <dt>禁止出现路径</dt>
               <dd>{listText(task?.hard_evaluation?.forbidden_paths)}</dd>
             </div>
           </dl>
@@ -175,18 +212,18 @@ export function AdvancedConfigDetails({
 
         <section className="panel">
           <div className="panel-heading">
-            <h2>Soft Evaluation</h2>
-            <span>{task?.soft_evaluation?.mode || 'not_configured'}</span>
+            <h2>人工评审规则</h2>
+            <span>{labelFor(softModeLabels, task?.soft_evaluation?.mode)}</span>
           </div>
           <ul className="check-list">
             {(task?.soft_evaluation?.rubric || []).map((rubric) => (
               <li key={rubric.name}>
                 <strong>{rubric.name}</strong>
                 <span>{rubric.description}</span>
-                <small>weight={rubric.weight}</small>
+                <small>权重={rubric.weight}</small>
               </li>
             ))}
-            {!task?.soft_evaluation?.rubric?.length && <li>未配置 rubric</li>}
+            {!task?.soft_evaluation?.rubric?.length && <li>未配置评分规则</li>}
           </ul>
         </section>
 

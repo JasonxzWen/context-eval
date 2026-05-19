@@ -113,10 +113,10 @@ describe('App workflow shell', () => {
     await waitFor(() => expect(screen.getAllByText('示例模式').length).toBeGreaterThan(0));
     expect(screen.getByTestId('matrix-count')).toHaveTextContent('8');
     fireEvent.click(screen.getByText('配置与任务细节'));
-    expect(screen.getByRole('heading', { name: 'Agent' })).toBeVisible();
-    expect(screen.getByRole('heading', { name: 'Expected Outcome' })).toBeVisible();
-    expect(screen.getByRole('heading', { name: 'Hard Evaluation' })).toBeVisible();
-    expect(screen.getByRole('heading', { name: 'Soft Evaluation' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '执行器' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '期望结果' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '硬性检查' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '人工评审规则' })).toBeVisible();
   });
 
   it('loads Coco hybrid evaluation data from the local server API', async () => {
@@ -140,7 +140,7 @@ describe('App workflow shell', () => {
       screen.getAllByText('coco -y --query-timeout 10m --bash-tool-timeout 5m -p "{prompt}"').length,
     ).toBeGreaterThan(0);
     expect(screen.getAllByText('README contains fixed marker.').length).toBeGreaterThan(0);
-    expect(screen.getByText('payload-only')).toBeVisible();
+    expect(screen.getByText('仅生成复核材料')).toBeVisible();
 
     fireEvent.click(screen.getByRole('button', { name: '加载配置' }));
     expect(fetchMock).toHaveBeenCalledWith(
@@ -269,26 +269,30 @@ describe('App workflow shell', () => {
 
     render(<App />);
 
-    await waitFor(() => expect(screen.getByLabelText('Prompt')).toHaveValue('Fix it.'));
-    fireEvent.change(screen.getByLabelText('Prompt'), {
+    await waitFor(() => expect(screen.getByLabelText('任务说明')).toHaveValue('Fix it.'));
+    expect(screen.getByRole('radiogroup', { name: '任务分类' })).toBeVisible();
+    expect(screen.getByRole('radio', { name: '运行时' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('radiogroup', { name: '难度' })).toBeVisible();
+    expect(screen.getByRole('radio', { name: '简单' })).toHaveAttribute('aria-checked', 'true');
+    fireEvent.change(screen.getByLabelText('任务说明'), {
       target: { value: 'Use the visual editor prompt.' },
     });
-    fireEvent.change(screen.getByLabelText('Expected outcome summary'), {
+    fireEvent.change(screen.getByLabelText('期望结果摘要'), {
       target: { value: 'Visual editor summary.' },
     });
-    fireEvent.click(within(screen.getByRole('group', { name: 'Hard checks' })).getByRole('button', { name: '添加' }));
-    fireEvent.change(screen.getByLabelText('hard check label 1'), {
+    fireEvent.click(within(screen.getByRole('group', { name: '硬性检查' })).getByRole('button', { name: '添加' }));
+    fireEvent.change(screen.getByLabelText('命令检查名称 1'), {
       target: { value: 'readme-marker' },
     });
-    fireEvent.change(screen.getByLabelText('hard check command 1'), {
+    fireEvent.change(screen.getByLabelText('命令检查命令 1'), {
       target: { value: 'python -c "print(\'ok\')"' },
     });
-    fireEvent.change(screen.getByLabelText('hard check expected 1'), {
+    fireEvent.change(screen.getByLabelText('命令检查期望输出 1'), {
       target: { value: 'ok' },
     });
     fireEvent.click(screen.getByRole('button', { name: '保存任务' }));
 
-    await waitFor(() => expect(screen.getByTestId('task-save-status')).toHaveTextContent('已保存任务并刷新 run plan'));
+    await waitFor(() => expect(screen.getByTestId('task-save-status')).toHaveTextContent('已保存任务并刷新执行计划'));
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/config/save-editable',
       expect.objectContaining({ method: 'POST' }),
@@ -387,26 +391,26 @@ describe('App workflow shell', () => {
 
     render(<App />);
 
-    await waitFor(() => expect(screen.getByLabelText('variant description')).toHaveValue('Baseline'));
-    fireEvent.change(screen.getByLabelText('variant description'), {
+    await waitFor(() => expect(screen.getByLabelText('版本说明')).toHaveValue('Baseline'));
+    fireEvent.change(screen.getByLabelText('版本说明'), {
       target: { value: 'Edited baseline instructions' },
     });
-    fireEvent.change(screen.getByLabelText('overlay source 1'), {
+    fireEvent.change(screen.getByLabelText('覆盖文件来源路径 1'), {
       target: { value: './contexts/edited/AGENTS.md' },
     });
-    fireEvent.change(screen.getByLabelText('agent command'), {
+    fireEvent.change(screen.getByLabelText('执行器命令模板'), {
       target: { value: 'coco -y --query-timeout 5m -p "{prompt_file}"' },
     });
-    fireEvent.change(screen.getByLabelText('agent timeout minutes'), {
+    fireEvent.change(screen.getByLabelText('执行器超时分钟'), {
       target: { value: '15' },
     });
-    fireEvent.change(screen.getByLabelText('agent network'), {
+    fireEvent.change(screen.getByLabelText('执行器联网权限'), {
       target: { value: 'enabled' },
     });
-    fireEvent.click(screen.getByRole('button', { name: '保存 variant 配置' }));
+    fireEvent.click(screen.getByRole('button', { name: '保存上下文版本' }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('variant-save-status')).toHaveTextContent('已保存配置并刷新 run plan');
+      expect(screen.getByTestId('variant-save-status')).toHaveTextContent('已保存配置并刷新执行计划');
     });
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/config/save-editable',
@@ -416,7 +420,7 @@ describe('App workflow shell', () => {
       '/api/run-plan',
       expect.objectContaining({ method: 'POST' }),
     );
-    expect(screen.getByLabelText('variant description')).toHaveValue('Edited baseline instructions');
+    expect(screen.getByLabelText('版本说明')).toHaveValue('Edited baseline instructions');
   });
 
   it('blocks invalid task fields before submitting structured saves', async () => {
@@ -434,13 +438,13 @@ describe('App workflow shell', () => {
 
     render(<App />);
 
-    await waitFor(() => expect(screen.getByLabelText('Prompt')).toHaveValue('Fix it.'));
-    fireEvent.change(screen.getByLabelText('Prompt'), { target: { value: ' ' } });
+    await waitFor(() => expect(screen.getByLabelText('任务说明')).toHaveValue('Fix it.'));
+    fireEvent.change(screen.getByLabelText('任务说明'), { target: { value: ' ' } });
     fireEvent.change(screen.getByLabelText('命令 1'), { target: { value: ' ' } });
     fireEvent.click(screen.getByRole('button', { name: '保存任务' }));
 
-    expect(await screen.findByText('fix-greeting-punctuation: prompt 不能为空')).toBeVisible();
-    expect(screen.getByText('fix-greeting-punctuation: validation command 1 不能为空')).toBeVisible();
+    expect(await screen.findByText('fix-greeting-punctuation: 任务说明不能为空')).toBeVisible();
+    expect(screen.getByText('fix-greeting-punctuation: 第 1 条验证命令不能为空')).toBeVisible();
     expect(fetchMock).not.toHaveBeenCalledWith(
       '/api/config/save-editable',
       expect.anything(),
@@ -462,19 +466,19 @@ describe('App workflow shell', () => {
 
     render(<App />);
 
-    await waitFor(() => expect(screen.getByLabelText('variant name')).toHaveValue('baseline'));
-    fireEvent.change(screen.getByLabelText('variant name'), { target: { value: ' ' } });
-    fireEvent.change(screen.getByLabelText('overlay source 1'), { target: { value: ' ' } });
-    fireEvent.change(screen.getByLabelText('agent command'), { target: { value: ' ' } });
-    fireEvent.change(screen.getByLabelText('agent timeout minutes'), { target: { value: '0' } });
-    await waitFor(() => expect(screen.getByLabelText('variant name')).toHaveValue(' '));
-    await waitFor(() => expect(screen.getByLabelText('agent timeout minutes')).toHaveValue(0));
-    fireEvent.click(screen.getByRole('button', { name: '保存 agent 配置' }));
+    await waitFor(() => expect(screen.getByLabelText('版本名称')).toHaveValue('baseline'));
+    fireEvent.change(screen.getByLabelText('版本名称'), { target: { value: ' ' } });
+    fireEvent.change(screen.getByLabelText('覆盖文件来源路径 1'), { target: { value: ' ' } });
+    fireEvent.change(screen.getByLabelText('执行器命令模板'), { target: { value: ' ' } });
+    fireEvent.change(screen.getByLabelText('执行器超时分钟'), { target: { value: '0' } });
+    await waitFor(() => expect(screen.getByLabelText('版本名称')).toHaveValue(' '));
+    await waitFor(() => expect(screen.getByLabelText('执行器超时分钟')).toHaveValue(0));
+    fireEvent.click(screen.getByRole('button', { name: '保存执行器配置' }));
 
-    expect(await screen.findByText('variant 1 name 不能为空')).toBeVisible();
-    expect(screen.getByText('variant 1 overlay 1 source 不能为空')).toBeVisible();
-    expect(screen.getByText('agent profile 1 command 不能为空')).toBeVisible();
-    expect(screen.getByText('agent profile 1 timeout 必须大于 0')).toBeVisible();
+    expect(await screen.findByText('第 1 个上下文版本名称不能为空')).toBeVisible();
+    expect(screen.getByText('第 1 个上下文版本的第 1 个覆盖文件来源路径不能为空')).toBeVisible();
+    expect(screen.getByText('第 1 个执行器命令模板不能为空')).toBeVisible();
+    expect(screen.getByText('第 1 个执行器超时必须大于 0')).toBeVisible();
     expect(fetchMock).not.toHaveBeenCalledWith(
       '/api/config/save-editable',
       expect.anything(),
@@ -610,11 +614,11 @@ describe('App workflow shell', () => {
 
     render(<App />);
 
-    await waitFor(() => expect(screen.getByLabelText('task second-task')).toBeChecked());
-    fireEvent.click(screen.getByLabelText('task fix-greeting-punctuation'));
-    fireEvent.click(screen.getByLabelText('variant baseline'));
-    fireEvent.click(screen.getByLabelText('agent coco'));
-    fireEvent.click(screen.getByRole('button', { name: '刷新 run plan' }));
+    await waitFor(() => expect(screen.getByLabelText('任务 second-task')).toBeChecked());
+    fireEvent.click(screen.getByLabelText('任务 fix-greeting-punctuation'));
+    fireEvent.click(screen.getByLabelText('上下文版本 baseline'));
+    fireEvent.click(screen.getByLabelText('执行器 coco'));
+    fireEvent.click(screen.getByRole('button', { name: '刷新执行计划' }));
 
     await waitFor(() => expect(screen.getByTestId('planned-case-count')).toHaveTextContent('1'));
     expect(screen.getByText('second-task__experiment__codex')).toBeVisible();
@@ -645,7 +649,7 @@ describe('App workflow shell', () => {
 
     render(<App />);
 
-    await waitFor(() => expect(screen.getByLabelText('Prompt')).toHaveValue('Fix it.'));
+    await waitFor(() => expect(screen.getByLabelText('任务说明')).toHaveValue('Fix it.'));
     fireEvent.click(screen.getByRole('button', { name: '保存任务' }));
 
     await waitFor(() => {
@@ -847,26 +851,26 @@ describe('App workflow shell', () => {
     await waitFor(() => expect(screen.getByTestId('planned-case-count')).toHaveTextContent('1'));
     expect(screen.queryByRole('button', { name: '运行预检' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '生成矩阵' })).not.toBeInTheDocument();
-    await waitFor(() => expect(screen.getByText('hard passed 4/4')).toBeVisible());
+    await waitFor(() => expect(screen.getByText('通过 4/4')).toBeVisible());
     expect(screen.getByText('结果已生成')).toBeVisible();
-    expect(screen.getByRole('button', { name: '查看 Results' })).toBeVisible();
-    expect(screen.getByText('soft payload_generated')).toBeVisible();
+    expect(screen.getByRole('button', { name: '查看结果' })).toBeVisible();
+    expect(screen.getByText('已生成待复核材料')).toBeVisible();
     expect(screen.getByText('180')).toBeVisible();
-    expect(screen.getByText('rounds 2')).toBeVisible();
+    expect(screen.getByText('轮次 2')).toBeVisible();
     expect(screen.getByText('experiment_improved')).toBeVisible();
     expect(screen.getByText('experiment improved hard evaluation without changing validation status')).toBeVisible();
 
     fireEvent.click(screen.getByRole('button', { name: '查看详情' }));
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'Case Detail' })).toBeVisible());
+    await waitFor(() => expect(screen.getByRole('heading', { name: '用例详情' })).toBeVisible());
     expect(screen.getByText('patches/fix-greeting-punctuation__baseline__coco.patch')).toBeVisible();
     expect(screen.getByText(/context-eval marker/)).toBeVisible();
 
-    fireEvent.change(screen.getByLabelText('review decision'), { target: { value: 'pass' } });
-    fireEvent.change(screen.getByLabelText('review confidence'), { target: { value: 'high' } });
-    fireEvent.change(screen.getByLabelText('reviewer'), { target: { value: 'manual' } });
-    fireEvent.change(screen.getByLabelText('review notes'), { target: { value: 'Looks good.' } });
-    fireEvent.click(screen.getByRole('button', { name: '保存 Review' }));
-    await waitFor(() => expect(screen.getByText('Review 已保存')).toBeVisible());
+    fireEvent.change(screen.getByLabelText('复核结论'), { target: { value: 'pass' } });
+    fireEvent.change(screen.getByLabelText('复核可信度'), { target: { value: 'high' } });
+    fireEvent.change(screen.getByLabelText('复核人'), { target: { value: 'manual' } });
+    fireEvent.change(screen.getByLabelText('复核备注'), { target: { value: 'Looks good.' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存复核' }));
+    await waitFor(() => expect(screen.getByText('复核已保存')).toBeVisible());
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/manual-review',
       expect.objectContaining({
