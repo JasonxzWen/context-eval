@@ -888,7 +888,9 @@ class LocalAppService:
                     "category": "bugfix",
                     "difficulty": "easy",
                     "expected_outcome": {
-                        "summary": "Greeting includes punctuation; experiment also carries the marker.",
+                        "summary": (
+                            "Greeting includes punctuation; experiment also carries the marker."
+                        ),
                         "acceptance_points": [
                             "Validation confirms the greeting was updated.",
                             "The experiment variant includes context-eval-demo evidence.",
