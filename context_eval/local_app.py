@@ -831,7 +831,7 @@ class LocalAppService:
             encoding="utf-8",
         )
         (demo_repo / "README.md").write_text(
-            "# context-eval demo repo\n\nA tiny repository for the local app demo.\n",
+            "# context-eval demo repo\n\n用于本地工作台演示的小型仓库。\n",
             encoding="utf-8",
         )
         self._run_git(["init"], cwd=demo_repo)
@@ -856,13 +856,13 @@ class LocalAppService:
         baseline.mkdir(parents=True, exist_ok=True)
         experiment.mkdir(parents=True, exist_ok=True)
         (baseline / "AGENTS.md").write_text(
-            "# Demo baseline\n\nFix the greeting punctuation only.\n",
+            "# Demo baseline\n\n只修复问候语标点。\n",
             encoding="utf-8",
         )
         (experiment / "AGENTS.md").write_text(
             (
                 "# Demo experiment\n\n"
-                "Fix the greeting punctuation and include the context-eval-demo marker.\n"
+                "修复问候语标点，并包含 context-eval-demo marker。\n"
             ),
             encoding="utf-8",
         )
@@ -885,7 +885,7 @@ class LocalAppService:
             "output_dir": "./runs",
             "variants": {
                 "baseline": {
-                    "description": "Baseline instructions",
+                    "description": "基线说明",
                     "overlays": [
                         {
                             "source": "./contexts/baseline/AGENTS.md",
@@ -894,7 +894,7 @@ class LocalAppService:
                     ],
                 },
                 "experiment": {
-                    "description": "Instructions with expected marker",
+                    "description": "带标记要求的实验说明",
                     "overlays": [
                         {
                             "source": "./contexts/experiment/AGENTS.md",
@@ -912,20 +912,20 @@ class LocalAppService:
             "tasks": [
                 {
                     "id": "fix-greeting-demo",
-                    "title": "Fix greeting punctuation",
+                    "title": "修复问候语标点",
                     "prompt": (
-                        "Update the greeting implementation so it returns a polished "
-                        "punctuated greeting. Follow the active AGENTS.md instructions."
+                        "更新问候语实现，让它返回带标点的完整问候语。"
+                        "请遵循当前 AGENTS.md 的说明。"
                     ),
                     "category": "bugfix",
                     "difficulty": "easy",
                     "expected_outcome": {
                         "summary": (
-                            "Greeting includes punctuation; experiment also carries the marker."
+                            "问候语包含标点；实验版本还需要带上 context-eval-demo 标记。"
                         ),
                         "acceptance_points": [
-                            "Validation confirms the greeting was updated.",
-                            "The experiment variant includes context-eval-demo evidence.",
+                            "验证脚本确认问候语已经更新。",
+                            "实验上下文版本包含 context-eval-demo 证据。",
                         ],
                         "files": [
                             {
@@ -952,7 +952,7 @@ class LocalAppService:
                             {
                                 "name": "task-fit",
                                 "weight": 1,
-                                "description": "Patch satisfies the requested behavior.",
+                                "description": "补丁满足任务要求。",
                             }
                         ],
                     },
@@ -1743,16 +1743,16 @@ class _LocalAppHandler(BaseHTTPRequestHandler):
 
 def _fallback_html() -> str:
     return """<!doctype html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Context Eval Local App</title>
+  <title>context-eval 本地工作台</title>
 </head>
 <body>
   <main>
-    <h1>Context Eval Local App</h1>
-    <p>Frontend build output was not found. Run the frontend validation workflow.</p>
+    <h1>context-eval 本地工作台</h1>
+    <p>未找到前端构建产物。请先运行前端验证流程。</p>
   </main>
 </body>
 </html>

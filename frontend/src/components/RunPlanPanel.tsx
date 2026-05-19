@@ -22,41 +22,44 @@ export function RunPlanPanel({
   return (
     <section className="panel matrix-panel">
       <div className="panel-heading">
-        <h2>Run Plan</h2>
+        <h2>执行计划</h2>
         <span data-testid="matrix-count">{visibleCaseCount}</span>
       </div>
       <dl className="metric-grid">
         <div>
-          <dt>selected agents</dt>
+          <dt>执行器</dt>
           <dd>{runScope.agents.length || agents.length}</dd>
         </div>
         <div>
-          <dt>selected tasks</dt>
+          <dt>任务</dt>
           <dd>{runScope.task_ids.length || taskCount}</dd>
         </div>
         <div>
-          <dt>selected variants</dt>
+          <dt>上下文版本</dt>
           <dd>{runScope.variants.length || variants.length}</dd>
         </div>
         <div>
-          <dt>trials</dt>
+          <dt>轮次</dt>
           <dd>{plan?.trials ?? defaultTrials}</dd>
         </div>
       </dl>
+      <p className="panel-note">
+        预计用例数 = 任务 × 上下文版本 × 执行器 × 轮次。这里用于确认本次会花多少执行成本。
+      </p>
       <ul className="check-list">
         {(plan?.cases || []).slice(0, 4).map((caseItem) => (
           <li key={caseItem.case_id}>
             <strong>{caseItem.case_id}</strong>
-            <span>{caseItem.expected_outcome_summary || '无 expected_outcome summary'}</span>
+            <span>{caseItem.expected_outcome_summary || '未配置期望结果摘要'}</span>
             <small>
-              {caseItem.hard_evaluation_enabled ? 'hard on' : 'hard off'} /{' '}
-              {caseItem.soft_evaluation_enabled ? 'soft on' : 'soft off'}
+              {caseItem.hard_evaluation_enabled ? '硬性检查开启' : '硬性检查关闭'} /{' '}
+              {caseItem.soft_evaluation_enabled ? '人工评审规则已配置' : '未配置人工评审规则'}
             </small>
           </li>
         ))}
       </ul>
       {!plan && (
-        <p className="panel-note">保存任务或点击“开始运行”后会刷新具体 case，并在失败时显示配置或执行错误。</p>
+        <p className="panel-note">保存配置或点击“刷新执行计划”后会列出具体评测用例。</p>
       )}
     </section>
   );

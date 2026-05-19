@@ -20,17 +20,17 @@ export function FirstRunPanel({
       <div className="first-run-grid">
         <article className="setup-option">
           <div>
-            <strong>试用 demo</strong>
-            <p>创建一个本地 demo repo、两组 context variants、一个 fake agent 和可对比的硬检查结果。</p>
+            <strong>试用示例</strong>
+            <p>创建一个本地演示仓库、两组上下文版本、一个假执行器和可对比的硬性检查结果。</p>
           </div>
           <button type="button" onClick={onBootstrapDemo}>
-            试用 demo
+            试用示例
           </button>
         </article>
         <article className="setup-option">
           <div>
             <strong>打开真实项目</strong>
-            <p>从已有 Git 仓库生成评测工作区，然后继续配置 agent、context 和任务。</p>
+            <p>从已有 Git 仓库生成评测工作区，然后继续配置执行器、上下文版本和任务。</p>
           </div>
           <label htmlFor="project-repo-path">
             项目路径

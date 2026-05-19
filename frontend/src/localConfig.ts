@@ -171,21 +171,21 @@ export function validateEditableConfig(editable: EditableConfig) {
     ...new Set(variantNames.filter((name, index) => name && variantNames.indexOf(name) !== index)),
   ];
   editable.variants.forEach((variant, index) => {
-    const label = `variant ${index + 1}`;
+    const label = `第 ${index + 1} 个上下文版本`;
     if (!variant.name.trim()) {
-      issues.push(`${label} name 不能为空`);
+      issues.push(`${label}名称不能为空`);
     }
     variant.overlays.forEach((overlay, overlayIndex) => {
-      const overlayLabel = `${label} overlay ${overlayIndex + 1}`;
+      const overlayLabel = `${label}的第 ${overlayIndex + 1} 个覆盖文件`;
       if (!overlay.source.trim()) {
-        issues.push(`${overlayLabel} source 不能为空`);
+        issues.push(`${overlayLabel}来源路径不能为空`);
       }
       if (!overlay.target.trim()) {
-        issues.push(`${overlayLabel} target 不能为空`);
+        issues.push(`${overlayLabel}目标路径不能为空`);
       }
     });
   });
-  duplicateVariants.forEach((name) => issues.push(`重复 variant name: ${name}`));
+  duplicateVariants.forEach((name) => issues.push(`上下文版本名称重复: ${name}`));
 
   const agentProfiles =
     editable.agent_shape === 'agents'
@@ -196,55 +196,55 @@ export function validateEditableConfig(editable: EditableConfig) {
     ...new Set(agentNames.filter((name, index) => name && agentNames.indexOf(name) !== index)),
   ];
   agentProfiles.forEach((agent, index) => {
-    const label = `agent profile ${index + 1}`;
+    const label = `第 ${index + 1} 个执行器`;
     if (!agent.name.trim()) {
-      issues.push(`${label} name 不能为空`);
+      issues.push(`${label}名称不能为空`);
     }
     if (!agent.command.trim()) {
-      issues.push(`${label} command 不能为空`);
+      issues.push(`${label}命令模板不能为空`);
     }
     if (!(agent.timeout_minutes > 0)) {
-      issues.push(`${label} timeout 必须大于 0`);
+      issues.push(`${label}超时必须大于 0`);
     }
     if (!['disabled', 'enabled'].includes(agent.network)) {
-      issues.push(`${label} network 必须是 disabled 或 enabled`);
+      issues.push(`${label}联网权限必须是“禁止联网”或“允许联网”`);
     }
   });
-  duplicateAgents.forEach((name) => issues.push(`重复 agent profile name: ${name}`));
+  duplicateAgents.forEach((name) => issues.push(`执行器名称重复: ${name}`));
 
   const ids = editable.tasks.map((task) => task.id.trim());
   const duplicates = [...new Set(ids.filter((id, index) => id && ids.indexOf(id) !== index))];
   editable.tasks.forEach((task, index) => {
-    const label = task.id.trim() || `第 ${index + 1} 个 task`;
+    const label = task.id.trim() || `第 ${index + 1} 个任务`;
     if (!task.id.trim()) {
-      issues.push(`${label}: task id 不能为空`);
+      issues.push(`${label}: 任务 ID 不能为空`);
     }
     if (!task.prompt.trim()) {
-      issues.push(`${label}: prompt 不能为空`);
+      issues.push(`${label}: 任务说明不能为空`);
     }
     task.validation_commands.forEach((command, commandIndex) => {
       if (!command.trim()) {
-        issues.push(`${label}: validation command ${commandIndex + 1} 不能为空`);
+        issues.push(`${label}: 第 ${commandIndex + 1} 条验证命令不能为空`);
       }
     });
     task.hard_evaluation?.command_checks?.forEach((check, checkIndex) => {
       if (!check.label.trim()) {
-        issues.push(`${label}: command check ${checkIndex + 1} label 不能为空`);
+        issues.push(`${label}: 第 ${checkIndex + 1} 条命令检查名称不能为空`);
       }
       if (!check.command.trim()) {
-        issues.push(`${label}: command check ${checkIndex + 1} command 不能为空`);
+        issues.push(`${label}: 第 ${checkIndex + 1} 条命令检查内容不能为空`);
       }
     });
     task.soft_evaluation?.rubric?.forEach((item, rubricIndex) => {
       if (!item.name.trim()) {
-        issues.push(`${label}: rubric ${rubricIndex + 1} name 不能为空`);
+        issues.push(`${label}: 第 ${rubricIndex + 1} 条评分规则名称不能为空`);
       }
       if (!(item.weight > 0)) {
-        issues.push(`${label}: rubric ${rubricIndex + 1} weight 必须大于 0`);
+        issues.push(`${label}: 第 ${rubricIndex + 1} 条评分规则权重必须大于 0`);
       }
     });
   });
-  duplicates.forEach((id) => issues.push(`重复 task id: ${id}`));
+  duplicates.forEach((id) => issues.push(`任务 ID 重复: ${id}`));
   return issues;
 }
 
@@ -261,7 +261,7 @@ export function uniqueTaskId(base: string, tasks: EditableTask[]) {
 export function blankTask(tasks: EditableTask[]): EditableTask {
   return {
     id: uniqueTaskId('new-task', tasks),
-    title: 'New evaluation task',
+    title: '新的评测任务',
     prompt: '',
     category: 'bugfix',
     difficulty: 'easy',
