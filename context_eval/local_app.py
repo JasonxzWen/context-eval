@@ -380,19 +380,20 @@ class LocalAppService:
         tasks_dst = self.guard.resolve_workspace_path(tasks_path, field="tasks_path")
         try:
             model = EditableConfigModel.model_validate(editable)
-            exported = export_editable_yaml(model)
+            existing_config_yaml = (
+                config_dst.read_text(encoding="utf-8") if config_dst.exists() else None
+            )
+            exported = export_editable_yaml(
+                model,
+                existing_config_yaml=existing_config_yaml,
+            )
         except Exception as exc:
             raise LocalAppError(str(exc)) from exc
 
-        config_yaml = (
-            config_dst.read_text(encoding="utf-8")
-            if config_dst.exists()
-            else exported.config_yaml
-        )
         return self.save_config(
             config_path=config_dst,
             tasks_path=tasks_dst,
-            config_yaml=config_yaml,
+            config_yaml=exported.config_yaml,
             tasks_yaml=exported.tasks_yaml,
         )
 

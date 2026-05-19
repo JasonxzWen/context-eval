@@ -146,7 +146,11 @@ def build_editable_model(
     )
 
 
-def export_editable_yaml(model: EditableConfigModel) -> EditableYamlExport:
+def export_editable_yaml(
+    model: EditableConfigModel,
+    *,
+    existing_config_yaml: str | None = None,
+) -> EditableYamlExport:
     """Serialize an editable model into separate config and task YAML documents."""
 
     issues = validate_editable_model(model)
@@ -161,46 +165,10 @@ def export_editable_yaml(model: EditableConfigModel) -> EditableYamlExport:
             [agent.name for agent in _agent_export_models(model)],
         )
 
-    config_data: dict[str, Any] = {
-        "repo": {
-            "path": model.repo.path,
-            "base_ref": model.repo.base_ref,
-        },
-        "tasks": model.tasks_path,
-        "variants": {
-            variant.name: {
-                "description": variant.description,
-                "overlays": [
-                    {
-                        "source": overlay.source,
-                        "target": overlay.target,
-                    }
-                    for overlay in variant.overlays
-                ],
-            }
-            for variant in model.variants
-        },
-        "evaluation": _evaluation_to_yaml_data(model),
-    }
-    if model.agent_shape == "agents":
-        config_data["agents"] = {
-            agent.name: {
-                "kind": agent.kind,
-                "command": agent.command,
-                "timeout_minutes": agent.timeout_minutes,
-                "network": agent.network,
-            }
-            for agent in _agent_export_models(model)
-        }
-    else:
-        config_data["agent"] = {
-            "name": model.agent.name,
-            "command": model.agent.command,
-            "timeout_minutes": model.agent.timeout_minutes,
-            "network": model.agent.network,
-        }
-    if model.output_dir is not None:
-        config_data["output_dir"] = model.output_dir
+    config_data = _config_to_yaml_data(
+        model,
+        source=_load_existing_config_yaml(existing_config_yaml),
+    )
 
     tasks_data = {
         "tasks": [_task_to_yaml_data(task) for task in model.tasks],
@@ -210,6 +178,98 @@ def export_editable_yaml(model: EditableConfigModel) -> EditableYamlExport:
         config_yaml=_dump_yaml(config_data),
         tasks_yaml=_dump_yaml(tasks_data),
     )
+
+
+def _load_existing_config_yaml(config_yaml: str | None) -> dict[str, Any]:
+    if not config_yaml:
+        return {}
+    data = yaml.safe_load(config_yaml)
+    return data if isinstance(data, dict) else {}
+
+
+def _config_to_yaml_data(
+    model: EditableConfigModel,
+    *,
+    source: dict[str, Any],
+) -> dict[str, Any]:
+    data = dict(source)
+    data["repo"] = _merged_mapping(
+        source.get("repo"),
+        {
+            "path": model.repo.path,
+            "base_ref": model.repo.base_ref,
+        },
+    )
+    data["tasks"] = model.tasks_path
+    data["variants"] = _variants_to_yaml_data(model, source.get("variants"))
+    data["evaluation"] = _evaluation_to_yaml_data(model, source.get("evaluation"))
+    if model.agent_shape == "agents":
+        data.pop("agent", None)
+        data["agents"] = _agents_to_yaml_data(model, source.get("agents"))
+    else:
+        data.pop("agents", None)
+        data["agent"] = _agent_to_yaml_data(model.agent, source.get("agent"), include_name=True)
+    if model.output_dir is None:
+        data.pop("output_dir", None)
+    else:
+        data["output_dir"] = model.output_dir
+    return data
+
+
+def _merged_mapping(source: Any, updates: dict[str, Any]) -> dict[str, Any]:
+    data = dict(source) if isinstance(source, dict) else {}
+    data.update(updates)
+    return data
+
+
+def _variants_to_yaml_data(model: EditableConfigModel, source: Any) -> dict[str, Any]:
+    source_variants = source if isinstance(source, dict) else {}
+    variants: dict[str, Any] = {}
+    for variant in model.variants:
+        existing = source_variants.get(variant.name)
+        variants[variant.name] = _merged_mapping(
+            existing,
+            {
+                "description": variant.description,
+                "overlays": [
+                    {
+                        "source": overlay.source,
+                        "target": overlay.target,
+                    }
+                    for overlay in variant.overlays
+                ],
+            },
+        )
+    return variants
+
+
+def _agents_to_yaml_data(model: EditableConfigModel, source: Any) -> dict[str, Any]:
+    source_agents = source if isinstance(source, dict) else {}
+    agents: dict[str, Any] = {}
+    for agent in _agent_export_models(model):
+        agents[agent.name] = _agent_to_yaml_data(
+            agent,
+            source_agents.get(agent.name),
+            include_name=False,
+        )
+    return agents
+
+
+def _agent_to_yaml_data(
+    agent: EditableAgent,
+    source: Any,
+    *,
+    include_name: bool,
+) -> dict[str, Any]:
+    updates: dict[str, Any] = {
+        "kind": agent.kind,
+        "command": agent.command,
+        "timeout_minutes": agent.timeout_minutes,
+        "network": agent.network,
+    }
+    if include_name:
+        updates["name"] = agent.name
+    return _merged_mapping(source, updates)
 
 
 def _agent_export_models(model: EditableConfigModel) -> list[EditableAgent]:
@@ -333,10 +393,12 @@ def _task_to_yaml_data(task: EditableTask) -> dict[str, Any]:
     return data
 
 
-def _evaluation_to_yaml_data(model: EditableConfigModel) -> dict[str, Any]:
-    data: dict[str, Any] = {}
+def _evaluation_to_yaml_data(model: EditableConfigModel, source: Any = None) -> dict[str, Any]:
+    data = dict(source) if isinstance(source, dict) else {}
     if model.evaluation_timeout_seconds is not None:
         data["timeout_seconds"] = model.evaluation_timeout_seconds
+    else:
+        data.pop("timeout_seconds", None)
     data["commands"] = list(model.evaluation_commands)
     return data
 

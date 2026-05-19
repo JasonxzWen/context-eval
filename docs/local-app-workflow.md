@@ -169,6 +169,18 @@ server-side config, and refreshes the run plan before the user starts a run.
 The raw YAML view stays available as an advanced folded view for fields that do
 not yet have visual controls.
 
+The next configuration-editor slice adds structured controls for the rest of the
+basic evaluation workspace setup. Users can edit context variant names,
+descriptions, and overlay source/target pairs; edit agent profile name, kind,
+command, timeout, and network; add, copy, or delete variants and agents with a
+confirmation before deletion; and choose the exact task, variant, and agent
+scope for the next run. Saving the structured form writes both
+`context-eval.yaml` and `tasks.yaml`, preserves unknown config fields such as
+agent telemetry, reloads through the local server, and refreshes the run plan so
+the selected scope case count is visible before agent execution. Raw YAML
+remains folded under the advanced view for escape-hatch edits, not as the main
+configuration path.
+
 The Coco-first visual authoring slice is specified in
 `docs/coco-visual-hybrid-evaluation.md`. It extends this workflow with Project,
 Coco Agent, Context Variants, Tasks, Expected Outcome, Hard Evaluation, Soft

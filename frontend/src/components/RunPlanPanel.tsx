@@ -1,4 +1,4 @@
-import type { EditableAgent, EditableVariant, RunPlan } from '../types';
+import type { EditableAgent, EditableVariant, RunPlan, RunScope } from '../types';
 
 type RunPlanPanelProps = {
   agents: EditableAgent[];
@@ -7,6 +7,7 @@ type RunPlanPanelProps = {
   visibleCaseCount: number;
   plan: RunPlan | null;
   defaultTrials: number;
+  runScope: RunScope;
 };
 
 export function RunPlanPanel({
@@ -16,6 +17,7 @@ export function RunPlanPanel({
   visibleCaseCount,
   plan,
   defaultTrials,
+  runScope,
 }: RunPlanPanelProps) {
   return (
     <section className="panel matrix-panel">
@@ -25,16 +27,16 @@ export function RunPlanPanel({
       </div>
       <dl className="metric-grid">
         <div>
-          <dt>agents</dt>
-          <dd>{agents.length}</dd>
+          <dt>selected agents</dt>
+          <dd>{runScope.agents.length || agents.length}</dd>
         </div>
         <div>
-          <dt>tasks</dt>
-          <dd>{taskCount}</dd>
+          <dt>selected tasks</dt>
+          <dd>{runScope.task_ids.length || taskCount}</dd>
         </div>
         <div>
-          <dt>variants</dt>
-          <dd>{variants.length}</dd>
+          <dt>selected variants</dt>
+          <dd>{runScope.variants.length || variants.length}</dd>
         </div>
         <div>
           <dt>trials</dt>

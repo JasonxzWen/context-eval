@@ -1,21 +1,39 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { apiRequest } from './api';
+import { AdvancedConfigDetails } from './components/AdvancedConfigDetails';
+import { AgentEditor } from './components/AgentEditor';
 import { FirstRunPanel } from './components/FirstRunPanel';
 import { RunPlanPanel } from './components/RunPlanPanel';
+import { RunControls } from './components/RunControls';
 import { TaskEditor } from './components/TaskEditor';
+import { VariantEditor } from './components/VariantEditor';
 import { WorkflowBand } from './components/WorkflowBand';
 import { localAppFixture, plannedCaseCount } from './fixture';
-import { agentsFrom, emptyConfig, fallbackConfig, listText, primaryAgent } from './localConfig';
+import {
+  agentsFrom,
+  availableScope,
+  blankTask,
+  emptyConfig,
+  emptyRunScope,
+  fallbackConfig,
+  primaryAgent,
+  reconcileRunScope,
+  uniqueTaskId,
+  validateEditableConfig,
+} from './localConfig';
 import type {
   BootstrapResponse,
   CaseDetailPayload,
+  EditableAgent,
   EditableConfig,
   EditableTask,
+  EditableVariant,
   LoadedConfig,
   LogPayload,
   ManualReview,
   ResultsPayload,
   RunPlan,
+  RunScope,
   RunStatus,
   SaveResponse,
   WorkspaceState,
@@ -66,91 +84,16 @@ function labelFor(labels: Record<string, string>, value: string | undefined | nu
   return labels[value] ?? value;
 }
 
-function validateEditableConfig(editable: EditableConfig) {
-  const issues: string[] = [];
-  const ids = editable.tasks.map((task) => task.id.trim());
-  const duplicates = [...new Set(ids.filter((id, index) => id && ids.indexOf(id) !== index))];
-  editable.tasks.forEach((task, index) => {
-    const label = task.id.trim() || `第 ${index + 1} 个 task`;
-    if (!task.id.trim()) {
-      issues.push(`${label}: task id 不能为空`);
-    }
-    if (!task.prompt.trim()) {
-      issues.push(`${label}: prompt 不能为空`);
-    }
-    task.validation_commands.forEach((command, commandIndex) => {
-      if (!command.trim()) {
-        issues.push(`${label}: validation command ${commandIndex + 1} 不能为空`);
-      }
-    });
-    task.hard_evaluation?.command_checks?.forEach((check, checkIndex) => {
-      if (!check.label.trim()) {
-        issues.push(`${label}: command check ${checkIndex + 1} label 不能为空`);
-      }
-      if (!check.command.trim()) {
-        issues.push(`${label}: command check ${checkIndex + 1} command 不能为空`);
-      }
-    });
-    task.soft_evaluation?.rubric?.forEach((item, rubricIndex) => {
-      if (!item.name.trim()) {
-        issues.push(`${label}: rubric ${rubricIndex + 1} name 不能为空`);
-      }
-      if (!(item.weight > 0)) {
-        issues.push(`${label}: rubric ${rubricIndex + 1} weight 必须大于 0`);
-      }
-    });
-  });
-  duplicates.forEach((id) => issues.push(`重复 task id: ${id}`));
-  return issues;
-}
-
-function uniqueTaskId(base: string, tasks: EditableTask[]) {
-  const used = new Set(tasks.map((task) => task.id));
-  if (!used.has(base)) return base;
-  let suffix = 2;
-  while (used.has(`${base}-${suffix}`)) {
-    suffix += 1;
-  }
-  return `${base}-${suffix}`;
-}
-
-function blankTask(tasks: EditableTask[]): EditableTask {
-  return {
-    id: uniqueTaskId('new-task', tasks),
-    title: 'New evaluation task',
-    prompt: '',
-    category: 'bugfix',
-    difficulty: 'easy',
-    validation_commands: [],
-    expected_outcome: {
-      summary: '',
-      acceptance_points: [],
-      files: [],
-    },
-    hard_evaluation: {
-      enabled: true,
-      require_validation_pass: false,
-      required_paths: [],
-      forbidden_paths: [],
-      expected_snippets: [],
-      forbidden_snippets: [],
-      command_checks: [],
-    },
-    soft_evaluation: {
-      enabled: true,
-      mode: 'payload-only',
-      max_score: 10,
-      rubric: [],
-    },
-  };
-}
-
 export function App() {
   const resultsPanelRef = useRef<HTMLElement | null>(null);
   const shouldRevealResultsRef = useRef(false);
+  const runScopeRef = useRef<RunScope>(emptyRunScope());
+  const availableScopeRef = useRef<RunScope>(emptyRunScope());
+  const scopeInitializedRef = useRef(false);
   const [serverMode, setServerMode] = useState<'checking' | 'connected' | 'fixture'>('checking');
   const [configPath, setConfigPath] = useState('context-eval.yaml');
   const [loaded, setLoaded] = useState<LoadedConfig>(() => emptyConfig());
+  const loadedRef = useRef<LoadedConfig>(loaded);
   const [configYaml, setConfigYaml] = useState('');
   const [tasksYaml, setTasksYaml] = useState('');
   const [saveStatus, setSaveStatus] = useState('尚未保存');
@@ -175,6 +118,10 @@ export function App() {
   const [error, setError] = useState('');
   const [taskValidationErrors, setTaskValidationErrors] = useState<string[]>([]);
   const [selectedTaskIndex, setSelectedTaskIndex] = useState(0);
+  const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
+  const [selectedAgentIndex, setSelectedAgentIndex] = useState(0);
+  const [runScope, setRunScope] = useState<RunScope>(() => emptyRunScope());
+  const [scopeNotice, setScopeNotice] = useState('');
   const [cleanupPolicy, setCleanupPolicy] = useState('successful');
   const [workspaceState, setWorkspaceState] = useState<WorkspaceState | null>(null);
   const [projectRepoPath, setProjectRepoPath] = useState('');
@@ -184,17 +131,33 @@ export function App() {
   const agents = agentsFrom(loaded);
   const cocoAgent = primaryAgent(loaded);
   const task = loaded.editable.tasks[selectedTaskIndex] || loaded.editable.tasks[0];
-  const estimatedCaseCount =
-    agents.length * loaded.editable.tasks.length * loaded.editable.variants.length;
-  const visibleCaseCount = plan?.case_count ?? (serverMode === 'fixture' ? fixtureCaseCount : estimatedCaseCount);
+  const estimatedCaseCount = agents.length * loaded.editable.tasks.length * loaded.editable.variants.length;
+  const selectedCaseCount = runScope.task_ids.length * runScope.variants.length * runScope.agents.length;
+  const visibleCaseCount =
+    plan?.case_count ?? (configLoaded ? selectedCaseCount : (serverMode === 'fixture' ? fixtureCaseCount : estimatedCaseCount));
 
   function applyLoadedConfig(payload: LoadedConfig) {
+    const nextAvailable = availableScope(payload);
+    const reconciled = reconcileRunScope(
+      runScopeRef.current,
+      availableScopeRef.current,
+      nextAvailable,
+      scopeInitializedRef.current,
+    );
+    runScopeRef.current = reconciled.scope;
+    availableScopeRef.current = nextAvailable;
+    scopeInitializedRef.current = true;
+    setRunScope(reconciled.scope);
+    setScopeNotice(reconciled.changed ? '运行范围已按最新配置自动清理，请确认本次 scope。' : '');
+    loadedRef.current = payload;
     setLoaded(payload);
     setConfigPath(payload.config_path);
     setConfigYaml(payload.config_yaml);
     setTasksYaml(payload.tasks_yaml);
     setTaskValidationErrors([]);
     setSelectedTaskIndex((current) => Math.min(current, Math.max(payload.editable.tasks.length - 1, 0)));
+    setSelectedVariantIndex((current) => Math.min(current, Math.max(payload.editable.variants.length - 1, 0)));
+    setSelectedAgentIndex((current) => Math.min(current, Math.max(agentsFrom(payload).length - 1, 0)));
     setConfigLoaded(true);
     setWorkspaceState((current) => ({
       state: 'configured',
@@ -203,21 +166,23 @@ export function App() {
       config_path: payload.config_path,
       workspace_root: current?.workspace_root,
     }));
+    return reconciled.scope;
   }
 
   async function loadConfig(path = configPath) {
     setError('');
     if (serverMode === 'fixture') {
-      applyLoadedConfig(fallbackConfig());
+      const scope = applyLoadedConfig(fallbackConfig());
       setSaveStatus('示例配置已加载');
-      return;
+      return scope;
     }
     const payload = await apiRequest<LoadedConfig>('/api/config/load', {
       method: 'POST',
       body: JSON.stringify({ config_path: path }),
     });
-    applyLoadedConfig(payload);
+    const scope = applyLoadedConfig(payload);
     setSaveStatus('已加载本地配置');
+    return scope;
   }
 
   async function saveConfig() {
@@ -239,9 +204,10 @@ export function App() {
     setSaveStatus(`已保存并从磁盘重载: ${saved.config_path} / ${saved.tasks_path}`);
   }
 
-  async function saveEditableConfig() {
+  async function saveEditableConfig(message = '已保存配置并刷新 run plan') {
     setError('');
-    const issues = validateEditableConfig(loaded.editable);
+    const currentLoaded = loadedRef.current;
+    const issues = validateEditableConfig(currentLoaded.editable);
     setTaskValidationErrors(issues);
     if (issues.length > 0) {
       return;
@@ -249,28 +215,46 @@ export function App() {
     const saved = await apiRequest<SaveResponse>('/api/config/save-editable', {
       method: 'POST',
       body: JSON.stringify({
-        config_path: loaded.config_path || configPath,
-        tasks_path: loaded.tasks_path || loaded.editable.tasks_path || 'tasks.yaml',
-        editable: loaded.editable,
+        config_path: currentLoaded.config_path || configPath,
+        tasks_path: currentLoaded.tasks_path || currentLoaded.editable.tasks_path || 'tasks.yaml',
+        editable: currentLoaded.editable,
       }),
     });
+    let nextScope = runScopeRef.current;
     if (saved.reloaded) {
-      applyLoadedConfig(saved.reloaded);
-      await planRun(saved.reloaded.config_path);
+      nextScope = applyLoadedConfig(saved.reloaded);
+      await planRun(saved.reloaded.config_path, nextScope);
     } else {
-      await loadConfig(saved.config_path);
-      await planRun(saved.config_path);
+      nextScope = await loadConfig(saved.config_path);
+      await planRun(saved.config_path, nextScope);
     }
-    setSaveStatus(`已保存任务并刷新 run plan: ${saved.tasks_path}`);
+    setSaveStatus(`${message}: ${saved.config_path} / ${saved.tasks_path}`);
   }
 
   function updateEditable(updater: (editable: EditableConfig) => EditableConfig) {
-    setLoaded((current) => ({
-      ...current,
-      editable: updater(current.editable),
-    }));
+    const nextLoaded = {
+      ...loadedRef.current,
+      editable: updater(loadedRef.current.editable),
+    };
+    loadedRef.current = nextLoaded;
+    setLoaded(nextLoaded);
     setPlan(null);
-    setTaskValidationErrors([]);
+  }
+
+  function commitRunScope(nextScope: RunScope) {
+    runScopeRef.current = nextScope;
+    setRunScope(nextScope);
+    setPlan(null);
+  }
+
+  function toggleRunScope(kind: keyof RunScope, value: string, checked: boolean) {
+    const current = runScopeRef.current;
+    const selected = current[kind];
+    const nextValues = checked
+      ? [...selected, value]
+      : selected.filter((item) => item !== value);
+    setScopeNotice('');
+    commitRunScope({ ...current, [kind]: nextValues });
   }
 
   function updateTask(index: number, taskPatch: EditableTask) {
@@ -309,6 +293,32 @@ export function App() {
       tasks: editable.tasks.filter((_, taskIndex) => taskIndex !== index),
     }));
     setSelectedTaskIndex(Math.max(0, index - 1));
+  }
+
+  function syncAgents(editable: EditableConfig, profiles: EditableAgent[]) {
+    const nextProfiles = profiles.length > 0
+      ? profiles
+      : [{
+          name: 'new-agent',
+          kind: 'custom',
+          command: '',
+          timeout_minutes: 60,
+          network: 'disabled',
+        }];
+    return {
+      ...editable,
+      agent: nextProfiles[0],
+      agents: nextProfiles,
+      agent_shape: editable.agent_shape === 'agents' || nextProfiles.length > 1 ? 'agents' : 'agent',
+    };
+  }
+
+  function updateAgents(profiles: EditableAgent[]) {
+    updateEditable((editable) => syncAgents(editable, profiles));
+  }
+
+  function updateVariants(variants: EditableVariant[]) {
+    updateEditable((editable) => ({ ...editable, variants }));
   }
 
   async function bootstrapDemo() {
@@ -352,13 +362,20 @@ export function App() {
     return payload.checks;
   }
 
-  async function planRun(path = loaded.config_path || configPath) {
+  function runRequestBody(path = loaded.config_path || configPath, scope = runScopeRef.current) {
+    return {
+      config_path: path,
+      cleanup_policy: cleanupPolicy,
+      task_ids: scope.task_ids,
+      variants: scope.variants,
+      agents: scope.agents,
+    };
+  }
+
+  async function planRun(path = loaded.config_path || configPath, scope = runScopeRef.current) {
     const payload = await apiRequest<RunPlan>('/api/run-plan', {
       method: 'POST',
-      body: JSON.stringify({
-        config_path: path,
-        cleanup_policy: cleanupPolicy,
-      }),
+      body: JSON.stringify(runRequestBody(path, scope)),
     });
     setPlan(payload);
     return payload;
@@ -423,6 +440,10 @@ export function App() {
 
   async function startRun() {
     setError('');
+    const scope = runScopeRef.current;
+    if (scope.task_ids.length === 0 || scope.variants.length === 0 || scope.agents.length === 0) {
+      throw new Error('请至少选择一个 task、variant 和 agent');
+    }
     setResults(null);
     setSelectedCaseId('');
     setCaseDetail(null);
@@ -433,12 +454,11 @@ export function App() {
     shouldRevealResultsRef.current = true;
     try {
       await runPreflight();
-      await planRun();
+      await planRun(loaded.config_path || configPath, scope);
       const payload = await apiRequest<RunStatus>('/api/runs', {
         method: 'POST',
         body: JSON.stringify({
-          config_path: loaded.config_path || configPath,
-          cleanup_policy: cleanupPolicy,
+          ...runRequestBody(loaded.config_path || configPath, scope),
           confirm: true,
         }),
       });
@@ -491,9 +511,15 @@ export function App() {
           await loadConfig(health.workspace.config_path || 'context-eval.yaml');
         } else {
           setConfigLoaded(false);
-          setLoaded(emptyConfig());
+          const empty = emptyConfig();
+          loadedRef.current = empty;
+          setLoaded(empty);
           setConfigYaml('');
           setTasksYaml('');
+          runScopeRef.current = emptyRunScope();
+          availableScopeRef.current = emptyRunScope();
+          scopeInitializedRef.current = false;
+          setRunScope(emptyRunScope());
         }
       } catch {
         if (!cancelled) {
@@ -523,6 +549,18 @@ export function App() {
       setSelectedTaskIndex(Math.max(loaded.editable.tasks.length - 1, 0));
     }
   }, [loaded.editable.tasks.length, selectedTaskIndex]);
+
+  useEffect(() => {
+    if (selectedVariantIndex >= loaded.editable.variants.length) {
+      setSelectedVariantIndex(Math.max(loaded.editable.variants.length - 1, 0));
+    }
+  }, [loaded.editable.variants.length, selectedVariantIndex]);
+
+  useEffect(() => {
+    if (selectedAgentIndex >= agents.length) {
+      setSelectedAgentIndex(Math.max(agents.length - 1, 0));
+    }
+  }, [agents.length, selectedAgentIndex]);
 
   useEffect(() => {
     if (!results || !shouldRevealResultsRef.current) return;
@@ -565,9 +603,10 @@ export function App() {
         ? '自动'
         : preflightStatus;
   const taskTitle = task?.title || task?.id || '未配置任务';
-  const variantSummary = loaded.editable.variants.map((variant) => variant.name).join(' vs ') || '未配置 context';
+  const variantSummary = runScope.variants.join(' vs ') || '未选择 context';
+  const agentSummary = runScope.agents.join(', ') || cocoAgent?.name || '未配置 agent';
   const runBrief = configLoaded
-    ? `用 ${cocoAgent?.name || '未配置 agent'} 在 ${variantSummary} 上执行 ${loaded.editable.tasks.length} 个任务，共 ${visibleCaseCount} 个 case。`
+    ? `用 ${agentSummary} 在 ${variantSummary} 上执行 ${runScope.task_ids.length} 个任务，共 ${visibleCaseCount} 个 case。`
     : '先试用 demo 或打开一个本地 Git 项目。';
 
   const isFirstRun = serverMode === 'connected' && workspaceState?.state === 'empty' && !configLoaded;
@@ -614,6 +653,33 @@ export function App() {
           visibleCaseCount={visibleCaseCount}
           plan={plan}
           defaultTrials={localAppFixture.trials}
+          runScope={runScope}
+        />
+        {(taskValidationErrors.length > 0 || scopeNotice) && (
+          <div className="notice validation-notice scope-notice" role="alert">
+            {scopeNotice && <div>{scopeNotice}</div>}
+            {taskValidationErrors.map((issue) => (
+              <div key={issue}>{issue}</div>
+            ))}
+          </div>
+        )}
+        <VariantEditor
+          variants={loaded.editable.variants}
+          selectedVariantIndex={selectedVariantIndex}
+          saveStatus={saveStatus}
+          serverMode={serverMode}
+          onSelectVariant={setSelectedVariantIndex}
+          onUpdateVariants={updateVariants}
+          onSave={() => guarded(() => saveEditableConfig('已保存配置并刷新 run plan'))}
+        />
+        <AgentEditor
+          agents={agents}
+          selectedAgentIndex={selectedAgentIndex}
+          saveStatus={saveStatus}
+          serverMode={serverMode}
+          onSelectAgent={setSelectedAgentIndex}
+          onUpdateAgents={updateAgents}
+          onSave={() => guarded(() => saveEditableConfig('已保存配置并刷新 run plan'))}
         />
         <TaskEditor
           tasks={loaded.editable.tasks}
@@ -621,270 +687,56 @@ export function App() {
           selectedTaskIndex={selectedTaskIndex}
           saveStatus={saveStatus}
           serverMode={serverMode}
-          validationErrors={taskValidationErrors}
+          validationErrors={[]}
           onSelectTask={setSelectedTaskIndex}
           onUpdateTask={updateTask}
           onAddTask={addTask}
           onDuplicateTask={duplicateTask}
           onDeleteTask={deleteTask}
-          onSave={() => guarded(saveEditableConfig)}
+          onSave={() => guarded(() => saveEditableConfig('已保存任务并刷新 run plan'))}
         />
-        <details className="advanced-workbench">
-          <summary>
-            <span>配置与任务细节</span>
-            <small>Agent、Context、验收标准和 YAML</small>
-          </summary>
-          <div className="advanced-grid">
-        <section className="panel project-panel">
-          <div className="panel-heading">
-            <h2>Project</h2>
-            <span>{modeLabel}</span>
-          </div>
-          <div className="form-grid">
-            <label htmlFor="config-path">
-              配置路径
-              <input
-                id="config-path"
-                value={configPath}
-                onChange={(event) => setConfigPath(event.target.value)}
-              />
-            </label>
-            <label htmlFor="repo-path">
-              仓库路径
-              <input id="repo-path" value={loaded.editable.repo.path} readOnly />
-            </label>
-            <label htmlFor="base-ref">
-              base ref
-              <input id="base-ref" value={loaded.editable.repo.base_ref} readOnly />
-            </label>
-            <label htmlFor="output-dir">
-              输出目录
-              <input id="output-dir" value={loaded.editable.output_dir || './runs'} readOnly />
-            </label>
-          </div>
-          <div className="button-row">
-            <button type="button" onClick={() => guarded(() => loadConfig())}>
-              加载配置
-            </button>
-            <button type="button" onClick={() => guarded(saveConfig)} disabled={serverMode !== 'connected'}>
-              保存并重载
-            </button>
-          </div>
-          <p className="status-line" data-testid="save-status">
-            {saveStatus}
-          </p>
-        </section>
+        <AdvancedConfigDetails
+          agents={agents}
+          configPath={configPath}
+          configYaml={configYaml}
+          loaded={loaded}
+          modeLabel={modeLabel}
+          saveStatus={saveStatus}
+          serverMode={serverMode}
+          task={task}
+          tasksYaml={tasksYaml}
+          onConfigPathChange={setConfigPath}
+          onConfigYamlChange={setConfigYaml}
+          onLoadConfig={() => guarded(async () => { await loadConfig(); })}
+          onSaveConfig={() => guarded(saveConfig)}
+          onTasksYamlChange={setTasksYaml}
+        />
 
-        <section className="panel">
-          <div className="panel-heading">
-            <h2>Agent</h2>
-            <span>{cocoAgent?.kind || 'unknown'}</span>
-          </div>
-          <ul className="profile-list">
-            {agents.map((profile) => (
-              <li key={profile.name}>
-                <div>
-                  <strong>{profile.name}</strong>
-                  <span>{profile.kind}</span>
-                </div>
-                <code>{profile.command}</code>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="panel">
-          <div className="panel-heading">
-            <h2>Context Variants</h2>
-          </div>
-          <ul className="two-column-list single-list">
-            {loaded.editable.variants.map((variant) => (
-              <li key={variant.name}>
-                <strong>{variant.name}</strong>
-                <span>{variant.description || '未描述'}</span>
-                <small>{variant.overlays.length} overlay(s)</small>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="panel">
-          <div className="panel-heading">
-            <h2>Tasks</h2>
-            <span>{loaded.editable.tasks.length}</span>
-          </div>
-          <ul className="two-column-list single-list">
-            {loaded.editable.tasks.map((item) => (
-              <li key={item.id}>
-                <strong>{item.id}</strong>
-                <span>{item.title || item.prompt}</span>
-                <small>{[item.category, item.difficulty].filter(Boolean).join(' / ')}</small>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="panel">
-          <div className="panel-heading">
-            <h2>Expected Outcome</h2>
-          </div>
-          <p className="status-line">{task?.expected_outcome?.summary || '未配置 summary'}</p>
-          <ul className="check-list">
-            {(task?.expected_outcome?.acceptance_points || []).map((point) => (
-              <li key={point}>{point}</li>
-            ))}
-            {task?.expected_outcome?.files?.map((file) => (
-              <li key={file.path}>
-                <strong>{file.path}</strong>
-                <span>{file.must_change ? 'must_change' : file.change_type || 'expected'}</span>
-              </li>
-            ))}
-            {(!task?.expected_outcome?.acceptance_points?.length
-              && !task?.expected_outcome?.files?.length) && <li>未配置 acceptance_points 或 files</li>}
-          </ul>
-        </section>
-
-        <section className="panel">
-          <div className="panel-heading">
-            <h2>Hard Evaluation</h2>
-            <span>{task?.hard_evaluation?.enabled ? 'enabled' : 'disabled'}</span>
-          </div>
-          <dl className="compact-list">
-            <div>
-              <dt>require_validation_pass</dt>
-              <dd>{String(Boolean(task?.hard_evaluation?.require_validation_pass))}</dd>
-            </div>
-            <div>
-              <dt>required_paths</dt>
-              <dd>{listText(task?.hard_evaluation?.required_paths)}</dd>
-            </div>
-            <div>
-              <dt>forbidden_paths</dt>
-              <dd>{listText(task?.hard_evaluation?.forbidden_paths)}</dd>
-            </div>
-          </dl>
-        </section>
-
-        <section className="panel">
-          <div className="panel-heading">
-            <h2>Soft Evaluation</h2>
-            <span>{task?.soft_evaluation?.mode || 'not_configured'}</span>
-          </div>
-          <ul className="check-list">
-            {(task?.soft_evaluation?.rubric || []).map((rubric) => (
-              <li key={rubric.name}>
-                <strong>{rubric.name}</strong>
-                <span>{rubric.description}</span>
-                <small>weight={rubric.weight}</small>
-              </li>
-            ))}
-            {!task?.soft_evaluation?.rubric?.length && <li>未配置 rubric</li>}
-          </ul>
-        </section>
-
-        <section className="panel yaml-panel">
-          <div className="panel-heading">
-            <h2>配置文件</h2>
-          </div>
-          <label htmlFor="config-yaml">
-            context-eval.yaml
-            <textarea
-              id="config-yaml"
-              value={configYaml}
-              onChange={(event) => setConfigYaml(event.target.value)}
-              spellCheck={false}
-            />
-          </label>
-          <label htmlFor="tasks-yaml">
-            tasks.yaml
-            <textarea
-              id="tasks-yaml"
-              value={tasksYaml}
-              onChange={(event) => setTasksYaml(event.target.value)}
-              spellCheck={false}
-            />
-          </label>
-        </section>
-          </div>
-        </details>
-
-        <section className="panel run-brief-panel">
-          <div className="panel-heading">
-            <h2>本次评测</h2>
-            <span>{results ? '已出结果' : isRunActive ? '运行中' : '待运行'}</span>
-          </div>
-          <div className="brief-layout">
-            <div className="brief-copy">
-              <strong>{taskTitle}</strong>
-              <span>{task?.expected_outcome?.summary || '未配置 expected_outcome summary'}</span>
-              <p>{runBrief}</p>
-            </div>
-            <div className="brief-actions">
-              <label htmlFor="cleanup-policy">
-                清理策略
-                <select
-                  id="cleanup-policy"
-                  value={cleanupPolicy}
-                  onChange={(event) => setCleanupPolicy(event.target.value)}
-                >
-                  <option value="never">保留所有工作区</option>
-                  <option value="always">总是清理</option>
-                  <option value="successful">成功后清理</option>
-                  <option value="failed">失败后清理</option>
-                </select>
-              </label>
-              <div className="button-row">
-                <button type="button" onClick={() => guarded(startRun)} disabled={serverMode !== 'connected' || isRunActive}>
-                  {isRunActive ? '运行中' : '开始运行'}
-                </button>
-                <button type="button" className="secondary" onClick={() => guarded(stopRun)} disabled={!isRunActive}>
-                  停止
-                </button>
-              </div>
-            </div>
-          </div>
-          <dl className="run-prep-summary">
-            <div>
-              <dt>配置检查</dt>
-              <dd data-testid="preflight-status">{preflightStatus}</dd>
-            </div>
-            <div>
-              <dt>待执行 case</dt>
-              <dd>
-                <strong data-testid="planned-case-count">{plan?.case_count ?? visibleCaseCount}</strong>
-                {!plan && visibleCaseCount > 0 && <small>预计</small>}
-              </dd>
-            </div>
-          </dl>
-          {preflightChecks.length > 0 && (
-            <details className="prep-details">
-              <summary>已通过 {preflightChecks.length} 项运行前检查</summary>
-              <ul className="inline-check-list">
-                {preflightChecks.map((check) => (
-                  <li key={check}>{labelFor(checkLabels, check)}</li>
-                ))}
-              </ul>
-            </details>
-          )}
-          {results && (
-            <div className="result-callout" role="status">
-              <div>
-                <strong>结果已生成</strong>
-                <span>
-                  {results.overview.case_count} 个 case，validation failed {resultSummary?.validationFailed ?? 0}，
-                  hard failed {resultSummary?.hardFailed ?? 0}，telemetry gaps {results.overview.telemetry_gap_count}
-                </span>
-              </div>
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => resultsPanelRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })}
-              >
-                查看 Results
-              </button>
-            </div>
-          )}
-        </section>
+        <RunControls
+          cleanupPolicy={cleanupPolicy}
+          isRunActive={isRunActive}
+          plan={plan}
+          preflightChecks={preflightChecks}
+          preflightStatus={preflightStatus}
+          resultSummary={resultSummary}
+          results={results}
+          runBrief={runBrief}
+          runScope={runScope}
+          selectedCaseCount={visibleCaseCount}
+          serverMode={serverMode}
+          taskSummary={task?.expected_outcome?.summary || '未配置 expected_outcome summary'}
+          taskTitle={taskTitle}
+          tasks={loaded.editable.tasks}
+          variants={loaded.editable.variants}
+          agents={agents}
+          onCleanupPolicyChange={setCleanupPolicy}
+          onPlan={() => guarded(async () => { await planRun(); })}
+          onRevealResults={() => resultsPanelRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })}
+          onStart={() => guarded(startRun)}
+          onStop={() => guarded(stopRun)}
+          onToggleScope={toggleRunScope}
+          labelForCheck={(check) => labelFor(checkLabels, check)}
+        />
 
         <section className="panel run-panel">
           <div className="panel-heading">
