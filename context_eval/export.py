@@ -62,6 +62,7 @@ def export_run_csv(run_dir: Path) -> str:
 def export_run_json(run_dir: Path, *, exported_at: datetime | None = None) -> str:
     results = _sorted_results(_load_results(run_dir))
     metadata = _load_metadata(run_dir)
+    manual_reviews = _load_manual_reviews(run_dir)
     payload = {
         "export_schema_version": EXPORT_SCHEMA_VERSION,
         "exported_at": _format_exported_at(exported_at),
@@ -74,7 +75,11 @@ def export_run_json(run_dir: Path, *, exported_at: datetime | None = None) -> st
             "run_id": metadata.get("run_id") or (results[0].run_id if results else run_dir.name),
             "metadata": metadata,
         },
-        "cases": [_case_json_row(result) for result in results],
+        "cases": [_case_json_row(result, manual_reviews=manual_reviews) for result in results],
+        "manual_reviews": {
+            "schema_version": "1",
+            "reviews": manual_reviews,
+        },
         "agent_summaries": agent_summary_rows(results),
     }
     return json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True) + "\n"
@@ -92,6 +97,8 @@ def _source_files(run_dir: Path) -> list[str]:
     source_files = ["results.jsonl"]
     if (run_dir / "run_metadata.json").exists():
         source_files.append("run_metadata.json")
+    if (run_dir / "manual_reviews.json").exists():
+        source_files.append("manual_reviews.json")
     return source_files
 
 
@@ -217,7 +224,12 @@ def _case_csv_row(result: CaseResult) -> dict[str, str | int]:
     }
 
 
-def _case_json_row(result: CaseResult) -> dict[str, Any]:
+def _case_json_row(
+    result: CaseResult,
+    *,
+    manual_reviews: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    case_id = result.case_id or ""
     return {
         "run_id": result.run_id,
         "case_id": result.case_id,
@@ -253,6 +265,32 @@ def _case_json_row(result: CaseResult) -> dict[str, Any]:
         "reasoning_step_count": result.reasoning_step_count,
         "tool_call_count": result.tool_call_count,
         "tool_calls_by_name": dict(sorted(result.tool_calls_by_name.items())),
+        "manual_review": (manual_reviews or {}).get(
+            case_id,
+            {
+                "case_id": case_id,
+                "decision": "not_reviewed",
+                "confidence": "unknown",
+                "reviewer": "",
+                "notes": "",
+                "updated_at": None,
+            },
+        ),
+    }
+
+
+def _load_manual_reviews(run_dir: Path) -> dict[str, dict[str, Any]]:
+    path = run_dir / "manual_reviews.json"
+    if not path.exists():
+        return {}
+    data = json.loads(path.read_text(encoding="utf-8"))
+    reviews = data.get("reviews", {}) if isinstance(data, dict) else {}
+    if not isinstance(reviews, dict):
+        return {}
+    return {
+        str(case_id): review
+        for case_id, review in reviews.items()
+        if isinstance(review, dict)
     }
 
 

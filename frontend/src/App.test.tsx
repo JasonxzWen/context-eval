@@ -105,7 +105,8 @@ describe('App workflow shell', () => {
     expect(screen.getByRole('heading', { name: 'context-eval 本地工作台' })).toBeVisible();
     await waitFor(() => expect(screen.getAllByText('示例模式').length).toBeGreaterThan(0));
     expect(screen.getByTestId('matrix-count')).toHaveTextContent('8');
-    expect(screen.getByRole('heading', { name: 'Coco Agent' })).toBeVisible();
+    fireEvent.click(screen.getByText('配置与任务细节'));
+    expect(screen.getByRole('heading', { name: 'Agent' })).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Expected Outcome' })).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Hard Evaluation' })).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Soft Evaluation' })).toBeVisible();
@@ -126,11 +127,12 @@ describe('App workflow shell', () => {
 
     render(<App />);
 
+    fireEvent.click(screen.getByText('配置与任务细节'));
     await waitFor(() => expect(screen.getByLabelText('仓库路径')).toHaveValue('./fixture-repo'));
     expect(
       screen.getByText('coco -y --query-timeout 10m --bash-tool-timeout 5m -p "{prompt}"'),
     ).toBeVisible();
-    expect(screen.getByText('README contains fixed marker.')).toBeVisible();
+    expect(screen.getAllByText('README contains fixed marker.').length).toBeGreaterThan(0);
     expect(screen.getByText('payload-only')).toBeVisible();
 
     fireEvent.click(screen.getByRole('button', { name: '加载配置' }));
@@ -170,6 +172,7 @@ describe('App workflow shell', () => {
 
     render(<App />);
 
+    fireEvent.click(screen.getByText('配置与任务细节'));
     await waitFor(() => expect(screen.getByLabelText('tasks.yaml')).toHaveValue(loadedPayload.tasks_yaml));
     fireEvent.change(screen.getByLabelText('tasks.yaml'), {
       target: { value: tasksWithUnknown },
@@ -197,6 +200,12 @@ describe('App workflow shell', () => {
       }
       if (target === '/api/config/load') {
         return jsonResponse(loadedPayload);
+      }
+      if (target === '/api/preflight') {
+        return jsonResponse({
+          ok: true,
+          checks: ['config_structure', 'repo_path', 'git_ref'],
+        });
       }
       if (target === '/api/run-plan') {
         return jsonResponse({
@@ -259,6 +268,23 @@ describe('App workflow shell', () => {
             low_confidence_count: 0,
             telemetry_gap_count: 0,
           },
+          compare_groups: [
+            {
+              group_id: 'fix-greeting-punctuation__coco__trial-1',
+              task_id: 'fix-greeting-punctuation',
+              agent_name: 'coco',
+              trial_index: 1,
+              baseline_variant: 'baseline',
+              experiment_variant: 'experiment',
+              baseline_case_id: 'fix-greeting-punctuation__baseline__coco',
+              experiment_case_id: 'fix-greeting-punctuation__experiment__coco',
+              verdict: 'experiment_improved',
+              hard_delta: 1,
+              validation_delta: 0,
+              total_tokens_delta: -20,
+              summary: 'experiment improved hard evaluation without changing validation status',
+            },
+          ],
           cases: [
             {
               case_id: 'fix-greeting-punctuation__baseline__coco',
@@ -268,6 +294,11 @@ describe('App workflow shell', () => {
               status: 'completed',
               validation_status: 'passed',
               confidence: 'high',
+              telemetry_status: 'collected',
+              total_tokens: 180,
+              reasoning_tokens: 24,
+              reasoning_step_count: 2,
+              tool_call_count: 3,
               changed_files: 1,
               hard_evaluation_status: 'passed',
               hard_evaluation_score: 4,
@@ -275,8 +306,72 @@ describe('App workflow shell', () => {
               soft_evaluation_status: 'payload_generated',
               soft_evaluation_payload_path:
                 'artifacts/fix-greeting-punctuation__baseline__coco/soft_evaluation_payload.json',
+              patch_path: 'patches/fix-greeting-punctuation__baseline__coco.patch',
+              stdout_path: 'logs/fix-greeting-punctuation__baseline__coco.agent.stdout.log',
+              stderr_path: 'logs/fix-greeting-punctuation__baseline__coco.agent.stderr.log',
+              manual_review: {
+                case_id: 'fix-greeting-punctuation__baseline__coco',
+                decision: 'not_reviewed',
+                confidence: 'unknown',
+                reviewer: '',
+                notes: '',
+                updated_at: null,
+              },
             },
           ],
+        });
+      }
+      if (target.startsWith('/api/case-detail')) {
+        return jsonResponse({
+          ok: true,
+          case: {
+            case_id: 'fix-greeting-punctuation__baseline__coco',
+            task_id: 'fix-greeting-punctuation',
+            variant: 'baseline',
+            agent_name: 'coco',
+            status: 'completed',
+            validation_status: 'passed',
+            hard_evaluation_status: 'passed',
+            hard_evaluation_score: 4,
+            hard_evaluation_max_score: 4,
+            manual_review: {
+              case_id: 'fix-greeting-punctuation__baseline__coco',
+              decision: 'not_reviewed',
+              confidence: 'unknown',
+              reviewer: '',
+              notes: '',
+              updated_at: null,
+            },
+          },
+          patch: {
+            path: 'patches/fix-greeting-punctuation__baseline__coco.patch',
+            content: 'diff --git a/README.md b/README.md\n+context-eval marker\n',
+            exists: true,
+          },
+          logs: [{ kind: 'agent_stdout', path: 'logs/stdout.log', content: 'done', exists: true }],
+          hard_evaluation: { status: 'passed', checks: [] },
+          manual_review: {
+            case_id: 'fix-greeting-punctuation__baseline__coco',
+            decision: 'not_reviewed',
+            confidence: 'unknown',
+            reviewer: '',
+            notes: '',
+            updated_at: null,
+          },
+        });
+      }
+      if (target === '/api/manual-review') {
+        return jsonResponse({
+          ok: true,
+          case_id: 'fix-greeting-punctuation__baseline__coco',
+          review: {
+            case_id: 'fix-greeting-punctuation__baseline__coco',
+            decision: 'pass',
+            confidence: 'high',
+            reviewer: 'manual',
+            notes: 'Looks good.',
+            updated_at: '2026-05-19T16:30:00',
+          },
         });
       }
       throw new Error(`unexpected request: ${target}`);
@@ -285,11 +380,38 @@ describe('App workflow shell', () => {
 
     render(<App />);
 
-    await waitFor(() => expect(screen.getByLabelText('仓库路径')).toHaveValue('./fixture-repo'));
-    fireEvent.click(screen.getByRole('button', { name: '生成计划' }));
-    await waitFor(() => expect(screen.getByTestId('planned-case-count')).toHaveTextContent('1'));
+    await waitFor(() => expect(screen.getAllByText('Fix greeting punctuation').length).toBeGreaterThan(0));
     fireEvent.click(screen.getByRole('button', { name: '开始运行' }));
+    await waitFor(() => expect(screen.getByTestId('preflight-status')).toHaveTextContent('运行前检查通过'));
+    await waitFor(() => expect(screen.getByTestId('planned-case-count')).toHaveTextContent('1'));
+    expect(screen.queryByRole('button', { name: '运行预检' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '生成矩阵' })).not.toBeInTheDocument();
     await waitFor(() => expect(screen.getByText('hard passed 4/4')).toBeVisible());
+    expect(screen.getByText('结果已生成')).toBeVisible();
+    expect(screen.getByRole('button', { name: '查看 Results' })).toBeVisible();
     expect(screen.getByText('soft payload_generated')).toBeVisible();
+    expect(screen.getByText('180')).toBeVisible();
+    expect(screen.getByText('rounds 2')).toBeVisible();
+    expect(screen.getByText('experiment_improved')).toBeVisible();
+    expect(screen.getByText('experiment improved hard evaluation without changing validation status')).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: '查看详情' }));
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Case Detail' })).toBeVisible());
+    expect(screen.getByText('patches/fix-greeting-punctuation__baseline__coco.patch')).toBeVisible();
+    expect(screen.getByText(/context-eval marker/)).toBeVisible();
+
+    fireEvent.change(screen.getByLabelText('review decision'), { target: { value: 'pass' } });
+    fireEvent.change(screen.getByLabelText('review confidence'), { target: { value: 'high' } });
+    fireEvent.change(screen.getByLabelText('reviewer'), { target: { value: 'manual' } });
+    fireEvent.change(screen.getByLabelText('review notes'), { target: { value: 'Looks good.' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存 Review' }));
+    await waitFor(() => expect(screen.getByText('Review 已保存')).toBeVisible());
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/manual-review',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('"decision":"pass"'),
+      }),
+    );
   });
 });

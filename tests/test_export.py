@@ -271,6 +271,67 @@ def test_export_run_json_contains_hard_and_soft_evaluation_fields(tmp_path: Path
     assert case["reasoning_step_count"] == 12
 
 
+def test_export_run_json_includes_manual_reviews(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    _write_run(
+        run_dir,
+        [
+            CaseResult(
+                run_id="run-1",
+                case_id="task-a__baseline",
+                task_id="task-a",
+                variant="baseline",
+                repo_ref="main",
+                agent_name="coco",
+                network="disabled",
+                status="completed",
+                validation_status="passed",
+                confidence="high",
+            ),
+        ],
+    )
+    (run_dir / "manual_reviews.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "1",
+                "reviews": {
+                    "task-a__baseline": {
+                        "case_id": "task-a__baseline",
+                        "decision": "pass",
+                        "confidence": "high",
+                        "reviewer": "manual",
+                        "notes": "Accepted.",
+                        "updated_at": "2026-05-19T16:30:00Z",
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    payload = json.loads(
+        export_run_json(
+            run_dir,
+            exported_at=datetime(2026, 5, 19, 8, 30, tzinfo=UTC),
+        )
+    )
+
+    assert payload["source_files"] == [
+        "results.jsonl",
+        "run_metadata.json",
+        "manual_reviews.json",
+    ]
+    assert payload["manual_reviews"]["reviews"]["task-a__baseline"]["decision"] == "pass"
+    assert payload["cases"][0]["manual_review"] == {
+        "case_id": "task-a__baseline",
+        "decision": "pass",
+        "confidence": "high",
+        "reviewer": "manual",
+        "notes": "Accepted.",
+        "updated_at": "2026-05-19T16:30:00Z",
+    }
+
+
 def test_export_run_json_metadata_handles_missing_run_metadata(tmp_path: Path) -> None:
     run_dir = tmp_path / "run-without-metadata"
     run_dir.mkdir()

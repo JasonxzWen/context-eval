@@ -4,6 +4,8 @@ import io
 import json
 import os
 import re
+import subprocess
+import sys
 import tempfile
 import threading
 import uuid
@@ -12,6 +14,7 @@ from datetime import datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path, PurePosixPath, PureWindowsPath
+from textwrap import dedent
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
@@ -25,6 +28,7 @@ from context_eval.config import (
 )
 from context_eval.config_editor import build_editable_model
 from context_eval.export import agent_summary_rows, export_run_csv, export_run_json
+from context_eval.init import GENERIC_AGENT_COMMAND, create_starter_files
 from context_eval.inspect_run import _load_metadata, _load_results
 from context_eval.models import (
     SUPPORTED_AGENT_COMMAND_VARIABLES,
@@ -135,6 +139,72 @@ class _RunRecord:
     thread: threading.Thread | None = None
 
 
+DEMO_AGENT_SCRIPT = dedent(
+    r'''
+    from __future__ import annotations
+
+    import json
+    import os
+    import time
+    from pathlib import Path
+
+    started = time.monotonic()
+    source = Path("fixture_app/greetings.py")
+    instructions = Path("AGENTS.md")
+    instruction_text = instructions.read_text(encoding="utf-8") if instructions.exists() else ""
+    marker = "  # context-eval-demo" if "context-eval-demo marker" in instruction_text else ""
+    text = source.read_text(encoding="utf-8")
+    text = text.replace(
+        '    return f"Hello, {name}"',
+        f'    return f"Hello, {{name}}!"{marker}',
+    )
+    source.write_text(text, encoding="utf-8")
+
+    telemetry_file = os.environ.get("CONTEXT_EVAL_TELEMETRY_FILE")
+    if telemetry_file:
+        Path(telemetry_file).write_text(
+            json.dumps(
+                {
+                    "task_status": "completed",
+                    "agent_duration_seconds": round(time.monotonic() - started, 4),
+                    "prompt_tokens": 120,
+                    "completion_tokens": 60,
+                    "total_tokens": 180,
+                    "reasoning_tokens": 24,
+                    "reasoning_step_count": 2,
+                    "tool_calls_by_name": {
+                        "read_file": 2,
+                        "edit_file": 1,
+                    },
+                    "files_read_count": 2,
+                    "files_written_count": 1,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+    '''
+).lstrip()
+
+
+DEMO_VALIDATION_SCRIPT = dedent(
+    r'''
+    from pathlib import Path
+
+    text = Path("fixture_app/greetings.py").read_text(encoding="utf-8")
+    if 'return f"Hello, {name}!"' not in text:
+        raise SystemExit("greeting was not updated")
+    '''
+).lstrip()
+
+
+MANUAL_REVIEW_SCHEMA_VERSION = "1"
+MANUAL_REVIEW_DECISIONS = {"not_reviewed", "pass", "fail", "needs_review"}
+MANUAL_REVIEW_CONFIDENCES = {"unknown", "low", "medium", "high"}
+
+
 class LocalAppService:
     """Local-only app service used by the HTTP handler and tests."""
 
@@ -161,6 +231,7 @@ class LocalAppService:
         frontend_available = bool(
             self.frontend_dist and (self.frontend_dist / "index.html").exists()
         )
+        workspace = self.workspace_state()
         return {
             "ok": True,
             "mode": "local-app",
@@ -170,6 +241,74 @@ class LocalAppService:
                 str(self.initial_config_path) if self.initial_config_path else None
             ),
             "frontend": "dist" if frontend_available else "fallback",
+            "workspace": workspace,
+        }
+
+    def workspace_state(self) -> dict[str, Any]:
+        default_config = self.guard.resolve_workspace_path(
+            "context-eval.yaml",
+            field="config_path",
+        )
+        has_config = default_config.exists()
+        return {
+            "ok": True,
+            "workspace_root": str(self.workspace_root),
+            "state": "configured" if has_config else "empty",
+            "has_config": has_config,
+            "default_config_path": str(default_config),
+            "config_path": str(default_config) if has_config else None,
+            "can_bootstrap_demo": True,
+            "can_initialize_project": True,
+        }
+
+    def bootstrap_demo_workspace(self, *, overwrite: bool = False) -> dict[str, Any]:
+        targets = [
+            self.workspace_root / "context-eval.yaml",
+            self.workspace_root / "tasks.yaml",
+            self.workspace_root / "contexts",
+            self.workspace_root / "demo-repo",
+        ]
+        self._assert_can_write_targets(targets, overwrite=overwrite)
+
+        demo_repo = self.workspace_root / "demo-repo"
+        self._write_demo_repo(demo_repo)
+        self._write_demo_eval_files(demo_repo)
+        loaded = self.load_config(config_path="context-eval.yaml")
+        return {
+            **self.workspace_state(),
+            "config_path": loaded["config_path"],
+            "tasks_path": loaded["tasks_path"],
+            "loaded": loaded,
+        }
+
+    def initialize_project_workspace(
+        self,
+        *,
+        repo_path: str | Path,
+        overwrite: bool = False,
+    ) -> dict[str, Any]:
+        repo = Path(repo_path).expanduser().resolve()
+        if not repo.exists() or not repo.is_dir():
+            raise LocalAppError(f"repo path does not exist: {repo}")
+        targets = [
+            self.workspace_root / "context-eval.yaml",
+            self.workspace_root / "tasks.yaml",
+            self.workspace_root / "contexts",
+        ]
+        self._assert_can_write_targets(targets, overwrite=overwrite)
+        create_starter_files(
+            directory=self.workspace_root,
+            repo_path=repo.as_posix(),
+            agent_command=GENERIC_AGENT_COMMAND,
+            agent_profiles=False,
+            force=overwrite,
+        )
+        loaded = self.load_config(config_path="context-eval.yaml")
+        return {
+            **self.workspace_state(),
+            "config_path": loaded["config_path"],
+            "tasks_path": loaded["tasks_path"],
+            "loaded": loaded,
         }
 
     def load_config(self, *, config_path: str | Path | None = None) -> dict[str, Any]:
@@ -484,24 +623,25 @@ class LocalAppService:
         path = self.guard.resolve_workspace_path(run_dir, field="run_dir")
         results = _load_results(path)
         metadata = _load_metadata(path)
+        manual_reviews = self._load_manual_reviews(path)
         risks = {
             "failed": [
-                self._case_payload(result, run_dir=path)
+                self._case_payload(result, run_dir=path, manual_reviews=manual_reviews)
                 for result in results
                 if is_failed_result(result)
             ],
             "timeouts": [
-                self._case_payload(result, run_dir=path)
+                self._case_payload(result, run_dir=path, manual_reviews=manual_reviews)
                 for result in results
                 if is_timeout_result(result)
             ],
             "low_confidence": [
-                self._case_payload(result, run_dir=path)
+                self._case_payload(result, run_dir=path, manual_reviews=manual_reviews)
                 for result in results
                 if result.confidence == "low"
             ],
             "telemetry_gaps": [
-                self._case_payload(result, run_dir=path)
+                self._case_payload(result, run_dir=path, manual_reviews=manual_reviews)
                 for result in results
                 if has_telemetry_gap(result)
             ],
@@ -511,9 +651,63 @@ class LocalAppService:
             "run_dir": str(path),
             "metadata": metadata,
             "overview": run_matrix_overview(results),
-            "cases": [self._case_payload(result, run_dir=path) for result in results],
+            "cases": [
+                self._case_payload(result, run_dir=path, manual_reviews=manual_reviews)
+                for result in results
+            ],
+            "compare_groups": self._compare_groups(results),
+            "manual_reviews": {
+                "schema_version": MANUAL_REVIEW_SCHEMA_VERSION,
+                "reviews": manual_reviews,
+            },
             "risks": risks,
             "agent_summaries": agent_summary_rows(results),
+        }
+
+    def case_detail(self, *, run_dir: str | Path, case_id: str) -> dict[str, Any]:
+        path = self.guard.resolve_workspace_path(run_dir, field="run_dir")
+        results = _load_results(path)
+        result = self._find_case(results, case_id)
+        manual_reviews = self._load_manual_reviews(path)
+        return {
+            "ok": True,
+            "run_dir": str(path),
+            "case": self._case_payload(result, run_dir=path, manual_reviews=manual_reviews),
+            "patch": self._artifact_content(path, result.patch_path),
+            "prompt": self._artifact_content(path, result.prompt_path),
+            "logs": self._case_logs(path, result),
+            "hard_evaluation": self._hard_evaluation_payload(path, result),
+            "soft_evaluation": self._soft_evaluation_payload(result),
+            "manual_review": self._manual_review_for(result, manual_reviews),
+        }
+
+    def save_manual_review(
+        self,
+        *,
+        run_dir: str | Path,
+        case_id: str,
+        review: dict[str, Any],
+    ) -> dict[str, Any]:
+        path = self.guard.resolve_workspace_path(run_dir, field="run_dir")
+        results = _load_results(path)
+        result = self._find_case(results, case_id)
+        reviews = self._load_manual_reviews(path)
+        normalized = self._normalize_manual_review(result.case_id or result.task_id, review)
+        reviews[result.case_id or result.task_id] = normalized
+        payload = {
+            "schema_version": MANUAL_REVIEW_SCHEMA_VERSION,
+            "updated_at": normalized["updated_at"],
+            "reviews": dict(sorted(reviews.items())),
+        }
+        (path / "manual_reviews.json").write_text(
+            json.dumps(payload, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        return {
+            "ok": True,
+            "run_dir": str(path),
+            "case_id": result.case_id,
+            "review": normalized,
         }
 
     def read_artifact(self, *, run_dir: str | Path, artifact_path: str | Path) -> dict[str, Any]:
@@ -558,6 +752,199 @@ class LocalAppService:
             "media_type": media_type,
             "content": content,
         }
+
+    def _assert_can_write_targets(self, targets: list[Path], *, overwrite: bool) -> None:
+        existing = [path for path in targets if path.exists()]
+        if existing and not overwrite:
+            raise LocalAppError(
+                "refusing to overwrite existing file(s): "
+                + ", ".join(str(path) for path in existing)
+            )
+        for path in existing:
+            if path.is_dir():
+                self._safe_remove_tree(path)
+            else:
+                path.unlink()
+
+    def _safe_remove_tree(self, path: Path) -> None:
+        resolved = path.resolve()
+        if not _is_relative_to(resolved, self.workspace_root):
+            raise LocalAppError("refusing to remove path outside workspace")
+        for child in sorted(resolved.rglob("*"), key=lambda item: len(item.parts), reverse=True):
+            if child.is_file() or child.is_symlink():
+                child.unlink()
+            elif child.is_dir():
+                child.rmdir()
+        resolved.rmdir()
+
+    def _write_demo_repo(self, demo_repo: Path) -> None:
+        (demo_repo / "fixture_app").mkdir(parents=True, exist_ok=True)
+        (demo_repo / "scripts").mkdir(parents=True, exist_ok=True)
+        (demo_repo / "fixture_app" / "__init__.py").write_text("", encoding="utf-8")
+        (demo_repo / "fixture_app" / "greetings.py").write_text(
+            dedent(
+                '''\
+                def greet(name: str) -> str:
+                    return f"Hello, {name}"
+                '''
+            ),
+            encoding="utf-8",
+        )
+        (demo_repo / "scripts" / "example_agent.py").write_text(
+            DEMO_AGENT_SCRIPT,
+            encoding="utf-8",
+        )
+        (demo_repo / "scripts" / "validate_demo.py").write_text(
+            DEMO_VALIDATION_SCRIPT,
+            encoding="utf-8",
+        )
+        (demo_repo / "README.md").write_text(
+            "# context-eval demo repo\n\nA tiny repository for the local app demo.\n",
+            encoding="utf-8",
+        )
+        self._run_git(["init"], cwd=demo_repo)
+        self._run_git(["add", "."], cwd=demo_repo)
+        self._run_git(
+            [
+                "-c",
+                "user.email=context-eval@example.local",
+                "-c",
+                "user.name=context-eval demo",
+                "commit",
+                "-m",
+                "init demo repo",
+            ],
+            cwd=demo_repo,
+        )
+        self._run_git(["branch", "-M", "main"], cwd=demo_repo)
+
+    def _write_demo_eval_files(self, demo_repo: Path) -> None:
+        baseline = self.workspace_root / "contexts" / "baseline"
+        experiment = self.workspace_root / "contexts" / "experiment"
+        baseline.mkdir(parents=True, exist_ok=True)
+        experiment.mkdir(parents=True, exist_ok=True)
+        (baseline / "AGENTS.md").write_text(
+            "# Demo baseline\n\nFix the greeting punctuation only.\n",
+            encoding="utf-8",
+        )
+        (experiment / "AGENTS.md").write_text(
+            (
+                "# Demo experiment\n\n"
+                "Fix the greeting punctuation and include the context-eval-demo marker.\n"
+            ),
+            encoding="utf-8",
+        )
+        python_exe = Path(sys.executable).as_posix()
+        config = {
+            "repo": {"path": "./demo-repo", "base_ref": "main"},
+            "agents": {
+                "demo-agent": {
+                    "kind": "custom",
+                    "command": f'"{python_exe}" scripts/example_agent.py "{{prompt_file}}"',
+                    "timeout_minutes": 2,
+                    "network": "disabled",
+                    "telemetry": {
+                        "collector": "json-file",
+                        "file": "telemetry.json",
+                    },
+                }
+            },
+            "tasks": "./tasks.yaml",
+            "output_dir": "./runs",
+            "variants": {
+                "baseline": {
+                    "description": "Baseline instructions",
+                    "overlays": [
+                        {
+                            "source": "./contexts/baseline/AGENTS.md",
+                            "target": "AGENTS.md",
+                        }
+                    ],
+                },
+                "experiment": {
+                    "description": "Instructions with expected marker",
+                    "overlays": [
+                        {
+                            "source": "./contexts/experiment/AGENTS.md",
+                            "target": "AGENTS.md",
+                        }
+                    ],
+                },
+            },
+            "evaluation": {
+                "commands": [f'"{python_exe}" scripts/validate_demo.py'],
+                "timeout_seconds": 30,
+            },
+        }
+        tasks = {
+            "tasks": [
+                {
+                    "id": "fix-greeting-demo",
+                    "title": "Fix greeting punctuation",
+                    "prompt": (
+                        "Update the greeting implementation so it returns a polished "
+                        "punctuated greeting. Follow the active AGENTS.md instructions."
+                    ),
+                    "category": "bugfix",
+                    "difficulty": "easy",
+                    "expected_outcome": {
+                        "summary": "Greeting includes punctuation; experiment also carries the marker.",
+                        "acceptance_points": [
+                            "Validation confirms the greeting was updated.",
+                            "The experiment variant includes context-eval-demo evidence.",
+                        ],
+                        "files": [
+                            {
+                                "path": "fixture_app/greetings.py",
+                                "must_change": True,
+                            }
+                        ],
+                    },
+                    "hard_evaluation": {
+                        "enabled": True,
+                        "require_validation_pass": True,
+                        "required_paths": ["fixture_app/greetings.py"],
+                        "expected_snippets": [
+                            {
+                                "path": "fixture_app/greetings.py",
+                                "snippets": ["context-eval-demo"],
+                            }
+                        ],
+                    },
+                    "soft_evaluation": {
+                        "enabled": True,
+                        "mode": "payload-only",
+                        "rubric": [
+                            {
+                                "name": "task-fit",
+                                "weight": 1,
+                                "description": "Patch satisfies the requested behavior.",
+                            }
+                        ],
+                    },
+                }
+            ]
+        }
+        (self.workspace_root / "context-eval.yaml").write_text(
+            yaml.safe_dump(config, sort_keys=False),
+            encoding="utf-8",
+        )
+        (self.workspace_root / "tasks.yaml").write_text(
+            yaml.safe_dump(tasks, sort_keys=False),
+            encoding="utf-8",
+        )
+
+    def _run_git(self, args: list[str], *, cwd: Path) -> None:
+        result = subprocess.run(
+            ["git", *args],
+            cwd=cwd,
+            text=True,
+            capture_output=True,
+            timeout=30,
+        )
+        if result.returncode != 0:
+            message = result.stderr.strip() or result.stdout.strip()
+            raise LocalAppError(f"demo git setup failed: git {' '.join(args)}: {message}")
 
     def _config_path(self, value: str | Path | None) -> Path:
         if value is not None:
@@ -781,13 +1168,220 @@ class LocalAppService:
         lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
         return "\n".join(lines[-line_count:])
 
-    def _case_payload(self, result: CaseResult, *, run_dir: Path | None = None) -> dict[str, Any]:
+    def _case_payload(
+        self,
+        result: CaseResult,
+        *,
+        run_dir: Path | None = None,
+        manual_reviews: dict[str, dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
         payload = result.model_dump(mode="json")
+        payload["manual_review"] = self._manual_review_for(result, manual_reviews or {})
         if run_dir is None:
             return payload
         payload["hard_evaluation"] = self._hard_evaluation_payload(run_dir, result)
         payload["soft_evaluation"] = self._soft_evaluation_payload(result)
         return payload
+
+    def _find_case(self, results: list[CaseResult], case_id: str) -> CaseResult:
+        for result in results:
+            if result.case_id == case_id:
+                return result
+        raise LocalAppError(f"unknown case_id: {case_id}")
+
+    def _artifact_content(
+        self,
+        run_dir: Path,
+        artifact_path: str | Path | None,
+    ) -> dict[str, Any] | None:
+        if artifact_path is None:
+            return None
+        try:
+            relative = self.guard.require_safe_artifact_path(
+                artifact_path,
+                field="artifact_path",
+            )
+        except LocalAppError as exc:
+            return {
+                "path": str(artifact_path),
+                "content": "",
+                "exists": False,
+                "error": str(exc),
+            }
+        path = (run_dir / relative).resolve()
+        if not _is_relative_to(path, run_dir):
+            return {
+                "path": relative.as_posix(),
+                "content": "",
+                "exists": False,
+                "error": "artifact path must stay inside run_dir",
+            }
+        if not path.exists() or not path.is_file():
+            return {
+                "path": relative.as_posix(),
+                "content": "",
+                "exists": False,
+                "error": "artifact not found",
+            }
+        return {
+            "path": relative.as_posix(),
+            "content": path.read_text(encoding="utf-8", errors="replace"),
+            "exists": True,
+        }
+
+    def _case_logs(self, run_dir: Path, result: CaseResult) -> list[dict[str, Any]]:
+        log_specs: list[tuple[str, str | None]] = [
+            ("agent_stdout", result.stdout_path),
+            ("agent_stderr", result.stderr_path),
+        ]
+        case_id = result.case_id or f"{result.task_id}__{result.variant}"
+        for index, _ in enumerate(result.validation_results):
+            log_specs.extend(
+                [
+                    (
+                        "validation_stdout",
+                        f"logs/{case_id}.validation.{index}.stdout.log",
+                    ),
+                    (
+                        "validation_stderr",
+                        f"logs/{case_id}.validation.{index}.stderr.log",
+                    ),
+                ]
+            )
+        logs = []
+        for kind, path in log_specs:
+            content = self._artifact_content(run_dir, path)
+            if content is not None:
+                logs.append({"kind": kind, **content})
+        return logs
+
+    def _load_manual_reviews(self, run_dir: Path) -> dict[str, dict[str, Any]]:
+        path = run_dir / "manual_reviews.json"
+        if not path.exists():
+            return {}
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            raise LocalAppError(f"manual review artifact is malformed: {exc}") from exc
+        reviews = data.get("reviews", {}) if isinstance(data, dict) else {}
+        if not isinstance(reviews, dict):
+            raise LocalAppError("manual review artifact must contain a reviews object")
+        normalized: dict[str, dict[str, Any]] = {}
+        for case_id, review in reviews.items():
+            if isinstance(case_id, str) and isinstance(review, dict):
+                normalized[case_id] = self._normalize_manual_review(
+                    case_id,
+                    review,
+                    preserve_updated_at=True,
+                )
+        return normalized
+
+    def _manual_review_for(
+        self,
+        result: CaseResult,
+        manual_reviews: dict[str, dict[str, Any]],
+    ) -> dict[str, Any]:
+        case_id = result.case_id or result.task_id
+        review = manual_reviews.get(case_id)
+        if review is not None:
+            return review
+        return {
+            "case_id": case_id,
+            "decision": "not_reviewed",
+            "confidence": "unknown",
+            "reviewer": "",
+            "notes": "",
+            "updated_at": None,
+        }
+
+    def _normalize_manual_review(
+        self,
+        case_id: str,
+        review: dict[str, Any],
+        *,
+        preserve_updated_at: bool = False,
+    ) -> dict[str, Any]:
+        decision = str(review.get("decision", "not_reviewed")).strip() or "not_reviewed"
+        confidence = str(review.get("confidence", "unknown")).strip() or "unknown"
+        if decision not in MANUAL_REVIEW_DECISIONS:
+            raise LocalAppError(f"unsupported manual review decision: {decision}")
+        if confidence not in MANUAL_REVIEW_CONFIDENCES:
+            raise LocalAppError(f"unsupported manual review confidence: {confidence}")
+        updated_at = review.get("updated_at") if preserve_updated_at else None
+        if not isinstance(updated_at, str) or not updated_at:
+            updated_at = datetime.now().isoformat(timespec="seconds")
+        return {
+            "case_id": case_id,
+            "decision": decision,
+            "confidence": confidence,
+            "reviewer": str(review.get("reviewer", "")).strip(),
+            "notes": str(review.get("notes", "")).strip(),
+            "updated_at": updated_at,
+        }
+
+    def _compare_groups(self, results: list[CaseResult]) -> list[dict[str, Any]]:
+        grouped: dict[tuple[str, str, int], list[CaseResult]] = {}
+        for result in results:
+            grouped.setdefault(
+                (result.task_id, result.agent_name, result.trial_index),
+                [],
+            ).append(result)
+        compare_groups: list[dict[str, Any]] = []
+        for (task_id, agent_name, trial_index), items in sorted(grouped.items()):
+            by_variant = {item.variant: item for item in items}
+            baseline = by_variant.get("baseline")
+            experiment = by_variant.get("experiment")
+            if baseline is None or experiment is None:
+                continue
+            validation_delta = self._validation_value(experiment) - self._validation_value(baseline)
+            hard_delta = self._hard_value(experiment) - self._hard_value(baseline)
+            token_delta = self._optional_delta(experiment.total_tokens, baseline.total_tokens)
+            verdict = self._compare_verdict(validation_delta, hard_delta)
+            compare_groups.append(
+                {
+                    "group_id": f"{task_id}__{agent_name}__trial-{trial_index}",
+                    "task_id": task_id,
+                    "agent_name": agent_name,
+                    "trial_index": trial_index,
+                    "baseline_variant": baseline.variant,
+                    "experiment_variant": experiment.variant,
+                    "baseline_case_id": baseline.case_id,
+                    "experiment_case_id": experiment.case_id,
+                    "verdict": verdict,
+                    "hard_delta": hard_delta,
+                    "validation_delta": validation_delta,
+                    "total_tokens_delta": token_delta,
+                    "summary": self._compare_summary(verdict, validation_delta, hard_delta),
+                }
+            )
+        return compare_groups
+
+    def _validation_value(self, result: CaseResult) -> int:
+        return 1 if result.validation_status == "passed" else 0
+
+    def _hard_value(self, result: CaseResult) -> int:
+        return 1 if result.hard_evaluation_status == "passed" else 0
+
+    def _optional_delta(self, experiment: int | None, baseline: int | None) -> int | None:
+        if experiment is None or baseline is None:
+            return None
+        return experiment - baseline
+
+    def _compare_verdict(self, validation_delta: int, hard_delta: int) -> str:
+        if validation_delta > 0 or hard_delta > 0:
+            return "experiment_improved"
+        if validation_delta < 0 or hard_delta < 0:
+            return "experiment_regressed"
+        return "no_clear_change"
+
+    def _compare_summary(self, verdict: str, validation_delta: int, hard_delta: int) -> str:
+        if verdict == "experiment_improved" and hard_delta > 0 and validation_delta == 0:
+            return "experiment improved hard evaluation without changing validation status"
+        if verdict == "experiment_improved":
+            return "experiment improved evaluation signals"
+        if verdict == "experiment_regressed":
+            return "experiment regressed on evaluation signals"
+        return "baseline and experiment produced no clear evaluation change"
 
     def _hard_evaluation_payload(
         self,
@@ -915,6 +1509,9 @@ class _LocalAppHandler(BaseHTTPRequestHandler):
         if path == "/api/health":
             self._send_json(service.health())
             return
+        if path == "/api/workspace":
+            self._send_json(service.workspace_state())
+            return
         run_match = re.fullmatch(r"/api/runs/([^/]+)", path)
         if run_match:
             self._send_json(service.get_run(run_match.group(1)))
@@ -925,6 +1522,14 @@ class _LocalAppHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/results":
             self._send_json(service.results(run_dir=self._query_one(query, "run_dir")))
+            return
+        if path == "/api/case-detail":
+            self._send_json(
+                service.case_detail(
+                    run_dir=self._query_one(query, "run_dir"),
+                    case_id=self._query_one(query, "case_id"),
+                )
+            )
             return
         if path == "/api/artifacts":
             self._send_json(
@@ -960,6 +1565,21 @@ class _LocalAppHandler(BaseHTTPRequestHandler):
                 )
             )
             return
+        if path == "/api/demo/bootstrap":
+            self._send_json(
+                service.bootstrap_demo_workspace(
+                    overwrite=bool(body.get("overwrite", False)),
+                )
+            )
+            return
+        if path == "/api/workspace/project":
+            self._send_json(
+                service.initialize_project_workspace(
+                    repo_path=body.get("repo_path", ""),
+                    overwrite=bool(body.get("overwrite", False)),
+                )
+            )
+            return
         if path == "/api/preflight":
             self._send_json(
                 service.preflight(
@@ -983,6 +1603,15 @@ class _LocalAppHandler(BaseHTTPRequestHandler):
         stop_match = re.fullmatch(r"/api/runs/([^/]+)/stop", path)
         if stop_match:
             self._send_json(service.stop_run(stop_match.group(1)))
+            return
+        if path == "/api/manual-review":
+            self._send_json(
+                service.save_manual_review(
+                    run_dir=body.get("run_dir", ""),
+                    case_id=body.get("case_id", ""),
+                    review=body.get("review", {}),
+                )
+            )
             return
         raise LocalAppError(f"unknown endpoint: {path}")
 

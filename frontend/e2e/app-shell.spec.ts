@@ -120,20 +120,22 @@ function writeWorkflowFiles(workspace: string, fixture: string) {
   );
 }
 
-async function startLocalApp(workspace: string) {
+async function startLocalApp(workspace: string, options: { config?: string | null } = { config: 'context-eval.yaml' }) {
+  const args = [
+    '-m',
+    'context_eval',
+    'app',
+    '--workspace',
+    workspace,
+    '--port',
+    '0',
+  ];
+  if (options.config) {
+    args.splice(5, 0, '--config', options.config);
+  }
   const child = spawn(
     python,
-    [
-      '-m',
-      'context_eval',
-      'app',
-      '--workspace',
-      workspace,
-      '--config',
-      'context-eval.yaml',
-      '--port',
-      '0',
-    ],
+    args,
     {
       cwd: repoRoot,
       env: { ...process.env, PYTHONUTF8: '1' },
@@ -165,6 +167,56 @@ async function startLocalApp(workspace: string) {
   );
 }
 
+test('empty workspace starts at first-run choices and bootstraps demo', async ({ page }) => {
+  test.setTimeout(90_000);
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'context-eval-empty-app-'));
+  const server = await startLocalApp(workspace, { config: null });
+
+  try {
+    await page.goto(server.url);
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.getByRole('heading', { name: 'context-eval 本地工作台' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '开始使用' })).toBeVisible();
+    await expect(page.getByText('./fixture-repo')).toHaveCount(0);
+
+    await page.getByRole('button', { name: '试用 demo' }).click();
+    await expect(page.getByLabel('仓库路径')).toHaveValue('./demo-repo');
+
+    await expect(page.locator('.run-brief-panel')).toContainText('baseline vs experiment');
+
+    await page.getByRole('button', { name: '开始运行' }).click();
+    await expect(page.getByTestId('preflight-status')).toContainText('运行前检查通过');
+    await expect(page.getByTestId('planned-case-count')).toHaveText('2');
+    await expect(page.getByTestId('run-status')).toContainText('已完成', { timeout: 60000 });
+    await expect(page.getByText('结果已生成')).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'hard failed 3/4' })).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'hard passed 4/4' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Compare Summary' })).toBeVisible();
+    await expect(page.getByText('experiment_improved')).toBeVisible();
+
+    const experimentRow = page.locator('tbody tr', { hasText: 'experiment' });
+    await experimentRow.getByRole('button').click();
+    await expect(page.getByRole('heading', { name: 'Case Detail' })).toBeVisible();
+    await expect(page.locator('.case-detail-panel')).toContainText('experiment');
+    await expect(page.locator('.artifact-pane').first()).toBeVisible();
+
+    await page.getByLabel('review decision').selectOption('pass');
+    await page.getByLabel('review confidence').selectOption('high');
+    await page.getByLabel('reviewer').fill('manual');
+    await page.getByLabel('review notes').fill('Experiment result accepted.');
+    await page.locator('.review-form button[type="submit"]').click();
+    await expect(page.locator('.review-form .status-line')).toContainText('Review');
+
+    await page.getByRole('button', { name: /JSON/ }).click();
+    await expect(page.getByTestId('export-output')).toContainText('"manual_reviews"');
+    await expect(page.getByTestId('export-output')).toContainText('"decision": "pass"');
+  } finally {
+    await stopLocalApp(server.child);
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
 async function stopLocalApp(child: ChildProcessWithoutNullStreams) {
   if (child.exitCode !== null || child.signalCode !== null) {
     return;
@@ -188,7 +240,8 @@ test('renders the fixture-backed Coco hybrid shell', async ({ page }) => {
 
   await expect(page.getByRole('heading', { name: 'context-eval 本地工作台' })).toBeVisible();
   await expect(page.getByTestId('matrix-count')).toHaveText('8');
-  await expect(page.getByRole('heading', { name: 'Coco Agent' })).toBeVisible();
+  await page.getByText('配置与任务细节').click();
+  await expect(page.getByRole('heading', { name: 'Agent' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Expected Outcome' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Hard Evaluation' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Soft Evaluation' })).toBeVisible();
@@ -210,22 +263,18 @@ test('completes the local server workflow with fake Coco and hybrid evaluation',
     await page.goto(server.url);
 
     await expect(page.getByRole('heading', { name: 'context-eval 本地工作台' })).toBeVisible();
+    await page.getByText('配置与任务细节').click();
     await page.getByRole('button', { name: '加载配置' }).click();
     await expect(page.getByLabel('仓库路径')).toHaveValue(toPosix(fixture));
     await expect(
       page.locator('.status-line', { hasText: 'Greeting uses context-eval wording.' }),
     ).toBeVisible();
 
-    await page.getByRole('button', { name: '运行预检' }).click();
-    await expect(page.getByTestId('preflight-status')).toContainText('预检通过');
-
-    await page.getByRole('button', { name: '生成计划' }).click();
-    await expect(page.getByTestId('planned-case-count')).toHaveText('1');
-    await expect(page.getByText('hard on')).toBeVisible();
-    await expect(page.getByText('soft on')).toBeVisible();
-
     await page.getByRole('button', { name: '开始运行' }).click();
+    await expect(page.getByTestId('preflight-status')).toContainText('运行前检查通过');
+    await expect(page.getByTestId('planned-case-count')).toHaveText('1');
     await expect(page.getByTestId('run-status')).toContainText('已完成', { timeout: 60000 });
+    await expect(page.getByText('结果已生成')).toBeVisible();
 
     await expect(page.getByText('hard passed')).toBeVisible();
     await expect(page.getByText('soft payload_generated')).toBeVisible();

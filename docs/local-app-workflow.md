@@ -126,6 +126,19 @@ portable package directory. Release builds bundle Windows dependency wheels for
 Python 3.11, 3.12, and 3.13 by default so the private `.venv` install remains
 offline for those supported runtimes.
 
+On first launch, an empty portable `workspace` must not pretend that
+`./fixture-repo` exists. The local app starts in a first-run setup state with
+two explicit choices:
+
+- **Try demo** creates a package-local demo repository, initializes it as a Git
+  repository, writes `context-eval.yaml`, `tasks.yaml`, context overlays, a fake
+  local agent, validation command, hard-evaluation checks, and JSON telemetry.
+  The demo produces a two-variant matrix where baseline and experiment can be
+  compared without requiring Coco or another external coding agent.
+- **Open real project** creates starter evaluation files for an existing local
+  Git repository path. The user still needs to review the generated agent
+  command, context overlays, and task definitions before spending agent time.
+
 ## Project And Configuration Workflow
 
 The local app must support:

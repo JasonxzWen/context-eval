@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { localAppFixture, plannedCaseCount } from './fixture';
 import './styles.css';
 
@@ -96,6 +96,20 @@ type SaveResponse = {
   reloaded?: LoadedConfig;
 };
 
+type WorkspaceState = {
+  state: 'empty' | 'configured';
+  has_config: boolean;
+  default_config_path: string;
+  config_path?: string | null;
+  workspace_root?: string;
+};
+
+type BootstrapResponse = WorkspaceState & {
+  loaded?: LoadedConfig;
+  config_path?: string | null;
+  tasks_path?: string | null;
+};
+
 type RunPlan = {
   case_count: number;
   cleanup_policy: string;
@@ -129,6 +143,41 @@ type RunStatus = {
   error?: string | null;
 };
 
+type ManualReview = {
+  case_id: string;
+  decision: string;
+  confidence: string;
+  reviewer: string;
+  notes: string;
+  updated_at?: string | null;
+};
+
+type ResultCase = {
+  case_id: string;
+  agent_name: string;
+  task_id: string;
+  variant: string;
+  status: string;
+  validation_status: string;
+  confidence: string;
+  telemetry_status?: string;
+  agent_duration_seconds?: number | null;
+  total_tokens?: number | null;
+  reasoning_tokens?: number | null;
+  reasoning_step_count?: number | null;
+  tool_call_count?: number | null;
+  changed_files?: number;
+  hard_evaluation_status?: string;
+  hard_evaluation_score?: number | null;
+  hard_evaluation_max_score?: number | null;
+  soft_evaluation_status?: string;
+  soft_evaluation_payload_path?: string | null;
+  patch_path?: string | null;
+  stdout_path?: string | null;
+  stderr_path?: string | null;
+  manual_review?: ManualReview;
+};
+
 type ResultsPayload = {
   overview: {
     case_count: number;
@@ -137,24 +186,39 @@ type ResultsPayload = {
     low_confidence_count: number;
     telemetry_gap_count: number;
   };
-  cases: {
-    case_id: string;
-    agent_name: string;
+  compare_groups?: {
+    group_id: string;
     task_id: string;
-    variant: string;
-    status: string;
-    validation_status: string;
-    confidence: string;
-    changed_files?: number;
-    hard_evaluation_status?: string;
-    hard_evaluation_score?: number | null;
-    hard_evaluation_max_score?: number | null;
-    soft_evaluation_status?: string;
-    soft_evaluation_payload_path?: string | null;
-    patch_path?: string | null;
-    stdout_path?: string | null;
-    stderr_path?: string | null;
+    agent_name: string;
+    trial_index: number;
+    baseline_variant: string;
+    experiment_variant: string;
+    baseline_case_id: string;
+    experiment_case_id: string;
+    verdict: string;
+    hard_delta: number;
+    validation_delta: number;
+    total_tokens_delta?: number | null;
+    summary: string;
   }[];
+  cases: ResultCase[];
+};
+
+type ArtifactContent = {
+  path: string;
+  content: string;
+  exists: boolean;
+  error?: string;
+};
+
+type CaseDetailPayload = {
+  case: ResultCase;
+  patch?: ArtifactContent | null;
+  prompt?: ArtifactContent | null;
+  logs: (ArtifactContent & { kind: string })[];
+  hard_evaluation?: unknown;
+  soft_evaluation?: unknown;
+  manual_review: ManualReview;
 };
 
 type LogPayload = {
@@ -278,6 +342,39 @@ function fallbackConfig(): LoadedConfig {
   };
 }
 
+function emptyConfig(): LoadedConfig {
+  return {
+    config_path: 'context-eval.yaml',
+    tasks_path: 'tasks.yaml',
+    config_yaml: '',
+    tasks_yaml: '',
+    editable: {
+      repo: { path: '', base_ref: 'main' },
+      agent: {
+        name: '',
+        kind: 'custom',
+        command: '',
+        timeout_minutes: 60,
+        network: 'disabled',
+      },
+      agent_shape: 'agent',
+      agents: [],
+      tasks_path: './tasks.yaml',
+      variants: [],
+      tasks: [],
+      evaluation_commands: [],
+      output_dir: './runs',
+    },
+    resolved: {
+      repo_path: '',
+      output_dir: './runs',
+      agents: [],
+      variants: [],
+      tasks: [],
+    },
+  };
+}
+
 function splitLines(value: string) {
   return value
     .split(/\r?\n/)
@@ -339,7 +436,7 @@ function primaryTask(loaded: LoadedConfig) {
   return loaded.editable.tasks[0];
 }
 
-function primaryCocoAgent(loaded: LoadedConfig) {
+function primaryAgent(loaded: LoadedConfig) {
   return agentsFrom(loaded).find((agent) => agent.kind === 'coco') || agentsFrom(loaded)[0];
 }
 
@@ -348,33 +445,59 @@ function listText(values: string[] | undefined, fallback = '未配置') {
 }
 
 export function App() {
+  const resultsPanelRef = useRef<HTMLElement | null>(null);
+  const shouldRevealResultsRef = useRef(false);
   const [serverMode, setServerMode] = useState<'checking' | 'connected' | 'fixture'>('checking');
   const [configPath, setConfigPath] = useState('context-eval.yaml');
-  const [loaded, setLoaded] = useState<LoadedConfig>(() => fallbackConfig());
-  const [configYaml, setConfigYaml] = useState(() => fallbackConfig().config_yaml);
-  const [tasksYaml, setTasksYaml] = useState(() => fallbackConfig().tasks_yaml);
+  const [loaded, setLoaded] = useState<LoadedConfig>(() => emptyConfig());
+  const [configYaml, setConfigYaml] = useState('');
+  const [tasksYaml, setTasksYaml] = useState('');
   const [saveStatus, setSaveStatus] = useState('尚未保存');
-  const [preflightStatus, setPreflightStatus] = useState('等待预检');
+  const [preflightStatus, setPreflightStatus] = useState('待检查');
   const [preflightChecks, setPreflightChecks] = useState<string[]>([]);
   const [plan, setPlan] = useState<RunPlan | null>(null);
   const [run, setRun] = useState<RunStatus | null>(null);
   const [logs, setLogs] = useState<LogPayload | null>(null);
   const [results, setResults] = useState<ResultsPayload | null>(null);
+  const [selectedCaseId, setSelectedCaseId] = useState('');
+  const [caseDetail, setCaseDetail] = useState<CaseDetailPayload | null>(null);
+  const [reviewDraft, setReviewDraft] = useState<ManualReview>({
+    case_id: '',
+    decision: 'not_reviewed',
+    confidence: 'unknown',
+    reviewer: '',
+    notes: '',
+    updated_at: null,
+  });
+  const [reviewStatus, setReviewStatus] = useState('');
   const [exportOutput, setExportOutput] = useState('');
   const [error, setError] = useState('');
   const [cleanupPolicy, setCleanupPolicy] = useState('successful');
+  const [workspaceState, setWorkspaceState] = useState<WorkspaceState | null>(null);
+  const [projectRepoPath, setProjectRepoPath] = useState('');
+  const [configLoaded, setConfigLoaded] = useState(false);
 
   const fixtureCaseCount = useMemo(() => plannedCaseCount(localAppFixture), []);
-  const visibleCaseCount = plan?.case_count ?? fixtureCaseCount;
   const agents = agentsFrom(loaded);
-  const cocoAgent = primaryCocoAgent(loaded);
+  const cocoAgent = primaryAgent(loaded);
   const task = primaryTask(loaded);
+  const estimatedCaseCount =
+    agents.length * loaded.editable.tasks.length * loaded.editable.variants.length;
+  const visibleCaseCount = plan?.case_count ?? (serverMode === 'fixture' ? fixtureCaseCount : estimatedCaseCount);
 
   function applyLoadedConfig(payload: LoadedConfig) {
     setLoaded(payload);
     setConfigPath(payload.config_path);
     setConfigYaml(payload.config_yaml);
     setTasksYaml(payload.tasks_yaml);
+    setConfigLoaded(true);
+    setWorkspaceState((current) => ({
+      state: 'configured',
+      has_config: true,
+      default_config_path: current?.default_config_path || payload.config_path,
+      config_path: payload.config_path,
+      workspace_root: current?.workspace_root,
+    }));
   }
 
   async function loadConfig(path = configPath) {
@@ -411,18 +534,48 @@ export function App() {
     setSaveStatus(`已保存并从磁盘重载: ${saved.config_path} / ${saved.tasks_path}`);
   }
 
-  async function runPreflight() {
+  async function bootstrapDemo() {
     setError('');
+    const payload = await apiRequest<BootstrapResponse>('/api/demo/bootstrap', {
+      method: 'POST',
+      body: JSON.stringify({ overwrite: false }),
+    });
+    setWorkspaceState(payload);
+    if (payload.loaded) {
+      applyLoadedConfig(payload.loaded);
+    } else {
+      await loadConfig(payload.config_path || 'context-eval.yaml');
+    }
+    setSaveStatus('demo 工作区已创建');
+  }
+
+  async function initializeProject() {
+    setError('');
+    const payload = await apiRequest<BootstrapResponse>('/api/workspace/project', {
+      method: 'POST',
+      body: JSON.stringify({ repo_path: projectRepoPath, overwrite: false }),
+    });
+    setWorkspaceState(payload);
+    if (payload.loaded) {
+      applyLoadedConfig(payload.loaded);
+    } else {
+      await loadConfig(payload.config_path || 'context-eval.yaml');
+    }
+    setSaveStatus('真实项目配置已创建，请检查 agent 命令和任务');
+  }
+
+  async function runPreflight() {
+    setPreflightStatus('正在检查配置和本地执行条件');
     const payload = await apiRequest<{ checks: string[] }>('/api/preflight', {
       method: 'POST',
       body: JSON.stringify({ config_path: loaded.config_path || configPath, check_agents: true }),
     });
     setPreflightChecks(payload.checks);
-    setPreflightStatus('预检通过');
+    setPreflightStatus('运行前检查通过');
+    return payload.checks;
   }
 
   async function planRun() {
-    setError('');
     const payload = await apiRequest<RunPlan>('/api/run-plan', {
       method: 'POST',
       body: JSON.stringify({
@@ -431,17 +584,57 @@ export function App() {
       }),
     });
     setPlan(payload);
+    return payload;
   }
 
   async function loadResultsForRun(status: RunStatus) {
     const logPayload = await apiRequest<LogPayload>(`/api/runs/${status.app_run_id}/logs`);
     setLogs(logPayload);
     if (status.run_dir && status.status === 'completed') {
-      const resultPayload = await apiRequest<ResultsPayload>(
-        `/api/results?run_dir=${encodeURIComponent(status.run_dir)}`,
-      );
-      setResults(resultPayload);
+      await loadResults(status.run_dir);
     }
+  }
+
+  async function loadResults(runDir: string) {
+    const resultPayload = await apiRequest<ResultsPayload>(
+      `/api/results?run_dir=${encodeURIComponent(runDir)}`,
+    );
+    setResults(resultPayload);
+    if (selectedCaseId && !resultPayload.cases.some((item) => item.case_id === selectedCaseId)) {
+      setSelectedCaseId('');
+      setCaseDetail(null);
+    }
+  }
+
+  async function loadCaseDetail(caseId: string) {
+    if (!run?.run_dir) return;
+    const detail = await apiRequest<CaseDetailPayload>(
+      `/api/case-detail?run_dir=${encodeURIComponent(run.run_dir)}&case_id=${encodeURIComponent(caseId)}`,
+    );
+    setSelectedCaseId(caseId);
+    setCaseDetail(detail);
+    setReviewDraft(detail.manual_review);
+  }
+
+  async function saveManualReview() {
+    if (!run?.run_dir || !selectedCaseId) return;
+    const payload = await apiRequest<{ review: ManualReview }>('/api/manual-review', {
+      method: 'POST',
+      body: JSON.stringify({
+        run_dir: run.run_dir,
+        case_id: selectedCaseId,
+        review: {
+          decision: reviewDraft.decision,
+          confidence: reviewDraft.confidence,
+          reviewer: reviewDraft.reviewer,
+          notes: reviewDraft.notes,
+        },
+      }),
+    });
+    setReviewDraft(payload.review);
+    await loadResults(run.run_dir);
+    await loadCaseDetail(selectedCaseId);
+    setReviewStatus('Review 已保存');
   }
 
   async function refreshRunStatus(appRunId: string) {
@@ -453,16 +646,31 @@ export function App() {
 
   async function startRun() {
     setError('');
-    const payload = await apiRequest<RunStatus>('/api/runs', {
-      method: 'POST',
-      body: JSON.stringify({
-        config_path: loaded.config_path || configPath,
-        cleanup_policy: cleanupPolicy,
-        confirm: true,
-      }),
-    });
-    setRun(payload);
-    await loadResultsForRun(payload);
+    setResults(null);
+    setSelectedCaseId('');
+    setCaseDetail(null);
+    setReviewStatus('');
+    setExportOutput('');
+    setLogs(null);
+    setPlan(null);
+    shouldRevealResultsRef.current = true;
+    try {
+      await runPreflight();
+      await planRun();
+      const payload = await apiRequest<RunStatus>('/api/runs', {
+        method: 'POST',
+        body: JSON.stringify({
+          config_path: loaded.config_path || configPath,
+          cleanup_policy: cleanupPolicy,
+          confirm: true,
+        }),
+      });
+      setRun(payload);
+      await loadResultsForRun(payload);
+    } catch (caught) {
+      setPreflightStatus('运行前准备失败');
+      throw caught;
+    }
   }
 
   async function stopRun() {
@@ -490,12 +698,25 @@ export function App() {
         return;
       }
       try {
-        const health = await apiRequest<{ initial_config_path?: string | null }>('/api/health');
+        const health = await apiRequest<{
+          initial_config_path?: string | null;
+          workspace?: WorkspaceState;
+        }>('/api/health');
         if (cancelled) return;
         setServerMode('connected');
+        if (health.workspace) {
+          setWorkspaceState(health.workspace);
+        }
         if (health.initial_config_path) {
           setConfigPath(health.initial_config_path);
           await loadConfig(health.initial_config_path);
+        } else if (health.workspace?.has_config) {
+          await loadConfig(health.workspace.config_path || 'context-eval.yaml');
+        } else {
+          setConfigLoaded(false);
+          setLoaded(emptyConfig());
+          setConfigYaml('');
+          setTasksYaml('');
         }
       } catch {
         if (!cancelled) {
@@ -520,6 +741,19 @@ export function App() {
     return () => window.clearInterval(timer);
   }, [run]);
 
+  useEffect(() => {
+    if (!results || !shouldRevealResultsRef.current) return;
+    shouldRevealResultsRef.current = false;
+    const reveal = () => {
+      resultsPanelRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    };
+    if (typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(reveal);
+    } else {
+      reveal();
+    }
+  }, [results]);
+
   async function guarded(action: () => Promise<void>) {
     try {
       await action();
@@ -534,6 +768,26 @@ export function App() {
     fixture: '示例模式',
   }[serverMode];
   const runLabel = run ? labelFor(runStatusLabels, run.status) : '待运行';
+  const isRunActive = Boolean(run && ['queued', 'running', 'stop_requested'].includes(run.status));
+  const resultSummary = results
+    ? {
+        validationFailed: results.cases.filter((result) => result.validation_status === 'failed').length,
+        hardFailed: results.cases.filter((result) => result.hard_evaluation_status === 'failed').length,
+      }
+    : null;
+  const preflightStepLabel =
+    preflightStatus === '运行前检查通过'
+      ? '通过'
+      : preflightStatus === '待检查'
+        ? '自动'
+        : preflightStatus;
+  const taskTitle = task?.title || task?.id || '未配置任务';
+  const variantSummary = loaded.editable.variants.map((variant) => variant.name).join(' vs ') || '未配置 context';
+  const runBrief = configLoaded
+    ? `用 ${cocoAgent?.name || '未配置 agent'} 在 ${variantSummary} 上执行 ${loaded.editable.tasks.length} 个任务，共 ${visibleCaseCount} 个 case。`
+    : '先试用 demo 或打开一个本地 Git 项目。';
+
+  const isFirstRun = serverMode === 'connected' && workspaceState?.state === 'empty' && !configLoaded;
 
   return (
     <main className="app-shell" data-testid="local-app-shell">
@@ -552,8 +806,8 @@ export function App() {
       <section className="workflow-band" aria-label="工作流状态">
         {[
           ['Project', loaded.resolved.repo_path],
-          ['Coco Agent', cocoAgent?.name || '未配置'],
-          ['Preflight', preflightStatus === '预检通过' ? '通过' : '等待'],
+          ['Agent', cocoAgent?.name || '未配置'],
+          ['Preflight', preflightStepLabel],
           ['Run', runLabel],
           ['Results', results ? '已加载' : '本地'],
         ].map(([label, state]) => (
@@ -564,7 +818,95 @@ export function App() {
         ))}
       </section>
 
+      {isFirstRun && (
+        <section className="first-run-panel" aria-label="首次设置">
+          <div className="panel-heading">
+            <h2>开始使用</h2>
+            <span>空工作区</span>
+          </div>
+          <div className="first-run-grid">
+            <article className="setup-option">
+              <div>
+                <strong>试用 demo</strong>
+                <p>创建一个本地 demo repo、两组 context variants、一个 fake agent 和可对比的硬检查结果。</p>
+              </div>
+              <button type="button" onClick={() => guarded(bootstrapDemo)}>
+                试用 demo
+              </button>
+            </article>
+            <article className="setup-option">
+              <div>
+                <strong>打开真实项目</strong>
+                <p>从已有 Git 仓库生成评测工作区，然后继续配置 agent、context 和任务。</p>
+              </div>
+              <label htmlFor="project-repo-path">
+                项目路径
+                <input
+                  id="project-repo-path"
+                  value={projectRepoPath}
+                  onChange={(event) => setProjectRepoPath(event.target.value)}
+                  placeholder="D:\\path\\to\\repo"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => guarded(initializeProject)}
+                disabled={!projectRepoPath.trim()}
+              >
+                创建工作区
+              </button>
+            </article>
+          </div>
+        </section>
+      )}
+
+      {!isFirstRun && (
       <section className="content-grid">
+        <section className="panel matrix-panel">
+          <div className="panel-heading">
+            <h2>Run Plan</h2>
+            <span data-testid="matrix-count">{visibleCaseCount}</span>
+          </div>
+          <dl className="metric-grid">
+            <div>
+              <dt>agents</dt>
+              <dd>{agents.length}</dd>
+            </div>
+            <div>
+              <dt>tasks</dt>
+              <dd>{loaded.editable.tasks.length}</dd>
+            </div>
+            <div>
+              <dt>variants</dt>
+              <dd>{loaded.editable.variants.length}</dd>
+            </div>
+            <div>
+              <dt>trials</dt>
+              <dd>{plan?.trials ?? localAppFixture.trials}</dd>
+            </div>
+          </dl>
+          <ul className="check-list">
+            {(plan?.cases || []).slice(0, 4).map((caseItem) => (
+              <li key={caseItem.case_id}>
+                <strong>{caseItem.case_id}</strong>
+                <span>{caseItem.expected_outcome_summary || '无 expected_outcome summary'}</span>
+                <small>
+                  {caseItem.hard_evaluation_enabled ? 'hard on' : 'hard off'} /{' '}
+                  {caseItem.soft_evaluation_enabled ? 'soft on' : 'soft off'}
+                </small>
+              </li>
+            ))}
+          </ul>
+          {!plan && (
+            <p className="panel-note">点击“开始运行”后会自动展开具体 case，并在失败时把配置或执行错误显示出来。</p>
+          )}
+        </section>
+        <details className="advanced-workbench">
+          <summary>
+            <span>配置与任务细节</span>
+            <small>Agent、Context、验收标准和 YAML</small>
+          </summary>
+          <div className="advanced-grid">
         <section className="panel project-panel">
           <div className="panel-heading">
             <h2>Project</h2>
@@ -605,46 +947,9 @@ export function App() {
           </p>
         </section>
 
-        <section className="panel matrix-panel">
-          <div className="panel-heading">
-            <h2>Run Plan</h2>
-            <span data-testid="matrix-count">{visibleCaseCount}</span>
-          </div>
-          <dl className="metric-grid">
-            <div>
-              <dt>agents</dt>
-              <dd>{agents.length}</dd>
-            </div>
-            <div>
-              <dt>tasks</dt>
-              <dd>{loaded.editable.tasks.length}</dd>
-            </div>
-            <div>
-              <dt>variants</dt>
-              <dd>{loaded.editable.variants.length}</dd>
-            </div>
-            <div>
-              <dt>trials</dt>
-              <dd>{plan?.trials ?? localAppFixture.trials}</dd>
-            </div>
-          </dl>
-          <ul className="check-list">
-            {(plan?.cases || []).slice(0, 4).map((caseItem) => (
-              <li key={caseItem.case_id}>
-                <strong>{caseItem.case_id}</strong>
-                <span>{caseItem.expected_outcome_summary || '无 expected_outcome summary'}</span>
-                <small>
-                  {caseItem.hard_evaluation_enabled ? 'hard on' : 'hard off'} /{' '}
-                  {caseItem.soft_evaluation_enabled ? 'soft on' : 'soft off'}
-                </small>
-              </li>
-            ))}
-          </ul>
-        </section>
-
         <section className="panel">
           <div className="panel-heading">
-            <h2>Coco Agent</h2>
+            <h2>Agent</h2>
             <span>{cocoAgent?.kind || 'unknown'}</span>
           </div>
           <ul className="profile-list">
@@ -772,49 +1077,85 @@ export function App() {
             />
           </label>
         </section>
+          </div>
+        </details>
 
-        <section className="panel">
+        <section className="panel run-brief-panel">
           <div className="panel-heading">
-            <h2>Run Execution</h2>
+            <h2>本次评测</h2>
+            <span>{results ? '已出结果' : isRunActive ? '运行中' : '待运行'}</span>
           </div>
-          <label htmlFor="cleanup-policy">
-            清理策略
-            <select
-              id="cleanup-policy"
-              value={cleanupPolicy}
-              onChange={(event) => setCleanupPolicy(event.target.value)}
-            >
-              <option value="never">保留所有工作区</option>
-              <option value="always">总是清理</option>
-              <option value="successful">成功后清理</option>
-              <option value="failed">失败后清理</option>
-            </select>
-          </label>
-          <div className="button-row">
-            <button type="button" onClick={() => guarded(runPreflight)} disabled={serverMode !== 'connected'}>
-              运行预检
-            </button>
-            <button type="button" onClick={() => guarded(planRun)} disabled={serverMode !== 'connected'}>
-              生成计划
-            </button>
-            <button type="button" onClick={() => guarded(startRun)} disabled={serverMode !== 'connected'}>
-              开始运行
-            </button>
-            <button type="button" className="secondary" onClick={() => guarded(stopRun)} disabled={!run}>
-              停止
-            </button>
+          <div className="brief-layout">
+            <div className="brief-copy">
+              <strong>{taskTitle}</strong>
+              <span>{task?.expected_outcome?.summary || '未配置 expected_outcome summary'}</span>
+              <p>{runBrief}</p>
+            </div>
+            <div className="brief-actions">
+              <label htmlFor="cleanup-policy">
+                清理策略
+                <select
+                  id="cleanup-policy"
+                  value={cleanupPolicy}
+                  onChange={(event) => setCleanupPolicy(event.target.value)}
+                >
+                  <option value="never">保留所有工作区</option>
+                  <option value="always">总是清理</option>
+                  <option value="successful">成功后清理</option>
+                  <option value="failed">失败后清理</option>
+                </select>
+              </label>
+              <div className="button-row">
+                <button type="button" onClick={() => guarded(startRun)} disabled={serverMode !== 'connected' || isRunActive}>
+                  {isRunActive ? '运行中' : '开始运行'}
+                </button>
+                <button type="button" className="secondary" onClick={() => guarded(stopRun)} disabled={!isRunActive}>
+                  停止
+                </button>
+              </div>
+            </div>
           </div>
-          <p className="status-line" data-testid="preflight-status">
-            {preflightStatus}
-          </p>
-          <p className="status-line">
-            计划用例: <strong data-testid="planned-case-count">{plan?.case_count ?? 0}</strong>
-          </p>
-          <ul className="check-list">
-            {preflightChecks.map((check) => (
-              <li key={check}>{labelFor(checkLabels, check)}</li>
-            ))}
-          </ul>
+          <dl className="run-prep-summary">
+            <div>
+              <dt>配置检查</dt>
+              <dd data-testid="preflight-status">{preflightStatus}</dd>
+            </div>
+            <div>
+              <dt>待执行 case</dt>
+              <dd>
+                <strong data-testid="planned-case-count">{plan?.case_count ?? visibleCaseCount}</strong>
+                {!plan && visibleCaseCount > 0 && <small>预计</small>}
+              </dd>
+            </div>
+          </dl>
+          {preflightChecks.length > 0 && (
+            <details className="prep-details">
+              <summary>已通过 {preflightChecks.length} 项运行前检查</summary>
+              <ul className="inline-check-list">
+                {preflightChecks.map((check) => (
+                  <li key={check}>{labelFor(checkLabels, check)}</li>
+                ))}
+              </ul>
+            </details>
+          )}
+          {results && (
+            <div className="result-callout" role="status">
+              <div>
+                <strong>结果已生成</strong>
+                <span>
+                  {results.overview.case_count} 个 case，validation failed {resultSummary?.validationFailed ?? 0}，
+                  hard failed {resultSummary?.hardFailed ?? 0}，telemetry gaps {results.overview.telemetry_gap_count}
+                </span>
+              </div>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => resultsPanelRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })}
+              >
+                查看 Results
+              </button>
+            </div>
+          )}
         </section>
 
         <section className="panel run-panel">
@@ -840,7 +1181,7 @@ export function App() {
           </div>
         </section>
 
-        <section className="panel results-panel">
+        <section className="panel results-panel" ref={resultsPanelRef}>
           <div className="panel-heading">
             <h2>Results</h2>
             <span>{results?.overview.case_count ?? 0}</span>
@@ -865,6 +1206,44 @@ export function App() {
                   <dd>{results.overview.telemetry_gap_count}</dd>
                 </div>
               </dl>
+              {(results.compare_groups || []).length > 0 && (
+                <section className="compare-summary" aria-label="baseline experiment compare">
+                  <div className="panel-heading compact-heading">
+                    <h3>Compare Summary</h3>
+                    <span>{results.compare_groups?.length ?? 0}</span>
+                  </div>
+                  <div className="compare-grid">
+                    {(results.compare_groups || []).map((group) => (
+                      <article className="compare-card" key={group.group_id}>
+                        <div>
+                          <strong>{group.verdict}</strong>
+                          <span>{group.summary}</span>
+                        </div>
+                        <dl>
+                          <div>
+                            <dt>task</dt>
+                            <dd>{group.task_id}</dd>
+                          </div>
+                          <div>
+                            <dt>hard delta</dt>
+                            <dd>{group.hard_delta > 0 ? `+${group.hard_delta}` : group.hard_delta}</dd>
+                          </div>
+                          <div>
+                            <dt>validation delta</dt>
+                            <dd>
+                              {group.validation_delta > 0 ? `+${group.validation_delta}` : group.validation_delta}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt>tokens delta</dt>
+                            <dd>{group.total_tokens_delta ?? '-'}</dd>
+                          </div>
+                        </dl>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              )}
               <table>
                 <thead>
                   <tr>
@@ -872,51 +1251,205 @@ export function App() {
                     <th>agent</th>
                     <th>status</th>
                     <th>validation</th>
+                    <th>telemetry</th>
+                    <th>tokens</th>
+                    <th>tools</th>
                     <th>hard</th>
                     <th>soft</th>
+                    <th>review</th>
+                    <th>detail</th>
                   </tr>
                 </thead>
                 <tbody>
                   {results.cases.map((result) => (
-                    <tr key={result.case_id}>
-                      <td>{result.task_id}</td>
-                      <td>{result.agent_name}</td>
-                      <td>{labelFor(resultStatusLabels, result.status)}</td>
-                      <td>{labelFor(validationLabels, result.validation_status)}</td>
-                      <td>
+                    <tr key={result.case_id} className={selectedCaseId === result.case_id ? 'selected-row' : ''}>
+                      <td data-label="case">
+                        {result.task_id}
+                        <small>{result.variant}</small>
+                      </td>
+                      <td data-label="agent">{result.agent_name}</td>
+                      <td data-label="status">{labelFor(resultStatusLabels, result.status)}</td>
+                      <td data-label="validation">{labelFor(validationLabels, result.validation_status)}</td>
+                      <td data-label="telemetry">
+                        {result.telemetry_status || 'unavailable'}
+                        {result.agent_duration_seconds != null && (
+                          <small>{result.agent_duration_seconds.toFixed(1)}s</small>
+                        )}
+                      </td>
+                      <td data-label="tokens">
+                        {result.total_tokens ?? '-'}
+                        {result.reasoning_tokens != null && <small>reasoning {result.reasoning_tokens}</small>}
+                      </td>
+                      <td data-label="tools">
+                        {result.tool_call_count ?? '-'}
+                        {result.reasoning_step_count != null && <small>rounds {result.reasoning_step_count}</small>}
+                      </td>
+                      <td data-label="hard">
                         hard {result.hard_evaluation_status || 'not_configured'}{' '}
                         {result.hard_evaluation_score ?? '-'}
                         /
                         {result.hard_evaluation_max_score ?? '-'}
                       </td>
-                      <td>soft {result.soft_evaluation_status || 'not_configured'}</td>
+                      <td data-label="soft">soft {result.soft_evaluation_status || 'not_configured'}</td>
+                      <td data-label="review">
+                        {result.manual_review?.decision || 'not_reviewed'}
+                        {result.manual_review?.confidence && <small>{result.manual_review.confidence}</small>}
+                      </td>
+                      <td data-label="detail">
+                        <button
+                          type="button"
+                          className="secondary compact-button"
+                          onClick={() => guarded(() => loadCaseDetail(result.case_id))}
+                        >
+                          查看详情
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              {caseDetail && (
+                <section className="case-detail-panel">
+                  <div className="panel-heading compact-heading">
+                    <h3>Case Detail</h3>
+                    <span>{caseDetail.case.variant}</span>
+                  </div>
+                  <div className="detail-grid">
+                    <dl className="compact-list">
+                      <div>
+                        <dt>case_id</dt>
+                        <dd>{caseDetail.case.case_id}</dd>
+                      </div>
+                      <div>
+                        <dt>status</dt>
+                        <dd>{caseDetail.case.status}</dd>
+                      </div>
+                      <div>
+                        <dt>validation</dt>
+                        <dd>{caseDetail.case.validation_status}</dd>
+                      </div>
+                      <div>
+                        <dt>hard</dt>
+                        <dd>
+                          {caseDetail.case.hard_evaluation_status}{' '}
+                          {caseDetail.case.hard_evaluation_score ?? '-'}/
+                          {caseDetail.case.hard_evaluation_max_score ?? '-'}
+                        </dd>
+                      </div>
+                    </dl>
+                    <form
+                      className="review-form"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        guarded(saveManualReview);
+                      }}
+                    >
+                      <label htmlFor="review-decision">
+                        decision
+                        <select
+                          id="review-decision"
+                          aria-label="review decision"
+                          value={reviewDraft.decision}
+                          onChange={(event) =>
+                            setReviewDraft((current) => ({ ...current, decision: event.target.value }))
+                          }
+                        >
+                          <option value="not_reviewed">not_reviewed</option>
+                          <option value="pass">pass</option>
+                          <option value="fail">fail</option>
+                          <option value="needs_review">needs_review</option>
+                        </select>
+                      </label>
+                      <label htmlFor="review-confidence">
+                        confidence
+                        <select
+                          id="review-confidence"
+                          aria-label="review confidence"
+                          value={reviewDraft.confidence}
+                          onChange={(event) =>
+                            setReviewDraft((current) => ({ ...current, confidence: event.target.value }))
+                          }
+                        >
+                          <option value="unknown">unknown</option>
+                          <option value="low">low</option>
+                          <option value="medium">medium</option>
+                          <option value="high">high</option>
+                        </select>
+                      </label>
+                      <label htmlFor="reviewer">
+                        reviewer
+                        <input
+                          id="reviewer"
+                          aria-label="reviewer"
+                          value={reviewDraft.reviewer}
+                          onChange={(event) =>
+                            setReviewDraft((current) => ({ ...current, reviewer: event.target.value }))
+                          }
+                        />
+                      </label>
+                      <label htmlFor="review-notes">
+                        notes
+                        <textarea
+                          id="review-notes"
+                          aria-label="review notes"
+                          value={reviewDraft.notes}
+                          onChange={(event) =>
+                            setReviewDraft((current) => ({ ...current, notes: event.target.value }))
+                          }
+                        />
+                      </label>
+                      <div className="button-row">
+                        <button type="submit">保存 Review</button>
+                        {reviewStatus && <span className="status-line">{reviewStatus}</span>}
+                      </div>
+                    </form>
+                  </div>
+                  <div className="artifact-grid">
+                    {caseDetail.patch && (
+                      <article className="artifact-pane">
+                        <strong>{caseDetail.patch.path}</strong>
+                        <pre>{caseDetail.patch.content || caseDetail.patch.error || 'empty patch'}</pre>
+                      </article>
+                    )}
+                    {caseDetail.logs.slice(0, 4).map((log) => (
+                      <article className="artifact-pane" key={`${log.kind}:${log.path}`}>
+                        <strong>
+                          {log.kind}: {log.path}
+                        </strong>
+                        <pre>{log.content || log.error || 'empty log'}</pre>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              )}
             </>
           ) : (
             <p className="status-line">运行完成后显示本地结果。</p>
           )}
-          <div className="button-row">
-            <button type="button" onClick={() => guarded(() => exportRun('json'))} disabled={!run?.run_dir}>
-              导出 JSON
-            </button>
-            <button type="button" onClick={() => guarded(() => exportRun('csv'))} disabled={!run?.run_dir}>
-              导出 CSV
-            </button>
-            <button type="button" onClick={() => guarded(() => exportRun('markdown'))} disabled={!run?.run_dir}>
-              导出 Markdown
-            </button>
-            <button type="button" onClick={() => guarded(() => exportRun('html'))} disabled={!run?.run_dir}>
-              导出 HTML
-            </button>
-          </div>
-          <pre className="export-output" data-testid="export-output">
-            {exportOutput}
-          </pre>
+          {run?.run_dir && (
+            <div className="button-row export-actions">
+              <button type="button" onClick={() => guarded(() => exportRun('json'))}>
+                导出 JSON
+              </button>
+              <button type="button" onClick={() => guarded(() => exportRun('csv'))}>
+                导出 CSV
+              </button>
+              <button type="button" onClick={() => guarded(() => exportRun('markdown'))}>
+                导出 Markdown
+              </button>
+              <button type="button" onClick={() => guarded(() => exportRun('html'))}>
+                导出 HTML
+              </button>
+            </div>
+          )}
+          {exportOutput && (
+            <pre className="export-output" data-testid="export-output">
+              {exportOutput}
+            </pre>
+          )}
         </section>
       </section>
+      )}
     </main>
   );
 }
