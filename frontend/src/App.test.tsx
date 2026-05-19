@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
+import { reconcileRunScope } from './localConfig';
 
 function jsonResponse(data: unknown, options: { ok?: boolean; status?: number } = {}) {
   return Promise.resolve({
@@ -49,7 +50,13 @@ const loadedPayload = {
       },
     ],
     tasks_path: './tasks.yaml',
-    variants: [{ name: 'baseline', description: 'Baseline', overlays: [] }],
+    variants: [
+      {
+        name: 'baseline',
+        description: 'Baseline',
+        overlays: [{ source: './contexts/baseline/AGENTS.md', target: 'AGENTS.md' }],
+      },
+    ],
     tasks: [
       {
         id: 'fix-greeting-punctuation',
@@ -130,8 +137,8 @@ describe('App workflow shell', () => {
     fireEvent.click(screen.getByText('配置与任务细节'));
     await waitFor(() => expect(screen.getByLabelText('仓库路径')).toHaveValue('./fixture-repo'));
     expect(
-      screen.getByText('coco -y --query-timeout 10m --bash-tool-timeout 5m -p "{prompt}"'),
-    ).toBeVisible();
+      screen.getAllByText('coco -y --query-timeout 10m --bash-tool-timeout 5m -p "{prompt}"').length,
+    ).toBeGreaterThan(0);
     expect(screen.getAllByText('README contains fixed marker.').length).toBeGreaterThan(0);
     expect(screen.getByText('payload-only')).toBeVisible();
 
@@ -293,6 +300,125 @@ describe('App workflow shell', () => {
     expect(screen.getAllByText('Visual editor summary.').length).toBeGreaterThan(0);
   });
 
+  it('saves structured variant and agent edits and refreshes the run plan', async () => {
+    const editedPayload = {
+      ...loadedPayload,
+      editable: {
+        ...loadedPayload.editable,
+        agents: [
+          {
+            ...loadedPayload.editable.agents[0],
+            command: 'coco -y --query-timeout 5m -p "{prompt_file}"',
+            timeout_minutes: 15,
+            network: 'enabled',
+          },
+        ],
+        agent: {
+          ...loadedPayload.editable.agent,
+          command: 'coco -y --query-timeout 5m -p "{prompt_file}"',
+          timeout_minutes: 15,
+          network: 'enabled',
+        },
+        variants: [
+          {
+            name: 'baseline',
+            description: 'Edited baseline instructions',
+            overlays: [{ source: './contexts/edited/AGENTS.md', target: 'AGENTS.md' }],
+          },
+        ],
+      },
+    };
+    const fetchMock = vi.fn((url: string | URL | Request, init?: RequestInit) => {
+      const target = String(url);
+      if (target === '/api/health') {
+        return jsonResponse({ ok: true, initial_config_path: 'context-eval.yaml' });
+      }
+      if (target === '/api/config/load') {
+        return jsonResponse(loadedPayload);
+      }
+      if (target === '/api/config/save-editable') {
+        const body = JSON.parse(String(init?.body));
+        expect(body.editable.variants[0].description).toBe('Edited baseline instructions');
+        expect(body.editable.variants[0].overlays[0]).toEqual({
+          source: './contexts/edited/AGENTS.md',
+          target: 'AGENTS.md',
+        });
+        expect(body.editable.agents[0].command).toBe('coco -y --query-timeout 5m -p "{prompt_file}"');
+        expect(body.editable.agents[0].timeout_minutes).toBe(15);
+        expect(body.editable.agents[0].network).toBe('enabled');
+        return jsonResponse({
+          ok: true,
+          config_path: 'context-eval.yaml',
+          tasks_path: 'tasks.yaml',
+          reloaded: editedPayload,
+        });
+      }
+      if (target === '/api/run-plan') {
+        return jsonResponse({
+          ok: true,
+          case_count: 1,
+          cleanup_policy: 'successful',
+          jobs: 1,
+          trials: 1,
+          output_dir: './runs',
+          agents: ['coco'],
+          tasks: ['fix-greeting-punctuation'],
+          variants: ['baseline'],
+          cases: [
+            {
+              case_id: 'fix-greeting-punctuation__baseline__coco',
+              agent_name: 'coco',
+              agent_kind: 'coco',
+              task_id: 'fix-greeting-punctuation',
+              variant: 'baseline',
+              trial_index: 1,
+              repo_ref: 'main',
+              command_preview: 'coco -p prompt',
+              expected_outcome_summary: 'README contains fixed marker.',
+              hard_evaluation_enabled: true,
+              soft_evaluation_enabled: true,
+            },
+          ],
+        });
+      }
+      throw new Error(`unexpected request: ${target}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByLabelText('variant description')).toHaveValue('Baseline'));
+    fireEvent.change(screen.getByLabelText('variant description'), {
+      target: { value: 'Edited baseline instructions' },
+    });
+    fireEvent.change(screen.getByLabelText('overlay source 1'), {
+      target: { value: './contexts/edited/AGENTS.md' },
+    });
+    fireEvent.change(screen.getByLabelText('agent command'), {
+      target: { value: 'coco -y --query-timeout 5m -p "{prompt_file}"' },
+    });
+    fireEvent.change(screen.getByLabelText('agent timeout minutes'), {
+      target: { value: '15' },
+    });
+    fireEvent.change(screen.getByLabelText('agent network'), {
+      target: { value: 'enabled' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '保存 variant 配置' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('variant-save-status')).toHaveTextContent('已保存配置并刷新 run plan');
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/config/save-editable',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/run-plan',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(screen.getByLabelText('variant description')).toHaveValue('Edited baseline instructions');
+  });
+
   it('blocks invalid task fields before submitting structured saves', async () => {
     const fetchMock = vi.fn((url: string | URL | Request) => {
       const target = String(url);
@@ -319,6 +445,183 @@ describe('App workflow shell', () => {
       '/api/config/save-editable',
       expect.anything(),
     );
+  });
+
+  it('blocks invalid variant and agent fields before structured saves', async () => {
+    const fetchMock = vi.fn((url: string | URL | Request) => {
+      const target = String(url);
+      if (target === '/api/health') {
+        return jsonResponse({ ok: true, initial_config_path: 'context-eval.yaml' });
+      }
+      if (target === '/api/config/load') {
+        return jsonResponse(loadedPayload);
+      }
+      throw new Error(`unexpected request: ${target}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByLabelText('variant name')).toHaveValue('baseline'));
+    fireEvent.change(screen.getByLabelText('variant name'), { target: { value: ' ' } });
+    fireEvent.change(screen.getByLabelText('overlay source 1'), { target: { value: ' ' } });
+    fireEvent.change(screen.getByLabelText('agent command'), { target: { value: ' ' } });
+    fireEvent.change(screen.getByLabelText('agent timeout minutes'), { target: { value: '0' } });
+    await waitFor(() => expect(screen.getByLabelText('variant name')).toHaveValue(' '));
+    await waitFor(() => expect(screen.getByLabelText('agent timeout minutes')).toHaveValue(0));
+    fireEvent.click(screen.getByRole('button', { name: '保存 agent 配置' }));
+
+    expect(await screen.findByText('variant 1 name 不能为空')).toBeVisible();
+    expect(screen.getByText('variant 1 overlay 1 source 不能为空')).toBeVisible();
+    expect(screen.getByText('agent profile 1 command 不能为空')).toBeVisible();
+    expect(screen.getByText('agent profile 1 timeout 必须大于 0')).toBeVisible();
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      '/api/config/save-editable',
+      expect.anything(),
+    );
+  });
+
+  it('passes selected task, variant, and agent scope into plan and run requests', async () => {
+    const scopedPayload = {
+      ...loadedPayload,
+      editable: {
+        ...loadedPayload.editable,
+        agents: [
+          loadedPayload.editable.agents[0],
+          {
+            name: 'codex',
+            kind: 'codex-cli',
+            command: 'codex exec "{prompt_file}"',
+            timeout_minutes: 30,
+            network: 'disabled',
+          },
+        ],
+        tasks: [
+          loadedPayload.editable.tasks[0],
+          {
+            ...loadedPayload.editable.tasks[0],
+            id: 'second-task',
+            title: 'Second task',
+            prompt: 'Second prompt.',
+          },
+        ],
+        variants: [
+          loadedPayload.editable.variants[0],
+          { name: 'experiment', description: 'Experiment', overlays: [] },
+        ],
+      },
+      resolved: {
+        ...loadedPayload.resolved,
+        agents: ['coco', 'codex'],
+        tasks: ['fix-greeting-punctuation', 'second-task'],
+        variants: ['baseline', 'experiment'],
+      },
+    };
+    const fetchMock = vi.fn((url: string | URL | Request, init?: RequestInit) => {
+      const target = String(url);
+      if (target === '/api/health') {
+        return jsonResponse({ ok: true, initial_config_path: 'context-eval.yaml' });
+      }
+      if (target === '/api/config/load') {
+        return jsonResponse(scopedPayload);
+      }
+      if (target === '/api/preflight') {
+        return jsonResponse({ ok: true, checks: ['schema', 'repo'] });
+      }
+      if (target === '/api/run-plan') {
+        const body = JSON.parse(String(init?.body));
+        expect(body.task_ids).toEqual(['second-task']);
+        expect(body.variants).toEqual(['experiment']);
+        expect(body.agents).toEqual(['codex']);
+        return jsonResponse({
+          ok: true,
+          case_count: 1,
+          cleanup_policy: 'successful',
+          jobs: 1,
+          trials: 1,
+          output_dir: './runs',
+          agents: ['codex'],
+          tasks: ['second-task'],
+          variants: ['experiment'],
+          cases: [
+            {
+              case_id: 'second-task__experiment__codex',
+              agent_name: 'codex',
+              agent_kind: 'codex-cli',
+              task_id: 'second-task',
+              variant: 'experiment',
+              trial_index: 1,
+              repo_ref: 'main',
+              command_preview: 'codex exec prompt',
+              expected_outcome_summary: 'README contains fixed marker.',
+              hard_evaluation_enabled: true,
+              soft_evaluation_enabled: true,
+            },
+          ],
+        });
+      }
+      if (target === '/api/runs') {
+        const body = JSON.parse(String(init?.body));
+        expect(body.task_ids).toEqual(['second-task']);
+        expect(body.variants).toEqual(['experiment']);
+        expect(body.agents).toEqual(['codex']);
+        return jsonResponse({
+          ok: true,
+          app_run_id: 'run-scope',
+          status: 'completed',
+          run_dir: './runs/run-scope',
+          case_count: 1,
+          completed_cases: 1,
+        });
+      }
+      if (target === '/api/runs/run-scope/logs') {
+        return jsonResponse({ ok: true, console: ['done'], files: [] });
+      }
+      if (target.startsWith('/api/results')) {
+        return jsonResponse({
+          ok: true,
+          overview: {
+            case_count: 1,
+            failed_count: 0,
+            timeout_count: 0,
+            low_confidence_count: 0,
+            telemetry_gap_count: 0,
+          },
+          cases: [
+            {
+              case_id: 'second-task__experiment__codex',
+              agent_name: 'codex',
+              task_id: 'second-task',
+              variant: 'experiment',
+              status: 'completed',
+              validation_status: 'passed',
+              confidence: 'high',
+              hard_evaluation_status: 'passed',
+              hard_evaluation_score: 1,
+              hard_evaluation_max_score: 1,
+              soft_evaluation_status: 'payload_generated',
+            },
+          ],
+        });
+      }
+      throw new Error(`unexpected request: ${target}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByLabelText('task second-task')).toBeChecked());
+    fireEvent.click(screen.getByLabelText('task fix-greeting-punctuation'));
+    fireEvent.click(screen.getByLabelText('variant baseline'));
+    fireEvent.click(screen.getByLabelText('agent coco'));
+    fireEvent.click(screen.getByRole('button', { name: '刷新 run plan' }));
+
+    await waitFor(() => expect(screen.getByTestId('planned-case-count')).toHaveTextContent('1'));
+    expect(screen.getByText('second-task__experiment__codex')).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: '开始运行' }));
+    await waitFor(() => expect(screen.getByTestId('run-status')).toHaveTextContent('已完成 1/1'));
+    expect(screen.getAllByText('codex').length).toBeGreaterThan(0);
   });
 
   it('shows API errors from structured saves', async () => {
@@ -571,5 +874,35 @@ describe('App workflow shell', () => {
         body: expect.stringContaining('"decision":"pass"'),
       }),
     );
+  });
+});
+
+describe('run scope reconciliation', () => {
+  it('reports a cleanup notice when an all-selected scope loses deleted values', () => {
+    const reconciled = reconcileRunScope(
+      {
+        task_ids: ['task-a', 'task-b'],
+        variants: ['baseline', 'experiment'],
+        agents: ['coco', 'codex'],
+      },
+      {
+        task_ids: ['task-a', 'task-b'],
+        variants: ['baseline', 'experiment'],
+        agents: ['coco', 'codex'],
+      },
+      {
+        task_ids: ['task-a'],
+        variants: ['baseline'],
+        agents: ['coco'],
+      },
+      true,
+    );
+
+    expect(reconciled.scope).toEqual({
+      task_ids: ['task-a'],
+      variants: ['baseline'],
+      agents: ['coco'],
+    });
+    expect(reconciled.changed).toBe(true);
   });
 });

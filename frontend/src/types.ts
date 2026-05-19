@@ -147,6 +147,12 @@ export type RunPlan = {
   }[];
 };
 
+export type RunScope = {
+  task_ids: string[];
+  variants: string[];
+  agents: string[];
+};
+
 export type RunStatus = {
   app_run_id: string;
   status: string;

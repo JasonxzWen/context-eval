@@ -409,6 +409,73 @@ def test_local_app_saves_editable_tasks_without_rewriting_config_unknowns(
     )
 
 
+def test_local_app_saves_editable_variants_and_agent_profiles(
+    tmp_path: Path,
+) -> None:
+    repo = _create_git_repo(tmp_path / "repo")
+    _write_eval_files(tmp_path, repo)
+    config_path = tmp_path / "context-eval.yaml"
+    config_data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    primary_agent = config_data.pop("agent")
+    primary_agent["kind"] = "custom"
+    primary_agent["telemetry"] = {"collector": "json-file", "file": "telemetry.json"}
+    config_data["agents"] = {
+        "local-app-fake-agent": primary_agent,
+        "backup-agent": {
+            "kind": "custom",
+            "command": f'"{Path(sys.executable).as_posix()}" -c "print(\'backup\')"',
+            "timeout_minutes": 1,
+            "network": "disabled",
+        },
+    }
+    config_path.write_text(yaml.safe_dump(config_data, sort_keys=False), encoding="utf-8")
+    service = LocalAppService(workspace_root=tmp_path)
+
+    loaded = service.load_config(config_path="context-eval.yaml")
+    editable = loaded["editable"]
+    editable["variants"][0]["description"] = "Edited structured baseline"
+    editable["variants"][0]["overlays"] = [
+        {"source": "./contexts/baseline/AGENTS.md", "target": "docs/AGENTS.md"}
+    ]
+    editable["agent"] = {
+        **editable["agents"][0],
+        "command": f'"{Path(sys.executable).as_posix()}" -c "print(\'edited\')"',
+        "timeout_minutes": 2,
+        "network": "enabled",
+    }
+    editable["agents"][0] = editable["agent"]
+    editable["agents"][1] = {
+        **editable["agents"][1],
+        "kind": "codex-cli",
+        "command": "codex exec \"{prompt_file}\"",
+        "timeout_minutes": 3,
+    }
+
+    saved = service.save_editable_config(
+        config_path="context-eval.yaml",
+        tasks_path="tasks.yaml",
+        editable=editable,
+    )
+
+    saved_config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    assert saved_config["x_unknown"] == {"preserve": True}
+    assert saved_config["variants"]["baseline"]["description"] == (
+        "Edited structured baseline"
+    )
+    assert saved_config["variants"]["baseline"]["overlays"] == [
+        {"source": "./contexts/baseline/AGENTS.md", "target": "docs/AGENTS.md"}
+    ]
+    assert saved_config["agents"]["local-app-fake-agent"]["network"] == "enabled"
+    assert saved_config["agents"]["local-app-fake-agent"]["telemetry"] == {
+        "collector": "json-file",
+        "file": "telemetry.json",
+    }
+    assert saved_config["agents"]["backup-agent"]["kind"] == "codex-cli"
+    assert saved["reloaded"]["editable"]["variants"][0]["description"] == (
+        "Edited structured baseline"
+    )
+
+
 def test_local_app_save_rejects_overlay_paths_outside_workspace(tmp_path: Path) -> None:
     repo = _create_git_repo(tmp_path / "repo")
     config_path = _write_eval_files(tmp_path, repo)
@@ -542,6 +609,80 @@ def test_local_app_plans_runs_and_executes_fixture_workflow(tmp_path: Path) -> N
     export = service.export(run_dir=status["run_dir"], export_format="json")
     payload = json.loads(export["content"])
     assert payload["case_count"] == 1
+
+
+def test_local_app_run_scope_filters_plan_and_execution(tmp_path: Path) -> None:
+    fixture = _copy_fixture_repo(tmp_path)
+    python_exe = Path(sys.executable).as_posix()
+    _write_eval_files(
+        tmp_path,
+        fixture,
+        agent_command=f'"{python_exe}" scripts/example_agent.py "{{prompt_file}}"',
+        validation_commands=[f'"{python_exe}" -m pytest'],
+    )
+    config_path = tmp_path / "context-eval.yaml"
+    config_data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    primary_agent = config_data.pop("agent")
+    primary_agent["kind"] = "custom"
+    config_data["agents"] = {
+        "first-agent": primary_agent,
+        "second-agent": {
+            **primary_agent,
+            "command": f'"{python_exe}" scripts/example_agent.py "{{prompt_file}}"',
+        },
+    }
+    config_data["variants"]["experiment"] = {
+        "description": "Experiment scope",
+        "overlays": [
+            {"source": "./contexts/baseline/AGENTS.md", "target": "AGENTS.md"}
+        ],
+    }
+    config_path.write_text(yaml.safe_dump(config_data, sort_keys=False), encoding="utf-8")
+    tasks_path = tmp_path / "tasks.yaml"
+    tasks_data = yaml.safe_load(tasks_path.read_text(encoding="utf-8"))
+    second_task = dict(tasks_data["tasks"][0])
+    second_task["id"] = "second-task"
+    second_task["prompt"] = "Fix the fixture greeting punctuation again."
+    tasks_data["tasks"].append(second_task)
+    tasks_path.write_text(yaml.safe_dump(tasks_data, sort_keys=False), encoding="utf-8")
+    service = LocalAppService(workspace_root=tmp_path)
+
+    plan = service.plan_run(
+        config_path="context-eval.yaml",
+        cleanup_policy="successful",
+        agents=["second-agent"],
+        variants=["experiment"],
+        task_ids=["second-task"],
+    )
+
+    assert plan["case_count"] == 1
+    assert plan["agents"] == ["second-agent"]
+    assert plan["variants"] == ["experiment"]
+    assert plan["tasks"] == ["second-task"]
+
+    started = service.start_run(
+        config_path="context-eval.yaml",
+        confirm=True,
+        cleanup_policy="successful",
+        agents=["second-agent"],
+        variants=["experiment"],
+        task_ids=["second-task"],
+    )
+    app_run_id = started["app_run_id"]
+    deadline = time.time() + 60
+    status = service.get_run(app_run_id)
+    while status["status"] in {"queued", "running"} and time.time() < deadline:
+        time.sleep(0.1)
+        status = service.get_run(app_run_id)
+
+    assert status["status"] == "completed"
+    assert status["case_count"] == 1
+    results = service.results(run_dir=status["run_dir"])
+    assert results["overview"]["case_count"] == 1
+    result = results["cases"][0]
+    assert result["agent_name"] == "second-agent"
+    assert result["task_id"] == "second-task"
+    assert result["variant"] == "experiment"
 
 
 def test_local_app_plan_and_results_include_hybrid_evaluation(tmp_path: Path) -> None:

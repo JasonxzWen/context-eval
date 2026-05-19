@@ -190,15 +190,23 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
     await expect(page.getByTestId('task-save-status')).toContainText('已保存任务并刷新 run plan');
     await expect(page.locator('.matrix-panel')).toContainText('Visual editor saved summary.');
 
+    await page.getByLabel('选择 variant experiment').click();
+    await page.getByLabel('variant description').fill('Edited experiment instructions');
+    await page.getByLabel('agent timeout minutes').fill('3');
+    await page.getByRole('button', { name: '保存 variant 配置' }).click();
+    await expect(page.getByTestId('variant-save-status')).toContainText('已保存配置并刷新 run plan');
+    await expect(page.getByLabel('variant description')).toHaveValue('Edited experiment instructions');
+
+    await page.getByRole('checkbox', { name: 'variant baseline' }).uncheck();
+    await page.getByRole('button', { name: '刷新 run plan' }).click();
+    await expect(page.getByTestId('planned-case-count')).toHaveText('1');
+
     await page.getByRole('button', { name: '开始运行' }).click();
     await expect(page.getByTestId('preflight-status')).toContainText('运行前检查通过');
-    await expect(page.getByTestId('planned-case-count')).toHaveText('2');
+    await expect(page.getByTestId('planned-case-count')).toHaveText('1');
     await expect(page.getByTestId('run-status')).toContainText('已完成', { timeout: 60000 });
     await expect(page.getByText('结果已生成')).toBeVisible();
-    await expect(page.getByRole('cell', { name: 'hard failed 3/4' })).toBeVisible();
     await expect(page.getByRole('cell', { name: 'hard passed 4/4' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Compare Summary' })).toBeVisible();
-    await expect(page.getByText('experiment_improved')).toBeVisible();
 
     const experimentRow = page.locator('tbody tr', { hasText: 'experiment' });
     await experimentRow.getByRole('button').click();
@@ -246,7 +254,7 @@ test('renders the fixture-backed Coco hybrid shell', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'context-eval 本地工作台' })).toBeVisible();
   await expect(page.getByTestId('matrix-count')).toHaveText('8');
   await page.getByText('配置与任务细节').click();
-  await expect(page.getByRole('heading', { name: 'Agent' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Agent', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Expected Outcome' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Hard Evaluation' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Soft Evaluation' })).toBeVisible();
