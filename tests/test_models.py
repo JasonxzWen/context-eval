@@ -229,6 +229,13 @@ def test_task_model_accepts_expected_outcome_hard_and_soft_evaluation() -> None:
                 "forbidden_snippets": [
                     {"path": "src/mail/attachment.py", "snippets": ["TODO"]}
                 ],
+                "command_checks": [
+                    {
+                        "label": "targeted-test",
+                        "command": "python -m pytest tests/test_mail.py",
+                        "expected": "passed",
+                    }
+                ],
             },
             "soft_evaluation": {
                 "enabled": True,
@@ -252,6 +259,8 @@ def test_task_model_accepts_expected_outcome_hard_and_soft_evaluation() -> None:
     assert task.hard_evaluation.require_validation_pass is True
     assert task.hard_evaluation.required_paths == ["src/mail/attachment.py"]
     assert task.hard_evaluation.expected_snippets[0].snippets == ["expires_at"]
+    assert task.hard_evaluation.command_checks[0].label == "targeted-test"
+    assert task.hard_evaluation.command_checks[0].timeout_seconds == 60
     assert task.soft_evaluation is not None
     assert isinstance(task.soft_evaluation, SoftEvaluationConfig)
     assert task.soft_evaluation.mode == "payload-only"

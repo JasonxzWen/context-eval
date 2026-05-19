@@ -351,19 +351,24 @@ button:disabled {
   order: 2;
 }
 
-.content-grid > .results-panel {
+.content-grid > .task-editor-panel {
   grid-column: span 12;
   order: 3;
+}
+
+.content-grid > .results-panel {
+  grid-column: span 12;
+  order: 7;
   overflow-x: auto;
 }
 
 .content-grid > .run-panel {
   grid-column: span 12;
-  order: 4;
+  order: 6;
 }
 
 .content-grid > .project-panel {
-  order: 5;
+  order: 4;
 }
 
 .content-grid > .advanced-workbench {
@@ -468,6 +473,7 @@ textarea {
   margin: 10px 0 0;
   color: var(--muted);
   font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
 .panel-note {
@@ -786,6 +792,189 @@ th {
   font-size: 12px;
 }
 
+.danger-button {
+  border-color: #b44b4b;
+  color: #8a2f2f;
+}
+
+.task-editor-layout {
+  display: grid;
+  grid-template-columns: minmax(190px, 0.28fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.task-rail {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.task-tab {
+  display: grid;
+  justify-items: start;
+  min-height: 58px;
+  width: 100%;
+  border-color: var(--line);
+  background: #fbfcfb;
+  color: var(--ink);
+  text-align: left;
+}
+
+.task-tab.active {
+  border-color: var(--teal);
+  background: #eef7f1;
+  box-shadow: inset 4px 0 0 var(--teal);
+}
+
+.task-tab strong,
+.task-tab span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-tab span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.rail-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.task-editor-form {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+fieldset {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fbfcfb;
+}
+
+legend {
+  padding: 0 6px;
+  color: var(--blue);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.task-editor-form textarea {
+  min-height: 120px;
+  white-space: pre-wrap;
+}
+
+.list-editor textarea {
+  min-height: 42px;
+  white-space: pre-wrap;
+}
+
+.command-check-row textarea,
+.rubric-row textarea {
+  min-height: 64px;
+}
+
+.variant-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.variant-chip {
+  display: inline-flex;
+  gap: 6px;
+  align-items: baseline;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: #ffffff;
+}
+
+.variant-chip strong,
+.variant-chip small {
+  overflow-wrap: anywhere;
+}
+
+.variant-chip small {
+  color: var(--muted);
+}
+
+.list-editor {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.subsection-heading {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.list-row,
+.structured-row {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.list-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.structured-row {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px;
+  background: #ffffff;
+}
+
+.expected-file-row {
+  grid-template-columns: minmax(160px, 1.4fr) minmax(130px, 0.7fr) minmax(120px, auto) auto;
+}
+
+.command-check-row {
+  grid-template-columns: minmax(140px, 0.7fr) minmax(220px, 1.4fr) minmax(160px, 0.9fr) auto;
+}
+
+.rubric-row {
+  grid-template-columns: minmax(130px, 0.6fr) minmax(220px, 1.4fr) minmax(90px, 0.4fr) auto;
+}
+
+.checkbox-label {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  align-items: center;
+  align-self: end;
+  min-height: 38px;
+  color: var(--ink);
+  font-size: 13px;
+  text-transform: none;
+}
+
+.checkbox-label input {
+  width: auto;
+}
+
+.validation-notice {
+  margin: 0;
+}
+
+.editor-actions {
+  align-items: center;
+}
+
 .compare-summary {
   margin-top: 12px;
 }
@@ -952,6 +1141,7 @@ th {
   .run-panel,
   .results-panel,
   .matrix-panel,
+  .task-editor-panel,
   .advanced-grid > .panel,
   .advanced-grid > .yaml-panel {
     grid-column: span 1;
@@ -1027,7 +1217,16 @@ th {
 
   .compare-card dl,
   .detail-grid,
-  .review-form {
+  .review-form,
+  .task-editor-layout,
+  .expected-file-row,
+  .command-check-row,
+  .rubric-row {
+    grid-template-columns: 1fr;
+  }
+
+  .rail-actions,
+  .list-row {
     grid-template-columns: 1fr;
   }
 }

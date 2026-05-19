@@ -6,8 +6,10 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from context_eval.logging import run_command
 from context_eval.models import (
     CaseResult,
+    CommandCheckConfig,
     HardEvaluationConfig,
     SnippetCheckConfig,
     TaskConfig,
@@ -115,6 +117,7 @@ def run_hard_evaluation(
             expected=False,
         )
     )
+    checks.extend(_command_checks(config.command_checks, workspace=workspace))
 
     scored = [check for check in checks if check.status != "skipped"]
     passed = sum(1 for check in scored if check.status == "passed")
@@ -351,6 +354,58 @@ def _snippet_source(
     if patch_text:
         return patch_text, "patch"
     return None, None
+
+
+def _command_checks(
+    checks: list[CommandCheckConfig],
+    *,
+    workspace: Path | None,
+) -> list[HardEvaluationCheck]:
+    rows: list[HardEvaluationCheck] = []
+    for check in checks:
+        name = f"command:{check.label}"
+        if workspace is None:
+            rows.append(
+                HardEvaluationCheck(
+                    name=name,
+                    status="skipped",
+                    message="no retained workspace available for command check",
+                    evidence={
+                        "label": check.label,
+                        "command": check.command,
+                        "expected": check.expected,
+                    },
+                )
+            )
+            continue
+        result = run_command(
+            check.command,
+            cwd=workspace,
+            shell=True,
+            timeout_seconds=check.timeout_seconds,
+        )
+        combined_output = f"{result.stdout}\n{result.stderr}"
+        expected_found = not check.expected or check.expected in combined_output
+        passed = result.exit_code == 0 and not result.timeout and expected_found
+        rows.append(
+            _check(
+                name=name,
+                passed=passed,
+                passed_message="command check passed",
+                failed_message="command check failed",
+                evidence={
+                    "label": check.label,
+                    "command": check.command,
+                    "expected": check.expected,
+                    "expected_found": expected_found,
+                    "exit_code": result.exit_code,
+                    "timeout": result.timeout,
+                    "stdout_tail": result.stdout[-2000:],
+                    "stderr_tail": result.stderr[-2000:],
+                },
+            )
+        )
+    return rows
 
 
 def _required_paths(task: TaskConfig, config: HardEvaluationConfig) -> list[str]:

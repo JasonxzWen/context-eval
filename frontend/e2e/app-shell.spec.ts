@@ -184,6 +184,11 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
     await expect(page.getByLabel('仓库路径')).toHaveValue('./demo-repo');
 
     await expect(page.locator('.run-brief-panel')).toContainText('baseline vs experiment');
+    await expect(page.getByRole('heading', { name: '评测用例编辑器' })).toBeVisible();
+    await page.getByLabel('Expected outcome summary').fill('Visual editor saved summary.');
+    await page.getByRole('button', { name: '保存任务' }).click();
+    await expect(page.getByTestId('task-save-status')).toContainText('已保存任务并刷新 run plan');
+    await expect(page.locator('.matrix-panel')).toContainText('Visual editor saved summary.');
 
     await page.getByRole('button', { name: '开始运行' }).click();
     await expect(page.getByTestId('preflight-status')).toContainText('运行前检查通过');

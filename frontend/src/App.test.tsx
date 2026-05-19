@@ -1,11 +1,11 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 
-function jsonResponse(data: unknown) {
+function jsonResponse(data: unknown, options: { ok?: boolean; status?: number } = {}) {
   return Promise.resolve({
-    ok: true,
-    status: 200,
+    ok: options.ok ?? true,
+    status: options.status ?? 200,
     json: async () => data,
   } as Response);
 }
@@ -190,6 +190,164 @@ describe('App workflow shell', () => {
       }),
     );
     expect(screen.getByLabelText('tasks.yaml')).toHaveValue(tasksWithUnknown);
+  });
+
+  it('saves structured task edits and refreshes the run plan', async () => {
+    const editedPayload = {
+      ...loadedPayload,
+      editable: {
+        ...loadedPayload.editable,
+        tasks: [
+          {
+            ...loadedPayload.editable.tasks[0],
+            prompt: 'Use the visual editor prompt.',
+            expected_outcome: {
+              ...loadedPayload.editable.tasks[0].expected_outcome,
+              summary: 'Visual editor summary.',
+            },
+          },
+        ],
+      },
+    };
+    const fetchMock = vi.fn((url: string | URL | Request, init?: RequestInit) => {
+      const target = String(url);
+      if (target === '/api/health') {
+        return jsonResponse({ ok: true, initial_config_path: 'context-eval.yaml' });
+      }
+      if (target === '/api/config/load') {
+        return jsonResponse(loadedPayload);
+      }
+      if (target === '/api/config/save-editable') {
+        expect(String(init?.body)).toContain('Use the visual editor prompt.');
+        expect(String(init?.body)).toContain('Visual editor summary.');
+        expect(String(init?.body)).toContain('readme-marker');
+        return jsonResponse({
+          ok: true,
+          config_path: 'context-eval.yaml',
+          tasks_path: 'tasks.yaml',
+          reloaded: editedPayload,
+        });
+      }
+      if (target === '/api/run-plan') {
+        return jsonResponse({
+          ok: true,
+          case_count: 1,
+          cleanup_policy: 'successful',
+          jobs: 1,
+          trials: 1,
+          output_dir: './runs',
+          agents: ['coco'],
+          tasks: ['fix-greeting-punctuation'],
+          variants: ['baseline'],
+          cases: [
+            {
+              case_id: 'fix-greeting-punctuation__baseline__coco',
+              agent_name: 'coco',
+              agent_kind: 'coco',
+              task_id: 'fix-greeting-punctuation',
+              variant: 'baseline',
+              trial_index: 1,
+              repo_ref: 'main',
+              command_preview: 'coco -p prompt',
+              expected_outcome_summary: 'Visual editor summary.',
+              hard_evaluation_enabled: true,
+              soft_evaluation_enabled: true,
+            },
+          ],
+        });
+      }
+      throw new Error(`unexpected request: ${target}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByLabelText('Prompt')).toHaveValue('Fix it.'));
+    fireEvent.change(screen.getByLabelText('Prompt'), {
+      target: { value: 'Use the visual editor prompt.' },
+    });
+    fireEvent.change(screen.getByLabelText('Expected outcome summary'), {
+      target: { value: 'Visual editor summary.' },
+    });
+    fireEvent.click(within(screen.getByRole('group', { name: 'Hard checks' })).getByRole('button', { name: '添加' }));
+    fireEvent.change(screen.getByLabelText('hard check label 1'), {
+      target: { value: 'readme-marker' },
+    });
+    fireEvent.change(screen.getByLabelText('hard check command 1'), {
+      target: { value: 'python -c "print(\'ok\')"' },
+    });
+    fireEvent.change(screen.getByLabelText('hard check expected 1'), {
+      target: { value: 'ok' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '保存任务' }));
+
+    await waitFor(() => expect(screen.getByTestId('task-save-status')).toHaveTextContent('已保存任务并刷新 run plan'));
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/config/save-editable',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/run-plan',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(screen.getAllByText('Visual editor summary.').length).toBeGreaterThan(0);
+  });
+
+  it('blocks invalid task fields before submitting structured saves', async () => {
+    const fetchMock = vi.fn((url: string | URL | Request) => {
+      const target = String(url);
+      if (target === '/api/health') {
+        return jsonResponse({ ok: true, initial_config_path: 'context-eval.yaml' });
+      }
+      if (target === '/api/config/load') {
+        return jsonResponse(loadedPayload);
+      }
+      throw new Error(`unexpected request: ${target}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByLabelText('Prompt')).toHaveValue('Fix it.'));
+    fireEvent.change(screen.getByLabelText('Prompt'), { target: { value: ' ' } });
+    fireEvent.change(screen.getByLabelText('命令 1'), { target: { value: ' ' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存任务' }));
+
+    expect(await screen.findByText('fix-greeting-punctuation: prompt 不能为空')).toBeVisible();
+    expect(screen.getByText('fix-greeting-punctuation: validation command 1 不能为空')).toBeVisible();
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      '/api/config/save-editable',
+      expect.anything(),
+    );
+  });
+
+  it('shows API errors from structured saves', async () => {
+    const fetchMock = vi.fn((url: string | URL | Request) => {
+      const target = String(url);
+      if (target === '/api/health') {
+        return jsonResponse({ ok: true, initial_config_path: 'context-eval.yaml' });
+      }
+      if (target === '/api/config/load') {
+        return jsonResponse(loadedPayload);
+      }
+      if (target === '/api/config/save-editable') {
+        return jsonResponse(
+          { ok: false, error: 'tasks.0.prompt: server validation failed' },
+          { ok: false, status: 400 },
+        );
+      }
+      throw new Error(`unexpected request: ${target}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByLabelText('Prompt')).toHaveValue('Fix it.'));
+    fireEvent.click(screen.getByRole('button', { name: '保存任务' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('错误: tasks.0.prompt: server validation failed')).toBeVisible();
+    });
   });
 
   it('shows hard and soft result status after a completed run', async () => {

@@ -348,6 +348,67 @@ def test_local_app_save_reloads_and_preserves_raw_unknown_fields(tmp_path: Path)
     assert "x_task_unknown" in (tmp_path / "tasks.yaml").read_text(encoding="utf-8")
 
 
+def test_local_app_saves_editable_tasks_without_rewriting_config_unknowns(
+    tmp_path: Path,
+) -> None:
+    repo = _create_git_repo(tmp_path / "repo")
+    _write_eval_files(tmp_path, repo)
+    service = LocalAppService(workspace_root=tmp_path)
+
+    loaded = service.load_config(config_path="context-eval.yaml")
+    editable = loaded["editable"]
+    task = editable["tasks"][0]
+    task["prompt"] = "Update README with the saved editor marker."
+    task["expected_outcome"] = {
+        "summary": "README contains saved editor marker.",
+        "acceptance_points": ["The saved editor marker is present."],
+        "files": [{"path": "README.md", "must_change": True}],
+    }
+    task["validation_commands"] = ["python -m pytest"]
+    task["hard_evaluation"] = {
+        "enabled": True,
+        "require_validation_pass": False,
+        "command_checks": [
+            {
+                "label": "readme-marker",
+                "command": "python -c \"print('saved editor marker')\"",
+                "expected": "saved editor marker",
+            }
+        ],
+    }
+    task["soft_evaluation"] = {
+        "enabled": True,
+        "mode": "payload-only",
+        "rubric": [
+            {
+                "name": "task-fit",
+                "description": "Patch satisfies the task.",
+                "weight": 1,
+            }
+        ],
+    }
+
+    saved = service.save_editable_config(
+        config_path="context-eval.yaml",
+        tasks_path="tasks.yaml",
+        editable=editable,
+    )
+
+    config_text = (tmp_path / "context-eval.yaml").read_text(encoding="utf-8")
+    tasks_text = (tmp_path / "tasks.yaml").read_text(encoding="utf-8")
+    assert "x_unknown" in config_text
+    assert "saved editor marker" in tasks_text
+    assert "command_checks" in tasks_text
+    assert saved["reloaded"]["editable"]["tasks"][0]["expected_outcome"]["summary"] == (
+        "README contains saved editor marker."
+    )
+
+    plan = service.plan_run(config_path="context-eval.yaml", cleanup_policy="successful")
+    assert plan["cases"][0]["expected_outcome_summary"] == (
+        "README contains saved editor marker."
+    )
+
+
 def test_local_app_save_rejects_overlay_paths_outside_workspace(tmp_path: Path) -> None:
     repo = _create_git_repo(tmp_path / "repo")
     config_path = _write_eval_files(tmp_path, repo)

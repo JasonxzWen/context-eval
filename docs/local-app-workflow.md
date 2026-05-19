@@ -160,6 +160,15 @@ status text, errors, empty states, preflight labels, run labels, result labels,
 and export labels should be visible in Chinese. Code identifiers, file names,
 YAML keys, artifact names, and API fields can remain English.
 
+The current visual case editor lets users select a task and edit the common
+case-authoring fields without touching YAML: task ID, title, prompt, category,
+difficulty, expected-outcome summary, acceptance points, expected files,
+validation commands, command-based hard checks, soft review rubric, and visible
+context variant associations. Saving this form writes `tasks.yaml`, reloads the
+server-side config, and refreshes the run plan before the user starts a run.
+The raw YAML view stays available as an advanced folded view for fields that do
+not yet have visual controls.
+
 The Coco-first visual authoring slice is specified in
 `docs/coco-visual-hybrid-evaluation.md`. It extends this workflow with Project,
 Coco Agent, Context Variants, Tasks, Expected Outcome, Hard Evaluation, Soft
@@ -265,6 +274,10 @@ The local app API endpoints are:
 - `POST /api/config/save`: validate and save `context-eval.yaml` and
   `tasks.yaml` to explicit destinations inside the workspace root while
   preserving raw YAML fields that the UI does not edit.
+- `POST /api/config/save-editable`: validate the browser editable model,
+  regenerate and save `tasks.yaml`, preserve the existing `context-eval.yaml`
+  text, reload the config, and return the refreshed editable model plus raw
+  YAML. This endpoint is for the visual case editor path.
 - `POST /api/preflight`: run side-effect-free validation for schema, task IDs,
   Git refs, overlay paths, prompt templates, command variables, optional agent
   executable availability, and output directory writability.
