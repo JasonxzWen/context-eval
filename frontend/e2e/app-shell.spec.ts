@@ -196,6 +196,9 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
     await page.getByLabel('选择上下文版本 experiment').click();
     await page.getByLabel('版本说明').fill('Edited experiment instructions');
     await page.getByLabel('执行器超时分钟').fill('3');
+    await page.getByRole('button', { name: '保存执行器配置' }).click();
+    await expect(page.getByTestId('agent-save-status')).toContainText('已保存配置并刷新执行计划');
+    await expect(page.getByLabel('执行器超时分钟')).toHaveValue('3');
     await page.getByRole('button', { name: '保存上下文版本' }).click();
     await expect(page.getByTestId('variant-save-status')).toContainText('已保存配置并刷新执行计划');
     await expect(page.getByLabel('版本说明')).toHaveValue('Edited experiment instructions');
