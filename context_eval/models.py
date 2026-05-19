@@ -335,6 +335,29 @@ class SnippetCheckConfig(BaseModel):
         return value
 
 
+class CommandCheckConfig(BaseModel):
+    label: str
+    command: str
+    expected: str = ""
+    timeout_seconds: int = Field(default=60, ge=1)
+
+    @field_validator("label")
+    @classmethod
+    def validate_label(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("command check label must not be empty")
+        return stripped
+
+    @field_validator("command")
+    @classmethod
+    def validate_command(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("command check command must not be empty")
+        return stripped
+
+
 class HardEvaluationConfig(BaseModel):
     enabled: bool = True
     require_validation_pass: bool = False
@@ -343,6 +366,7 @@ class HardEvaluationConfig(BaseModel):
     forbidden_paths: list[str] = Field(default_factory=list)
     expected_snippets: list[SnippetCheckConfig] = Field(default_factory=list)
     forbidden_snippets: list[SnippetCheckConfig] = Field(default_factory=list)
+    command_checks: list[CommandCheckConfig] = Field(default_factory=list)
     min_insertions: int | None = Field(default=None, ge=0)
     max_insertions: int | None = Field(default=None, ge=0)
     min_deletions: int | None = Field(default=None, ge=0)

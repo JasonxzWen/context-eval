@@ -273,9 +273,19 @@ def validate_editable_model(model: EditableConfigModel) -> list[str]:
 
     if not model.tasks:
         issues.append("at least one task is required")
+    task_ids = [task.id for task in model.tasks]
+    duplicate_task_ids = sorted({value for value in task_ids if task_ids.count(value) > 1})
+    if duplicate_task_ids:
+        issues.append(f"duplicate task ids: {', '.join(duplicate_task_ids)}")
     for task_index, task in enumerate(model.tasks, start=1):
         _require_text(task.id, f"task {task_index} id", issues)
         _require_text(task.prompt, f"task {task_index} prompt", issues)
+        for command_index, command in enumerate(task.validation_commands, start=1):
+            _require_text(
+                command,
+                f"task {task_index} validation command {command_index}",
+                issues,
+            )
         if (
             task.validation_timeout_seconds is not None
             and task.validation_timeout_seconds < 1

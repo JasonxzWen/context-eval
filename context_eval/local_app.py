@@ -26,7 +26,11 @@ from context_eval.config import (
     filter_tasks,
     validate_config_files,
 )
-from context_eval.config_editor import build_editable_model
+from context_eval.config_editor import (
+    EditableConfigModel,
+    build_editable_model,
+    export_editable_yaml,
+)
 from context_eval.export import agent_summary_rows, export_run_csv, export_run_json
 from context_eval.init import GENERIC_AGENT_COMMAND, create_starter_files
 from context_eval.inspect_run import _load_metadata, _load_results
@@ -364,6 +368,33 @@ class LocalAppService:
             "message": "Saved local config files",
             "reloaded": reloaded,
         }
+
+    def save_editable_config(
+        self,
+        *,
+        config_path: str | Path,
+        tasks_path: str | Path,
+        editable: dict[str, Any],
+    ) -> dict[str, Any]:
+        config_dst = self.guard.resolve_workspace_path(config_path, field="config_path")
+        tasks_dst = self.guard.resolve_workspace_path(tasks_path, field="tasks_path")
+        try:
+            model = EditableConfigModel.model_validate(editable)
+            exported = export_editable_yaml(model)
+        except Exception as exc:
+            raise LocalAppError(str(exc)) from exc
+
+        config_yaml = (
+            config_dst.read_text(encoding="utf-8")
+            if config_dst.exists()
+            else exported.config_yaml
+        )
+        return self.save_config(
+            config_path=config_dst,
+            tasks_path=tasks_dst,
+            config_yaml=config_yaml,
+            tasks_yaml=exported.tasks_yaml,
+        )
 
     def preflight(
         self,
@@ -1564,6 +1595,15 @@ class _LocalAppHandler(BaseHTTPRequestHandler):
                     config_yaml=body.get("config_yaml", ""),
                     tasks_yaml=body.get("tasks_yaml", ""),
                     overwrite=bool(body.get("overwrite", True)),
+                )
+            )
+            return
+        if path == "/api/config/save-editable":
+            self._send_json(
+                service.save_editable_config(
+                    config_path=body.get("config_path", "context-eval.yaml"),
+                    tasks_path=body.get("tasks_path", "tasks.yaml"),
+                    editable=body.get("editable", {}),
                 )
             )
             return

@@ -310,6 +310,17 @@ def test_runner_writes_hard_and_soft_evaluation_sidecars(tmp_path: Path) -> None
                         "forbidden_snippets": [
                             {"path": "README.md", "snippets": ["TODO"]}
                         ],
+                        "command_checks": [
+                            {
+                                "label": "readme-marker",
+                                "command": (
+                                    f'"{sys.executable}" -c '
+                                    "\"from pathlib import Path; "
+                                    "print(Path('README.md').read_text())\""
+                                ),
+                                "expected": "fixed marker",
+                            }
+                        ],
                     },
                     "soft_evaluation": {
                         "enabled": True,
@@ -355,6 +366,7 @@ def test_runner_writes_hard_and_soft_evaluation_sidecars(tmp_path: Path) -> None
         "forbidden_paths",
         "expected_snippet:README.md",
         "forbidden_snippet:README.md",
+        "command:readme-marker",
     }
     assert soft["task"]["prompt"] == "Add fixed marker."
     assert soft["expected_outcome"]["summary"] == "README contains fixed marker."

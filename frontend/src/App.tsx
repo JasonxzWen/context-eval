@@ -1,386 +1,26 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { apiRequest } from './api';
+import { FirstRunPanel } from './components/FirstRunPanel';
+import { RunPlanPanel } from './components/RunPlanPanel';
+import { TaskEditor } from './components/TaskEditor';
+import { WorkflowBand } from './components/WorkflowBand';
 import { localAppFixture, plannedCaseCount } from './fixture';
+import { agentsFrom, emptyConfig, fallbackConfig, listText, primaryAgent } from './localConfig';
+import type {
+  BootstrapResponse,
+  CaseDetailPayload,
+  EditableConfig,
+  EditableTask,
+  LoadedConfig,
+  LogPayload,
+  ManualReview,
+  ResultsPayload,
+  RunPlan,
+  RunStatus,
+  SaveResponse,
+  WorkspaceState,
+} from './types';
 import './styles.css';
-
-type EditableAgent = {
-  name: string;
-  kind: string;
-  command: string;
-  timeout_minutes: number;
-  network: string;
-};
-
-type SnippetCheck = {
-  path: string;
-  snippets: string[];
-};
-
-type ExpectedOutcome = {
-  summary?: string | null;
-  forbidden_paths?: string[];
-  acceptance_points?: string[];
-  files?: {
-    path: string;
-    change_type?: string;
-    must_change?: boolean;
-    expected_snippets?: string[];
-    forbidden_snippets?: string[];
-  }[];
-};
-
-type HardEvaluation = {
-  enabled: boolean;
-  require_validation_pass?: boolean;
-  max_changed_files?: number | null;
-  required_paths?: string[];
-  forbidden_paths?: string[];
-  expected_snippets?: SnippetCheck[];
-  forbidden_snippets?: SnippetCheck[];
-};
-
-type SoftEvaluation = {
-  enabled: boolean;
-  mode: 'payload-only';
-  max_score?: number;
-  rubric?: { name: string; weight: number; description: string }[];
-};
-
-type EditableTask = {
-  id: string;
-  title?: string | null;
-  prompt: string;
-  category?: string | null;
-  difficulty?: string | null;
-  repo_ref?: string | null;
-  validation_commands: string[];
-  expected_outcome?: ExpectedOutcome | null;
-  hard_evaluation?: HardEvaluation | null;
-  soft_evaluation?: SoftEvaluation | null;
-};
-
-type EditableVariant = {
-  name: string;
-  description: string;
-  overlays: { source: string; target: string }[];
-};
-
-type LoadedConfig = {
-  config_path: string;
-  tasks_path: string;
-  config_yaml: string;
-  tasks_yaml: string;
-  editable: {
-    repo: { path: string; base_ref: string };
-    agent: EditableAgent;
-    agent_shape: string;
-    agents: EditableAgent[];
-    tasks_path: string;
-    variants: EditableVariant[];
-    tasks: EditableTask[];
-    evaluation_commands: string[];
-    evaluation_timeout_seconds?: number | null;
-    output_dir?: string | null;
-  };
-  resolved: {
-    repo_path: string;
-    output_dir: string;
-    agents: string[];
-    variants: string[];
-    tasks: string[];
-  };
-};
-
-type SaveResponse = {
-  config_path: string;
-  tasks_path: string;
-  reloaded?: LoadedConfig;
-};
-
-type WorkspaceState = {
-  state: 'empty' | 'configured';
-  has_config: boolean;
-  default_config_path: string;
-  config_path?: string | null;
-  workspace_root?: string;
-};
-
-type BootstrapResponse = WorkspaceState & {
-  loaded?: LoadedConfig;
-  config_path?: string | null;
-  tasks_path?: string | null;
-};
-
-type RunPlan = {
-  case_count: number;
-  cleanup_policy: string;
-  jobs: number;
-  trials: number;
-  output_dir: string;
-  agents: string[];
-  tasks: string[];
-  variants: string[];
-  cases: {
-    case_id: string;
-    agent_name: string;
-    agent_kind: string;
-    task_id: string;
-    variant: string;
-    trial_index: number;
-    repo_ref: string;
-    command_preview: string;
-    expected_outcome_summary?: string | null;
-    hard_evaluation_enabled?: boolean;
-    soft_evaluation_enabled?: boolean;
-  }[];
-};
-
-type RunStatus = {
-  app_run_id: string;
-  status: string;
-  run_dir: string | null;
-  case_count: number;
-  completed_cases: number;
-  error?: string | null;
-};
-
-type ManualReview = {
-  case_id: string;
-  decision: string;
-  confidence: string;
-  reviewer: string;
-  notes: string;
-  updated_at?: string | null;
-};
-
-type ResultCase = {
-  case_id: string;
-  agent_name: string;
-  task_id: string;
-  variant: string;
-  status: string;
-  validation_status: string;
-  confidence: string;
-  telemetry_status?: string;
-  agent_duration_seconds?: number | null;
-  total_tokens?: number | null;
-  reasoning_tokens?: number | null;
-  reasoning_step_count?: number | null;
-  tool_call_count?: number | null;
-  changed_files?: number;
-  hard_evaluation_status?: string;
-  hard_evaluation_score?: number | null;
-  hard_evaluation_max_score?: number | null;
-  soft_evaluation_status?: string;
-  soft_evaluation_payload_path?: string | null;
-  patch_path?: string | null;
-  stdout_path?: string | null;
-  stderr_path?: string | null;
-  manual_review?: ManualReview;
-};
-
-type ResultsPayload = {
-  overview: {
-    case_count: number;
-    failed_count: number;
-    timeout_count: number;
-    low_confidence_count: number;
-    telemetry_gap_count: number;
-  };
-  compare_groups?: {
-    group_id: string;
-    task_id: string;
-    agent_name: string;
-    trial_index: number;
-    baseline_variant: string;
-    experiment_variant: string;
-    baseline_case_id: string;
-    experiment_case_id: string;
-    verdict: string;
-    hard_delta: number;
-    validation_delta: number;
-    total_tokens_delta?: number | null;
-    summary: string;
-  }[];
-  cases: ResultCase[];
-};
-
-type ArtifactContent = {
-  path: string;
-  content: string;
-  exists: boolean;
-  error?: string;
-};
-
-type CaseDetailPayload = {
-  case: ResultCase;
-  patch?: ArtifactContent | null;
-  prompt?: ArtifactContent | null;
-  logs: (ArtifactContent & { kind: string })[];
-  hard_evaluation?: unknown;
-  soft_evaluation?: unknown;
-  manual_review: ManualReview;
-};
-
-type LogPayload = {
-  console: string[];
-  files: { path: string; tail: string }[];
-};
-
-async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
-    headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
-    ...init,
-  });
-  const data = await response.json();
-  if (!response.ok || data.ok === false) {
-    throw new Error(data.error || `请求失败: ${response.status}`);
-  }
-  return data as T;
-}
-
-function fallbackConfig(): LoadedConfig {
-  const fallbackAgents: EditableAgent[] = localAppFixture.agents.map((agent) => ({
-    name: agent.name,
-    kind: agent.kind,
-    command: agent.command,
-    timeout_minutes: 60,
-    network: 'disabled',
-  }));
-  const fallbackTasks: EditableTask[] = localAppFixture.tasks.map((task) => ({
-    id: task,
-    title: task,
-    prompt: `Run ${task}.`,
-    validation_commands: [],
-    expected_outcome: {
-      summary: '示例任务会生成本地补丁证据。',
-      acceptance_points: ['本地结果可审查。'],
-    },
-    hard_evaluation: {
-      enabled: true,
-      require_validation_pass: false,
-      required_paths: ['README.md'],
-      forbidden_paths: [],
-      expected_snippets: [],
-      forbidden_snippets: [],
-    },
-    soft_evaluation: {
-      enabled: true,
-      mode: 'payload-only',
-      max_score: 10,
-      rubric: [{ name: 'quality', weight: 1, description: 'Patch is clear.' }],
-    },
-  }));
-  const fallbackVariants: EditableVariant[] = localAppFixture.variants.map((variant) => ({
-    name: variant,
-    description: variant,
-    overlays: [],
-  }));
-  const configYaml = [
-    'repo:',
-    '  path: ./fixture-repo',
-    '  base_ref: main',
-    'agents:',
-    ...fallbackAgents.flatMap((agent) => [
-      `  ${agent.name}:`,
-      `    kind: ${agent.kind}`,
-      `    command: ${JSON.stringify(agent.command)}`,
-      '    timeout_minutes: 60',
-      '    network: disabled',
-    ]),
-    'tasks: ./tasks.yaml',
-    'output_dir: ./runs',
-    'variants:',
-    ...fallbackVariants.flatMap((variant) => [
-      `  ${variant.name}:`,
-      `    description: ${variant.description}`,
-      '    overlays: []',
-    ]),
-    'evaluation:',
-    '  commands: []',
-    '',
-  ].join('\n');
-  const tasksYaml = [
-    'tasks:',
-    ...fallbackTasks.flatMap((task) => [
-      `  - id: ${task.id}`,
-      `    title: ${task.title}`,
-      `    prompt: ${task.prompt}`,
-      '    expected_outcome:',
-      `      summary: ${task.expected_outcome?.summary}`,
-      '    hard_evaluation:',
-      '      enabled: true',
-      '      required_paths: [README.md]',
-      '    soft_evaluation:',
-      '      enabled: true',
-      '      mode: payload-only',
-    ]),
-    '',
-  ].join('\n');
-  return {
-    config_path: 'context-eval.yaml',
-    tasks_path: 'tasks.yaml',
-    config_yaml: configYaml,
-    tasks_yaml: tasksYaml,
-    editable: {
-      repo: { path: './fixture-repo', base_ref: 'main' },
-      agent: fallbackAgents[0],
-      agent_shape: 'agents',
-      agents: fallbackAgents,
-      tasks_path: './tasks.yaml',
-      variants: fallbackVariants,
-      tasks: fallbackTasks,
-      evaluation_commands: [],
-      output_dir: './runs',
-    },
-    resolved: {
-      repo_path: './fixture-repo',
-      output_dir: './runs',
-      agents: fallbackAgents.map((agent) => agent.name),
-      variants: fallbackVariants.map((variant) => variant.name),
-      tasks: fallbackTasks.map((task) => task.id),
-    },
-  };
-}
-
-function emptyConfig(): LoadedConfig {
-  return {
-    config_path: 'context-eval.yaml',
-    tasks_path: 'tasks.yaml',
-    config_yaml: '',
-    tasks_yaml: '',
-    editable: {
-      repo: { path: '', base_ref: 'main' },
-      agent: {
-        name: '',
-        kind: 'custom',
-        command: '',
-        timeout_minutes: 60,
-        network: 'disabled',
-      },
-      agent_shape: 'agent',
-      agents: [],
-      tasks_path: './tasks.yaml',
-      variants: [],
-      tasks: [],
-      evaluation_commands: [],
-      output_dir: './runs',
-    },
-    resolved: {
-      repo_path: '',
-      output_dir: './runs',
-      agents: [],
-      variants: [],
-      tasks: [],
-    },
-  };
-}
-
-function splitLines(value: string) {
-  return value
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-}
 
 const checkLabels: Record<string, string> = {
   schema: '配置结构',
@@ -426,22 +66,83 @@ function labelFor(labels: Record<string, string>, value: string | undefined | nu
   return labels[value] ?? value;
 }
 
-function agentsFrom(loaded: LoadedConfig) {
-  return loaded.editable.agent_shape === 'agents'
-    ? loaded.editable.agents
-    : [loaded.editable.agent];
+function validateEditableConfig(editable: EditableConfig) {
+  const issues: string[] = [];
+  const ids = editable.tasks.map((task) => task.id.trim());
+  const duplicates = [...new Set(ids.filter((id, index) => id && ids.indexOf(id) !== index))];
+  editable.tasks.forEach((task, index) => {
+    const label = task.id.trim() || `第 ${index + 1} 个 task`;
+    if (!task.id.trim()) {
+      issues.push(`${label}: task id 不能为空`);
+    }
+    if (!task.prompt.trim()) {
+      issues.push(`${label}: prompt 不能为空`);
+    }
+    task.validation_commands.forEach((command, commandIndex) => {
+      if (!command.trim()) {
+        issues.push(`${label}: validation command ${commandIndex + 1} 不能为空`);
+      }
+    });
+    task.hard_evaluation?.command_checks?.forEach((check, checkIndex) => {
+      if (!check.label.trim()) {
+        issues.push(`${label}: command check ${checkIndex + 1} label 不能为空`);
+      }
+      if (!check.command.trim()) {
+        issues.push(`${label}: command check ${checkIndex + 1} command 不能为空`);
+      }
+    });
+    task.soft_evaluation?.rubric?.forEach((item, rubricIndex) => {
+      if (!item.name.trim()) {
+        issues.push(`${label}: rubric ${rubricIndex + 1} name 不能为空`);
+      }
+      if (!(item.weight > 0)) {
+        issues.push(`${label}: rubric ${rubricIndex + 1} weight 必须大于 0`);
+      }
+    });
+  });
+  duplicates.forEach((id) => issues.push(`重复 task id: ${id}`));
+  return issues;
 }
 
-function primaryTask(loaded: LoadedConfig) {
-  return loaded.editable.tasks[0];
+function uniqueTaskId(base: string, tasks: EditableTask[]) {
+  const used = new Set(tasks.map((task) => task.id));
+  if (!used.has(base)) return base;
+  let suffix = 2;
+  while (used.has(`${base}-${suffix}`)) {
+    suffix += 1;
+  }
+  return `${base}-${suffix}`;
 }
 
-function primaryAgent(loaded: LoadedConfig) {
-  return agentsFrom(loaded).find((agent) => agent.kind === 'coco') || agentsFrom(loaded)[0];
-}
-
-function listText(values: string[] | undefined, fallback = '未配置') {
-  return values && values.length > 0 ? values.join(', ') : fallback;
+function blankTask(tasks: EditableTask[]): EditableTask {
+  return {
+    id: uniqueTaskId('new-task', tasks),
+    title: 'New evaluation task',
+    prompt: '',
+    category: 'bugfix',
+    difficulty: 'easy',
+    validation_commands: [],
+    expected_outcome: {
+      summary: '',
+      acceptance_points: [],
+      files: [],
+    },
+    hard_evaluation: {
+      enabled: true,
+      require_validation_pass: false,
+      required_paths: [],
+      forbidden_paths: [],
+      expected_snippets: [],
+      forbidden_snippets: [],
+      command_checks: [],
+    },
+    soft_evaluation: {
+      enabled: true,
+      mode: 'payload-only',
+      max_score: 10,
+      rubric: [],
+    },
+  };
 }
 
 export function App() {
@@ -472,6 +173,8 @@ export function App() {
   const [reviewStatus, setReviewStatus] = useState('');
   const [exportOutput, setExportOutput] = useState('');
   const [error, setError] = useState('');
+  const [taskValidationErrors, setTaskValidationErrors] = useState<string[]>([]);
+  const [selectedTaskIndex, setSelectedTaskIndex] = useState(0);
   const [cleanupPolicy, setCleanupPolicy] = useState('successful');
   const [workspaceState, setWorkspaceState] = useState<WorkspaceState | null>(null);
   const [projectRepoPath, setProjectRepoPath] = useState('');
@@ -480,7 +183,7 @@ export function App() {
   const fixtureCaseCount = useMemo(() => plannedCaseCount(localAppFixture), []);
   const agents = agentsFrom(loaded);
   const cocoAgent = primaryAgent(loaded);
-  const task = primaryTask(loaded);
+  const task = loaded.editable.tasks[selectedTaskIndex] || loaded.editable.tasks[0];
   const estimatedCaseCount =
     agents.length * loaded.editable.tasks.length * loaded.editable.variants.length;
   const visibleCaseCount = plan?.case_count ?? (serverMode === 'fixture' ? fixtureCaseCount : estimatedCaseCount);
@@ -490,6 +193,8 @@ export function App() {
     setConfigPath(payload.config_path);
     setConfigYaml(payload.config_yaml);
     setTasksYaml(payload.tasks_yaml);
+    setTaskValidationErrors([]);
+    setSelectedTaskIndex((current) => Math.min(current, Math.max(payload.editable.tasks.length - 1, 0)));
     setConfigLoaded(true);
     setWorkspaceState((current) => ({
       state: 'configured',
@@ -534,6 +239,78 @@ export function App() {
     setSaveStatus(`已保存并从磁盘重载: ${saved.config_path} / ${saved.tasks_path}`);
   }
 
+  async function saveEditableConfig() {
+    setError('');
+    const issues = validateEditableConfig(loaded.editable);
+    setTaskValidationErrors(issues);
+    if (issues.length > 0) {
+      return;
+    }
+    const saved = await apiRequest<SaveResponse>('/api/config/save-editable', {
+      method: 'POST',
+      body: JSON.stringify({
+        config_path: loaded.config_path || configPath,
+        tasks_path: loaded.tasks_path || loaded.editable.tasks_path || 'tasks.yaml',
+        editable: loaded.editable,
+      }),
+    });
+    if (saved.reloaded) {
+      applyLoadedConfig(saved.reloaded);
+      await planRun(saved.reloaded.config_path);
+    } else {
+      await loadConfig(saved.config_path);
+      await planRun(saved.config_path);
+    }
+    setSaveStatus(`已保存任务并刷新 run plan: ${saved.tasks_path}`);
+  }
+
+  function updateEditable(updater: (editable: EditableConfig) => EditableConfig) {
+    setLoaded((current) => ({
+      ...current,
+      editable: updater(current.editable),
+    }));
+    setPlan(null);
+    setTaskValidationErrors([]);
+  }
+
+  function updateTask(index: number, taskPatch: EditableTask) {
+    updateEditable((editable) => ({
+      ...editable,
+      tasks: editable.tasks.map((taskItem, taskIndex) => (
+        taskIndex === index ? taskPatch : taskItem
+      )),
+    }));
+  }
+
+  function addTask() {
+    updateEditable((editable) => ({ ...editable, tasks: [...editable.tasks, blankTask(editable.tasks)] }));
+    setSelectedTaskIndex(loaded.editable.tasks.length);
+  }
+
+  function duplicateTask(index: number) {
+    const source = loaded.editable.tasks[index];
+    if (!source) return;
+    const duplicate = {
+      ...structuredClone(source),
+      id: uniqueTaskId(`${source.id || 'task'}-copy`, loaded.editable.tasks),
+      title: source.title ? `${source.title} copy` : 'Copied evaluation task',
+    };
+    updateEditable((editable) => ({ ...editable, tasks: [...editable.tasks, duplicate] }));
+    setSelectedTaskIndex(loaded.editable.tasks.length);
+  }
+
+  function deleteTask(index: number) {
+    const source = loaded.editable.tasks[index];
+    if (!source || loaded.editable.tasks.length <= 1) return;
+    const confirmed = window.confirm(`删除 task "${source.id}"？`);
+    if (!confirmed) return;
+    updateEditable((editable) => ({
+      ...editable,
+      tasks: editable.tasks.filter((_, taskIndex) => taskIndex !== index),
+    }));
+    setSelectedTaskIndex(Math.max(0, index - 1));
+  }
+
   async function bootstrapDemo() {
     setError('');
     const payload = await apiRequest<BootstrapResponse>('/api/demo/bootstrap', {
@@ -575,11 +352,11 @@ export function App() {
     return payload.checks;
   }
 
-  async function planRun() {
+  async function planRun(path = loaded.config_path || configPath) {
     const payload = await apiRequest<RunPlan>('/api/run-plan', {
       method: 'POST',
       body: JSON.stringify({
-        config_path: loaded.config_path || configPath,
+        config_path: path,
         cleanup_policy: cleanupPolicy,
       }),
     });
@@ -742,6 +519,12 @@ export function App() {
   }, [run]);
 
   useEffect(() => {
+    if (selectedTaskIndex >= loaded.editable.tasks.length) {
+      setSelectedTaskIndex(Math.max(loaded.editable.tasks.length - 1, 0));
+    }
+  }, [loaded.editable.tasks.length, selectedTaskIndex]);
+
+  useEffect(() => {
     if (!results || !shouldRevealResultsRef.current) return;
     shouldRevealResultsRef.current = false;
     const reveal = () => {
@@ -803,104 +586,49 @@ export function App() {
 
       {error && <div className="notice error">错误: {error}</div>}
 
-      <section className="workflow-band" aria-label="工作流状态">
-        {[
+      <WorkflowBand
+        steps={[
           ['Project', loaded.resolved.repo_path],
           ['Agent', cocoAgent?.name || '未配置'],
           ['Preflight', preflightStepLabel],
           ['Run', runLabel],
           ['Results', results ? '已加载' : '本地'],
-        ].map(([label, state]) => (
-          <div className="workflow-step" key={label}>
-            <span>{label}</span>
-            <strong>{state}</strong>
-          </div>
-        ))}
-      </section>
+        ]}
+      />
 
       {isFirstRun && (
-        <section className="first-run-panel" aria-label="首次设置">
-          <div className="panel-heading">
-            <h2>开始使用</h2>
-            <span>空工作区</span>
-          </div>
-          <div className="first-run-grid">
-            <article className="setup-option">
-              <div>
-                <strong>试用 demo</strong>
-                <p>创建一个本地 demo repo、两组 context variants、一个 fake agent 和可对比的硬检查结果。</p>
-              </div>
-              <button type="button" onClick={() => guarded(bootstrapDemo)}>
-                试用 demo
-              </button>
-            </article>
-            <article className="setup-option">
-              <div>
-                <strong>打开真实项目</strong>
-                <p>从已有 Git 仓库生成评测工作区，然后继续配置 agent、context 和任务。</p>
-              </div>
-              <label htmlFor="project-repo-path">
-                项目路径
-                <input
-                  id="project-repo-path"
-                  value={projectRepoPath}
-                  onChange={(event) => setProjectRepoPath(event.target.value)}
-                  placeholder="D:\\path\\to\\repo"
-                />
-              </label>
-              <button
-                type="button"
-                onClick={() => guarded(initializeProject)}
-                disabled={!projectRepoPath.trim()}
-              >
-                创建工作区
-              </button>
-            </article>
-          </div>
-        </section>
+        <FirstRunPanel
+          projectRepoPath={projectRepoPath}
+          onProjectRepoPathChange={setProjectRepoPath}
+          onBootstrapDemo={() => guarded(bootstrapDemo)}
+          onInitializeProject={() => guarded(initializeProject)}
+        />
       )}
 
       {!isFirstRun && (
       <section className="content-grid">
-        <section className="panel matrix-panel">
-          <div className="panel-heading">
-            <h2>Run Plan</h2>
-            <span data-testid="matrix-count">{visibleCaseCount}</span>
-          </div>
-          <dl className="metric-grid">
-            <div>
-              <dt>agents</dt>
-              <dd>{agents.length}</dd>
-            </div>
-            <div>
-              <dt>tasks</dt>
-              <dd>{loaded.editable.tasks.length}</dd>
-            </div>
-            <div>
-              <dt>variants</dt>
-              <dd>{loaded.editable.variants.length}</dd>
-            </div>
-            <div>
-              <dt>trials</dt>
-              <dd>{plan?.trials ?? localAppFixture.trials}</dd>
-            </div>
-          </dl>
-          <ul className="check-list">
-            {(plan?.cases || []).slice(0, 4).map((caseItem) => (
-              <li key={caseItem.case_id}>
-                <strong>{caseItem.case_id}</strong>
-                <span>{caseItem.expected_outcome_summary || '无 expected_outcome summary'}</span>
-                <small>
-                  {caseItem.hard_evaluation_enabled ? 'hard on' : 'hard off'} /{' '}
-                  {caseItem.soft_evaluation_enabled ? 'soft on' : 'soft off'}
-                </small>
-              </li>
-            ))}
-          </ul>
-          {!plan && (
-            <p className="panel-note">点击“开始运行”后会自动展开具体 case，并在失败时把配置或执行错误显示出来。</p>
-          )}
-        </section>
+        <RunPlanPanel
+          agents={agents}
+          taskCount={loaded.editable.tasks.length}
+          variants={loaded.editable.variants}
+          visibleCaseCount={visibleCaseCount}
+          plan={plan}
+          defaultTrials={localAppFixture.trials}
+        />
+        <TaskEditor
+          tasks={loaded.editable.tasks}
+          variants={loaded.editable.variants}
+          selectedTaskIndex={selectedTaskIndex}
+          saveStatus={saveStatus}
+          serverMode={serverMode}
+          validationErrors={taskValidationErrors}
+          onSelectTask={setSelectedTaskIndex}
+          onUpdateTask={updateTask}
+          onAddTask={addTask}
+          onDuplicateTask={duplicateTask}
+          onDeleteTask={deleteTask}
+          onSave={() => guarded(saveEditableConfig)}
+        />
         <details className="advanced-workbench">
           <summary>
             <span>配置与任务细节</span>

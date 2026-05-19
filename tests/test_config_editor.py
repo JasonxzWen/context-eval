@@ -235,6 +235,10 @@ tasks:
       enabled: true
       required_paths:
         - "README.md"
+      command_checks:
+        - label: "readme-marker"
+          command: "python -c \\"print('fixed')\\""
+          expected: "fixed"
     soft_evaluation:
       enabled: true
       mode: "payload-only"
@@ -258,11 +262,20 @@ tasks:
     assert task.expected_outcome.summary == "README contains fixed."
     assert task.hard_evaluation is not None
     assert task.hard_evaluation.required_paths == ["README.md"]
+    assert task.hard_evaluation.command_checks[0].label == "readme-marker"
     assert task.soft_evaluation is not None
     assert task.soft_evaluation.rubric[0].name == "quality"
     assert task.extra_fields == {"x_task_unknown": {"keep": True}}
     assert task_data["tasks"][0]["expected_outcome"]["summary"] == "README contains fixed."
     assert task_data["tasks"][0]["hard_evaluation"]["required_paths"] == ["README.md"]
+    assert task_data["tasks"][0]["hard_evaluation"]["command_checks"] == [
+        {
+            "label": "readme-marker",
+            "command": "python -c \"print('fixed')\"",
+            "expected": "fixed",
+            "timeout_seconds": 60,
+        }
+    ]
     assert task_data["tasks"][0]["soft_evaluation"]["mode"] == "payload-only"
     assert task_data["tasks"][0]["x_task_unknown"] == {"keep": True}
 
@@ -355,6 +368,7 @@ def test_validate_editable_model_reports_persistence_blockers() -> None:
     model.agent.network = "maybe"
     model.variants[0].overlays[0].target = "../AGENTS.md"
     model.tasks[0].prompt = ""
+    model.tasks[0].validation_commands = [" "]
 
     issues = validate_editable_model(model)
 
@@ -364,6 +378,7 @@ def test_validate_editable_model_reports_persistence_blockers() -> None:
         "agent.network must be disabled or enabled",
         "variant 1 overlay 1 target must be a safe relative path",
         "task 1 prompt is required",
+        "task 1 validation command 1 is required",
     ]
 
 
