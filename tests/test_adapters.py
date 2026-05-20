@@ -10,8 +10,8 @@ from context_eval.adapters.base import (
     TelemetryCollector,
 )
 from context_eval.adapters.command import (
-    CommandTemplateAgent,
     CodexJsonlTelemetryCollector,
+    CommandTemplateAgent,
     JsonFileTelemetryCollector,
     render_command_template,
 )

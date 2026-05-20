@@ -4,7 +4,7 @@ from typer.testing import CliRunner
 
 from context_eval.cli import app
 from context_eval.config import validate_config_files
-from context_eval.init import CODEX_EXEC_JSON_COMMAND, COCO_UNATTENDED_COMMAND
+from context_eval.init import COCO_UNATTENDED_COMMAND, CODEX_EXEC_JSON_COMMAND
 from context_eval.models import CaseResult
 
 
