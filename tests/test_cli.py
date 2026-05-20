@@ -4,7 +4,7 @@ from typer.testing import CliRunner
 
 from context_eval.cli import app
 from context_eval.config import validate_config_files
-from context_eval.init import COCO_UNATTENDED_COMMAND
+from context_eval.init import CODEX_EXEC_JSON_COMMAND, COCO_UNATTENDED_COMMAND
 from context_eval.models import CaseResult
 
 
@@ -543,6 +543,9 @@ def test_init_can_generate_named_agent_profiles(tmp_path: Path) -> None:
     assert config.agent is None
     assert list(config.agents) == ["codex", "claude", "trae", "coco"]
     assert config.agents["codex"].kind == "codex-cli"
+    assert config.agents["codex"].command == CODEX_EXEC_JSON_COMMAND
+    assert config.agents["codex"].telemetry.collector == "codex-jsonl"
+    assert config.agents["codex"].telemetry.file == "codex-events.jsonl"
     assert config.agents["claude"].kind == "claude-code"
     assert config.agents["trae"].command == 'traecli -p "{prompt}"'
     assert config.agents["coco"].kind == "coco"

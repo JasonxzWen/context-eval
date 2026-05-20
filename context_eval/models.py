@@ -23,7 +23,7 @@ Confidence = Literal["high", "medium", "low"]
 CleanupStatus = Literal["skipped", "succeeded", "failed"]
 CleanupPolicy = Literal["never", "always", "successful", "failed"]
 TelemetryStatus = Literal["unavailable", "collected", "partial", "error"]
-TelemetryCollectorKind = Literal["none", "json-file"]
+TelemetryCollectorKind = Literal["none", "json-file", "codex-jsonl"]
 AgentProfileKind = Literal["codex-cli", "claude-code", "traecli", "coco", "custom"]
 HardEvaluationStatus = Literal["not_configured", "passed", "failed", "skipped"]
 SoftEvaluationStatus = Literal[
@@ -482,12 +482,20 @@ class CaseResult(BaseModel):
     telemetry_error: str | None = None
     agent_duration_seconds: float | None = Field(default=None, ge=0)
     prompt_tokens: int | None = Field(default=None, ge=0)
+    cached_input_tokens: int | None = Field(default=None, ge=0)
     completion_tokens: int | None = Field(default=None, ge=0)
     total_tokens: int | None = Field(default=None, ge=0)
     reasoning_tokens: int | None = Field(default=None, ge=0)
     reasoning_step_count: int | None = Field(default=None, ge=0)
     tool_call_count: int | None = Field(default=None, ge=0)
     tool_calls_by_name: dict[str, int] = Field(default_factory=dict)
+    command_call_count: int | None = Field(default=None, ge=0)
+    model_name: str | None = None
+    provider_name: str | None = None
+    telemetry_evidence_gaps: list[str] = Field(default_factory=list)
+    codex_events_path: str | None = None
+    codex_final_message_path: str | None = None
+    codex_error_reason: str | None = None
     workspace_path: str | None = None
     prompt_path: str | None = None
     stdout_path: str | None = None

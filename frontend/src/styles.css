@@ -1330,6 +1330,7 @@ legend {
   white-space: pre-wrap;
 }
 
+.codex-usage-panel,
 .evidence-note-panel,
 .hard-detail-panel,
 .soft-detail-panel {
@@ -1342,11 +1343,76 @@ legend {
   background: #fbfcfb;
 }
 
+.codex-usage-panel h4,
 .evidence-note-panel h4,
 .hard-detail-panel h4,
 .soft-detail-panel h4 {
   margin: 0;
   color: var(--green);
+}
+
+.codex-usage-grid,
+.codex-path-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.codex-usage-grid > div,
+.codex-path-list > div,
+.codex-gap-list {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 9px;
+  background: #ffffff;
+}
+
+.codex-usage-grid dt,
+.codex-path-list dt {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.codex-usage-grid dd,
+.codex-path-list dd {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.codex-usage-grid small {
+  color: var(--muted);
+}
+
+.codex-path-list {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.codex-path-list code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.codex-gap-list {
+  display: grid;
+  gap: 6px;
+}
+
+.codex-gap-list ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.codex-gap-list span {
+  color: var(--muted);
 }
 
 .case-evidence-grid {
@@ -1572,6 +1638,7 @@ legend {
 
   .compare-card dl,
   .detail-grid,
+  .codex-path-list,
   .review-form,
   .hard-check-row,
   .editor-split,

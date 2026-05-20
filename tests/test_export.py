@@ -1,5 +1,7 @@
+import csv
 import json
 from datetime import UTC, datetime
+from io import StringIO
 from pathlib import Path
 
 from context_eval.export import export_run_csv, export_run_json
@@ -61,13 +63,21 @@ def test_export_run_csv_is_deterministic_and_preserves_missing_telemetry(
                 duration_seconds=3.0,
                 agent_duration_seconds=2.5,
                 telemetry_status="collected",
-                telemetry_source="json-file",
+                telemetry_source="codex-jsonl",
                 prompt_tokens=10,
+                cached_input_tokens=5,
                 completion_tokens=20,
                 total_tokens=30,
                 reasoning_tokens=4,
                 tool_call_count=2,
+                command_call_count=1,
                 tool_calls_by_name={"write": 1, "read": 1},
+                model_name="gpt-5.4",
+                provider_name="openai",
+                codex_events_path="artifacts/task-a__baseline__trial-1/codex-events.jsonl",
+                codex_final_message_path=(
+                    "artifacts/task-a__baseline__trial-1/codex-final-message.md"
+                ),
             ),
         ],
     )
@@ -79,22 +89,34 @@ def test_export_run_csv_is_deterministic_and_preserves_missing_telemetry(
         "run_id,case_id,agent_name,task_id,variant,trial_index,status,"
         "validation_status,confidence,telemetry_status,telemetry_source,telemetry_error,"
         "duration_seconds,agent_duration_seconds,"
-        "prompt_tokens,completion_tokens,total_tokens,reasoning_tokens,"
-        "tool_call_count,tool_calls_by_name,reasoning_step_count,"
+        "prompt_tokens,cached_input_tokens,completion_tokens,total_tokens,reasoning_tokens,"
+        "tool_call_count,command_call_count,tool_calls_by_name,reasoning_step_count,"
+        "model_name,provider_name,telemetry_evidence_gaps,codex_events_path,"
+        "codex_final_message_path,codex_error_reason,"
         "hard_evaluation_status,hard_evaluation_score,hard_evaluation_max_score,"
         "hard_evaluation_passed_checks,hard_evaluation_failed_checks,"
         "soft_evaluation_status,changed_files,insertions,deletions,touched_paths"
     )
-    assert lines[1] == (
-        'run-1,task-a__baseline__trial-1,agent-a,task-a,baseline,1,completed,'
-        'passed,high,collected,json-file,,3.00,2.50,10,20,30,4,2,'
-        '"{""read"":1,""write"":1}",,not_configured,,,,,not_configured,0,0,0,'
+    rows = list(csv.DictReader(StringIO(csv_text)))
+    assert [row["case_id"] for row in rows] == [
+        "task-a__baseline__trial-1",
+        "task-b__experiment__trial-2",
+    ]
+    assert rows[0]["telemetry_source"] == "codex-jsonl"
+    assert rows[0]["cached_input_tokens"] == "5"
+    assert rows[0]["command_call_count"] == "1"
+    assert rows[0]["model_name"] == "gpt-5.4"
+    assert rows[0]["provider_name"] == "openai"
+    assert rows[0]["telemetry_evidence_gaps"] == ""
+    assert rows[0]["codex_events_path"] == "artifacts/task-a__baseline__trial-1/codex-events.jsonl"
+    assert (
+        rows[0]["codex_final_message_path"]
+        == "artifacts/task-a__baseline__trial-1/codex-final-message.md"
     )
-    assert lines[2] == (
-        'run-1,task-b__experiment__trial-2,agent-b,task-b,experiment,2,timeout,'
-        'failed,medium,unavailable,none,telemetry file not found: artifacts/telemetry.json,'
-        "5.00,,,,,,,,,not_configured,,,,,not_configured,0,0,0,"
-    )
+    assert rows[0]["codex_error_reason"] == ""
+    assert rows[1]["cached_input_tokens"] == ""
+    assert rows[1]["command_call_count"] == ""
+    assert rows[1]["model_name"] == ""
 
 
 def test_export_run_json_contains_sorted_cases_and_agent_summaries(tmp_path: Path) -> None:
@@ -117,9 +139,12 @@ def test_export_run_json_contains_sorted_cases_and_agent_summaries(tmp_path: Pat
                 duration_seconds=4.0,
                 total_tokens=50,
                 tool_call_count=3,
+                command_call_count=2,
                 telemetry_status="partial",
-                telemetry_source="json-file",
+                telemetry_source="codex-jsonl",
                 telemetry_error="completion_tokens must be a non-negative integer",
+                telemetry_evidence_gaps=["codex_usage_missing"],
+                codex_error_reason="usage event missing",
             ),
             CaseResult(
                 run_id="run-1",
@@ -137,9 +162,12 @@ def test_export_run_json_contains_sorted_cases_and_agent_summaries(tmp_path: Pat
                 agent_duration_seconds=1.5,
                 telemetry_status="collected",
                 telemetry_source="json-file",
+                cached_input_tokens=4,
                 total_tokens=30,
                 tool_call_count=1,
+                command_call_count=1,
                 tool_calls_by_name={"edit": 1},
+                model_name="gpt-5.4",
             ),
             CaseResult(
                 run_id="run-1",
@@ -165,7 +193,7 @@ def test_export_run_json_contains_sorted_cases_and_agent_summaries(tmp_path: Pat
         )
     )
 
-    assert payload["export_schema_version"] == "1"
+    assert payload["export_schema_version"] == "2"
     assert payload["exported_at"] == "2026-05-11T05:30:00Z"
     assert payload["source_files"] == ["results.jsonl", "run_metadata.json"]
     assert payload["case_count"] == 3
@@ -185,14 +213,21 @@ def test_export_run_json_contains_sorted_cases_and_agent_summaries(tmp_path: Pat
     ]
     assert payload["cases"][0]["trial_index"] == 1
     assert payload["cases"][0]["agent_duration_seconds"] == 1.5
+    assert payload["cases"][0]["cached_input_tokens"] == 4
+    assert payload["cases"][0]["command_call_count"] == 1
+    assert payload["cases"][0]["model_name"] == "gpt-5.4"
+    assert payload["cases"][0]["telemetry_evidence_gaps"] == []
     assert payload["cases"][0]["hard_evaluation_status"] == "not_configured"
     assert payload["cases"][0]["soft_evaluation_status"] == "not_configured"
     assert payload["cases"][1]["telemetry_status"] == "partial"
-    assert payload["cases"][1]["telemetry_source"] == "json-file"
+    assert payload["cases"][1]["telemetry_source"] == "codex-jsonl"
     assert (
         payload["cases"][1]["telemetry_error"]
         == "completion_tokens must be a non-negative integer"
     )
+    assert payload["cases"][1]["command_call_count"] == 2
+    assert payload["cases"][1]["telemetry_evidence_gaps"] == ["codex_usage_missing"]
+    assert payload["cases"][1]["codex_error_reason"] == "usage event missing"
     assert payload["cases"][2]["total_tokens"] is None
     assert payload["cases"][2]["telemetry_status"] == "unavailable"
     assert payload["cases"][2]["telemetry_source"] == "none"
@@ -207,8 +242,10 @@ def test_export_run_json_contains_sorted_cases_and_agent_summaries(tmp_path: Pat
             "avg_agent_duration_seconds": 1.5,
             "avg_total_tokens": 40,
             "avg_tool_call_count": 2,
+            "avg_command_call_count": 1.5,
             "telemetry_statuses": {"collected": 1, "partial": 1},
             "common_tool_names": ["edit"],
+            "common_model_names": ["gpt-5.4"],
         },
         {
             "agent_name": "agent-b",
@@ -218,8 +255,10 @@ def test_export_run_json_contains_sorted_cases_and_agent_summaries(tmp_path: Pat
             "avg_agent_duration_seconds": None,
             "avg_total_tokens": None,
             "avg_tool_call_count": None,
+            "avg_command_call_count": None,
             "telemetry_statuses": {"unavailable": 1},
             "common_tool_names": [],
+            "common_model_names": [],
         },
     ]
 

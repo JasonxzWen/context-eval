@@ -38,6 +38,7 @@ def telemetry_summary(items: list[CaseResult]) -> dict[str, object]:
         ),
         "avg_total_tokens": _mean_available(item.total_tokens for item in items),
         "avg_tool_calls": _mean_available(item.tool_call_count for item in items),
+        "avg_command_calls": _mean_available(item.command_call_count for item in items),
         "common_tool_names": _common_tool_names(items),
     }
 
@@ -139,7 +140,7 @@ def is_timeout_result(result: CaseResult) -> bool:
 
 
 def has_telemetry_gap(result: CaseResult) -> bool:
-    return result.telemetry_status != "collected"
+    return result.telemetry_status != "collected" or bool(result.telemetry_evidence_gaps)
 
 
 def format_optional_int(value: int | None) -> str:

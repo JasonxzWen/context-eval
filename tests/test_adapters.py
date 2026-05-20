@@ -11,6 +11,7 @@ from context_eval.adapters.base import (
 )
 from context_eval.adapters.command import (
     CommandTemplateAgent,
+    CodexJsonlTelemetryCollector,
     JsonFileTelemetryCollector,
     render_command_template,
 )
@@ -25,6 +26,17 @@ def _command_result() -> CommandResult:
         stdout="",
         stderr="",
         duration_seconds=0.1,
+    )
+
+
+def _codex_command_result(stdout: str, *, command: str = "codex exec --json") -> CommandResult:
+    return CommandResult(
+        command=command,
+        cwd="/repo",
+        exit_code=0,
+        stdout=stdout,
+        stderr="",
+        duration_seconds=12.5,
     )
 
 
@@ -420,3 +432,116 @@ def test_json_file_telemetry_collector_rejects_invalid_agent_duration(
     assert result.status == "error"
     assert result.agent_duration_seconds is None
     assert "agent_duration_seconds" in (result.error or "")
+
+
+def test_codex_jsonl_collector_saves_stdout_and_normalizes_usage(
+    tmp_path: Path,
+) -> None:
+    collector = CodexJsonlTelemetryCollector()
+    task = TaskConfig(id="task-1", prompt="Fix it.")
+    output_dir = tmp_path / "artifacts"
+    output_dir.mkdir()
+    final_message = output_dir / "codex-final-message.md"
+    final_message.write_text("Done from Codex.\n", encoding="utf-8")
+    stdout = "\n".join(
+        [
+            '{"type":"thread.started","thread_id":"thread-1"}',
+            (
+                '{"type":"item.completed","item":{"id":"cmd-1","type":"command_execution",'
+                '"command":"python -m pytest","aggregated_output":"ok","exit_code":0,'
+                '"status":"completed"}}'
+            ),
+            (
+                '{"type":"item.completed","item":{"id":"tool-1","type":"mcp_tool_call",'
+                '"server":"filesystem","tool":"read_file","arguments":{},'
+                '"result":null,"error":null,"status":"completed"}}'
+            ),
+            (
+                '{"type":"item.completed","item":{"id":"search-1","type":"web_search",'
+                '"id":"ws-1","query":"docs","action":{"query":"docs"}}}'
+            ),
+            '{"type":"item.completed","item":{"id":"msg-1","type":"agent_message","text":"Done"}}',
+            (
+                '{"type":"turn.completed","usage":{"input_tokens":100,'
+                '"cached_input_tokens":25,"output_tokens":40,"reasoning_output_tokens":12}}'
+            ),
+        ]
+    )
+
+    result = collector.collect(
+        workspace=tmp_path / "workspace",
+        prompt_file=tmp_path / "prompt.md",
+        task=task,
+        variant="baseline",
+        output_dir=output_dir,
+        command_result=_codex_command_result(
+            stdout,
+            command='codex exec --json --model gpt-5.4 -C repo - < prompt.md',
+        ),
+    )
+
+    assert (output_dir / "codex-events.jsonl").read_text(encoding="utf-8") == stdout
+    assert result.status == "collected"
+    assert result.source == "codex-jsonl"
+    assert result.error is None
+    assert result.agent_duration_seconds == 12.5
+    assert result.prompt_tokens == 100
+    assert result.cached_input_tokens == 25
+    assert result.completion_tokens == 40
+    assert result.total_tokens == 140
+    assert result.reasoning_tokens == 12
+    assert result.command_call_count == 1
+    assert result.tool_call_count == 2
+    assert result.tool_calls_by_name == {
+        "mcp:filesystem/read_file": 1,
+        "web_search": 1,
+    }
+    assert result.model_name == "gpt-5.4"
+    assert result.codex_events_path == str(output_dir / "codex-events.jsonl")
+    assert result.codex_final_message_path == str(final_message)
+    assert result.telemetry_evidence_gaps == []
+
+
+def test_codex_jsonl_collector_reports_missing_usage_as_partial(
+    tmp_path: Path,
+) -> None:
+    collector = CodexJsonlTelemetryCollector()
+    task = TaskConfig(id="task-1", prompt="Fix it.")
+    output_dir = tmp_path / "artifacts"
+
+    result = collector.collect(
+        workspace=tmp_path / "workspace",
+        prompt_file=tmp_path / "prompt.md",
+        task=task,
+        variant="baseline",
+        output_dir=output_dir,
+        command_result=_codex_command_result(
+            '{"type":"item.completed","item":{"id":"msg-1","type":"agent_message","text":"Done"}}'
+        ),
+    )
+
+    assert result.status == "partial"
+    assert result.source == "codex-jsonl"
+    assert "missing turn.completed usage" in (result.error or "")
+    assert "codex_usage_missing" in result.telemetry_evidence_gaps
+    assert "codex_output_last_message_missing" in result.telemetry_evidence_gaps
+    assert (output_dir / "codex-final-message.md").read_text(encoding="utf-8") == "Done"
+
+
+def test_codex_jsonl_collector_reports_invalid_jsonl_as_error(tmp_path: Path) -> None:
+    collector = CodexJsonlTelemetryCollector()
+    task = TaskConfig(id="task-1", prompt="Fix it.")
+
+    result = collector.collect(
+        workspace=tmp_path / "workspace",
+        prompt_file=tmp_path / "prompt.md",
+        task=task,
+        variant="baseline",
+        output_dir=tmp_path / "artifacts",
+        command_result=_codex_command_result("{not json"),
+    )
+
+    assert result.status == "error"
+    assert result.source == "codex-jsonl"
+    assert "invalid Codex JSONL line 1" in (result.error or "")
+    assert result.telemetry_evidence_gaps == ["codex_events_malformed"]

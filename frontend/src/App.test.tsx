@@ -792,10 +792,20 @@ describe('App workflow shell', () => {
               validation_status: 'passed',
               confidence: 'high',
               telemetry_status: 'collected',
-              total_tokens: 180,
-              reasoning_tokens: 24,
+              telemetry_source: 'codex-jsonl',
+              agent_duration_seconds: 0.1,
+              prompt_tokens: 20,
+              cached_input_tokens: 5,
+              completion_tokens: 7,
+              total_tokens: 27,
+              reasoning_tokens: 3,
               reasoning_step_count: 2,
-              tool_call_count: 3,
+              tool_call_count: 1,
+              command_call_count: 1,
+              model_name: 'gpt-5.4',
+              telemetry_evidence_gaps: [],
+              codex_events_path: 'artifacts/fix-greeting-punctuation__baseline__coco/codex-events.jsonl',
+              codex_final_message_path: 'artifacts/fix-greeting-punctuation__baseline__coco/codex-final-message.md',
               changed_files: 1,
               hard_evaluation_status: 'passed',
               hard_evaluation_score: 4,
@@ -832,6 +842,20 @@ describe('App workflow shell', () => {
             validation_status: 'passed',
             confidence: 'high',
             telemetry_status: 'collected',
+            telemetry_source: 'codex-jsonl',
+            agent_duration_seconds: 0.1,
+            prompt_tokens: 20,
+            cached_input_tokens: 5,
+            completion_tokens: 7,
+            total_tokens: 27,
+            reasoning_tokens: 3,
+            reasoning_step_count: 2,
+            tool_call_count: 1,
+            command_call_count: 1,
+            model_name: 'gpt-5.4',
+            telemetry_evidence_gaps: [],
+            codex_events_path: 'artifacts/fix-greeting-punctuation__baseline__coco/codex-events.jsonl',
+            codex_final_message_path: 'artifacts/fix-greeting-punctuation__baseline__coco/codex-final-message.md',
             hard_evaluation_status: 'passed',
             hard_evaluation_score: 4,
             hard_evaluation_max_score: 4,
@@ -904,7 +928,7 @@ describe('App workflow shell', () => {
     expect(screen.getByText('结果已生成')).toBeVisible();
     expect(screen.getByRole('button', { name: '查看结果' })).toBeVisible();
     expect(screen.getByText('已生成待复核材料')).toBeVisible();
-    expect(screen.getByText('180')).toBeVisible();
+    expect(screen.getByText('27')).toBeVisible();
     expect(screen.getByText('轮次 2')).toBeVisible();
     expect(screen.getByText('评分依据')).toBeVisible();
     expect(screen.getByText('soft evaluation 只生成 payload-only 复核材料，不自动调用 LLM judge。')).toBeVisible();
@@ -925,6 +949,17 @@ describe('App workflow shell', () => {
     expect(screen.getByText(/context-eval marker/)).toBeVisible();
     expect(screen.getByRole('heading', { name: '硬性检查明细' })).toBeVisible();
     expect(screen.getByText('found expected marker')).toBeVisible();
+    expect(screen.getByTestId('codex-usage-panel')).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Codex 使用画像' })).toBeVisible();
+    expect(screen.getByText('输入 20')).toBeVisible();
+    expect(screen.getByText('缓存 5')).toBeVisible();
+    expect(screen.getByText('输出 7')).toBeVisible();
+    expect(screen.getAllByText('推理 3').length).toBeGreaterThan(0);
+    expect(screen.getByText('命令 calls')).toBeVisible();
+    expect(screen.getAllByText('gpt-5.4').length).toBeGreaterThan(0);
+    expect(screen.getByText('未发现结构化缺口')).toBeVisible();
+    expect(screen.getByText('artifacts/fix-greeting-punctuation__baseline__coco/codex-events.jsonl')).toBeVisible();
+    expect(screen.getByText('artifacts/fix-greeting-punctuation__baseline__coco/codex-final-message.md')).toBeVisible();
 
     fireEvent.change(screen.getByLabelText('复核结论'), { target: { value: 'pass' } });
     fireEvent.change(screen.getByLabelText('复核可信度'), { target: { value: 'high' } });

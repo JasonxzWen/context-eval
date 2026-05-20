@@ -92,7 +92,19 @@ const evaluationLabels: Record<string, string> = {
 
 const telemetryLabels: Record<string, string> = {
   collected: '已采集',
+  partial: '部分采集',
+  error: '采集错误',
   unavailable: '不可用',
+};
+
+const telemetryEvidenceGapLabels: Record<string, string> = {
+  codex_events_missing: 'Codex JSONL events 缺失',
+  codex_events_empty: 'Codex JSONL events 为空',
+  codex_events_malformed: 'Codex JSONL events 格式错误',
+  codex_usage_missing: 'Codex usage 缺失',
+  codex_model_missing: 'Codex 模型信息缺失',
+  codex_final_message_missing: 'Codex final message 缺失',
+  codex_output_last_message_missing: 'Codex --output-last-message 文件缺失，已从 JSONL 恢复',
 };
 
 const reviewDecisionLabels: Record<string, string> = {
@@ -150,6 +162,25 @@ function signedDelta(value: number | null | undefined) {
   return value > 0 ? `+${value}` : String(value);
 }
 
+function metricValue(value: number | string | null | undefined, suffix = '') {
+  if (value === null || value === undefined || value === '') return '-';
+  return `${value}${suffix}`;
+}
+
+function isCodexUsageCase(result: ResultCase | undefined | null) {
+  if (!result) return false;
+  return (
+    result.telemetry_source === 'codex-jsonl' ||
+    Boolean(result.codex_events_path) ||
+    Boolean(result.codex_final_message_path) ||
+    Boolean(result.telemetry_evidence_gaps?.length)
+  );
+}
+
+function evidenceGapText(code: string) {
+  return telemetryEvidenceGapLabels[code] || code;
+}
+
 function resultVariants(results: ResultsPayload | null) {
   return results?.available_baseline_variants?.length
     ? results.available_baseline_variants
@@ -193,6 +224,13 @@ function caseEvidenceNotes(result: ResultCase) {
       nextStep: '确认 agent 是否写入本地 telemetry JSON；不要从日志猜测。',
     });
   }
+  (result.telemetry_evidence_gaps || []).forEach((gap) => {
+    notes.push({
+      title: 'Codex evidence gap',
+      message: evidenceGapText(gap),
+      nextStep: '检查 case-local Codex JSONL、final message 和 stdout/stderr artifact；不要从非结构化日志猜测关键指标。',
+    });
+  });
   return notes;
 }
 
@@ -1123,6 +1161,8 @@ export function App() {
                         <td data-label="工具">
                           {result.tool_call_count ?? '-'}
                           {result.reasoning_step_count != null && <small>轮次 {result.reasoning_step_count}</small>}
+                          {result.command_call_count != null && <small>命令 {result.command_call_count}</small>}
+                          {result.model_name && <small>{result.model_name}</small>}
                         </td>
                         <td data-label="硬性检查">
                           {labelFor(evaluationLabels, result.hard_evaluation_status || 'not_configured')}{' '}
@@ -1274,12 +1314,94 @@ export function App() {
                       </div>
                     </form>
                   </div>
+                  {isCodexUsageCase(caseDetail.case) && (
+                    <section
+                      className="codex-usage-panel"
+                      data-testid="codex-usage-panel"
+                      aria-label="Codex 使用画像"
+                    >
+                      <div className="panel-heading compact-heading">
+                        <h4>Codex 使用画像</h4>
+                        <span>{caseDetail.case.telemetry_source || 'codex-jsonl'}</span>
+                      </div>
+                      <dl className="codex-usage-grid">
+                        <div>
+                          <dt>最终状态</dt>
+                          <dd>
+                            {labelFor(resultStatusLabels, caseDetail.case.status)}
+                            {caseDetail.case.codex_error_reason && <small>{caseDetail.case.codex_error_reason}</small>}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>遥测状态</dt>
+                          <dd>
+                            {labelFor(telemetryLabels, caseDetail.case.telemetry_status || 'unavailable')}
+                            {caseDetail.case.telemetry_error && <small>{caseDetail.case.telemetry_error}</small>}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>耗时</dt>
+                          <dd>{metricValue(caseDetail.case.agent_duration_seconds?.toFixed(1), 's')}</dd>
+                        </div>
+                        <div>
+                          <dt>Token</dt>
+                          <dd>
+                            {metricValue(caseDetail.case.total_tokens)}
+                            <small>输入 {metricValue(caseDetail.case.prompt_tokens)}</small>
+                            <small>缓存 {metricValue(caseDetail.case.cached_input_tokens)}</small>
+                            <small>输出 {metricValue(caseDetail.case.completion_tokens)}</small>
+                            <small>推理 {metricValue(caseDetail.case.reasoning_tokens)}</small>
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>Tool calls</dt>
+                          <dd>{metricValue(caseDetail.case.tool_call_count)}</dd>
+                        </div>
+                        <div>
+                          <dt>命令 calls</dt>
+                          <dd>{metricValue(caseDetail.case.command_call_count)}</dd>
+                        </div>
+                        <div>
+                          <dt>模型</dt>
+                          <dd>{metricValue(caseDetail.case.model_name)}</dd>
+                        </div>
+                      </dl>
+                      <dl className="codex-path-list">
+                        <div>
+                          <dt>事件 JSONL</dt>
+                          <dd>{caseDetail.case.codex_events_path ? <code>{caseDetail.case.codex_events_path}</code> : '-'}</dd>
+                        </div>
+                        <div>
+                          <dt>最终回复</dt>
+                          <dd>
+                            {caseDetail.case.codex_final_message_path ? (
+                              <code>{caseDetail.case.codex_final_message_path}</code>
+                            ) : (
+                              '-'
+                            )}
+                          </dd>
+                        </div>
+                      </dl>
+                      <div className="codex-gap-list">
+                        <strong>证据缺口</strong>
+                        {(caseDetail.case.telemetry_evidence_gaps || []).length > 0 ? (
+                          <ul>
+                            {(caseDetail.case.telemetry_evidence_gaps || []).map((gap) => (
+                              <li key={gap}>{evidenceGapText(gap)}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span>未发现结构化缺口</span>
+                        )}
+                      </div>
+                    </section>
+                  )}
                   {detailEvidenceNotes.length > 0 && (
                     <section className="evidence-note-panel" aria-label="证据不足解释">
                       <h4>为什么不能高置信判断</h4>
                       <div className="case-evidence-grid">
                         {detailEvidenceNotes.map((note) => (
-                          <article key={note.title}>
+                          <article key={`${note.title}:${note.message}`}>
                             <strong>{note.title}</strong>
                             <p>{note.message}</p>
                             <small>{note.nextStep}</small>

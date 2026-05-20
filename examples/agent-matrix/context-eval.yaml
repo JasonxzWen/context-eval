@@ -5,9 +5,12 @@ repo:
 agents:
   codex:
     kind: "codex-cli"
-    command: "codex exec -C {workspace} - < {prompt_file}"
+    command: "codex exec --json --sandbox workspace-write --output-last-message \"{output_dir}/codex-final-message.md\" -C \"{workspace}\" - < \"{prompt_file}\""
     timeout_minutes: 60
     network: "disabled"
+    telemetry:
+      collector: "codex-jsonl"
+      file: "codex-events.jsonl"
 
   claude:
     kind: "claude-code"

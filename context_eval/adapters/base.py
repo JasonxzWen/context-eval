@@ -19,12 +19,20 @@ class TelemetryCollectionResult(BaseModel):
     error: str | None = None
     agent_duration_seconds: float | None = Field(default=None, ge=0)
     prompt_tokens: int | None = Field(default=None, ge=0)
+    cached_input_tokens: int | None = Field(default=None, ge=0)
     completion_tokens: int | None = Field(default=None, ge=0)
     total_tokens: int | None = Field(default=None, ge=0)
     reasoning_tokens: int | None = Field(default=None, ge=0)
     reasoning_step_count: int | None = Field(default=None, ge=0)
     tool_call_count: int | None = Field(default=None, ge=0)
     tool_calls_by_name: dict[str, int] = Field(default_factory=dict)
+    command_call_count: int | None = Field(default=None, ge=0)
+    model_name: str | None = None
+    provider_name: str | None = None
+    telemetry_evidence_gaps: list[str] = Field(default_factory=list)
+    codex_events_path: str | None = None
+    codex_final_message_path: str | None = None
+    codex_error_reason: str | None = None
 
     @field_validator("source")
     @classmethod

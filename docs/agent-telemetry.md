@@ -26,7 +26,8 @@ Telemetry has two classes:
 - hook-provided metrics: values context-eval cannot infer reliably from a black
   box command, such as `prompt_tokens`, `completion_tokens`, `total_tokens`,
   `reasoning_tokens`, `tool_call_count`, `tool_calls_by_name`, model name,
-  provider name, cache token counts, and agent-internal step counts.
+  provider name, cache token counts, command-call counts, evidence gaps, and
+  agent-internal step counts.
 
 Runner-guaranteed metrics must remain available for every adapter. Hook-provided
 metrics may be absent, partial, or unavailable depending on the coding agent.
@@ -44,9 +45,17 @@ Future collector support should have two phases:
 
 The first concrete collector is a generic JSON telemetry collector. It reads a
 local file written by the agent command and normalizes known fields into the
-result schema. Agent-specific collectors for Codex, Claude Code, OpenCode,
-Cursor, or other tools can be added later only when their local transcript or
+result schema. Codex JSONL collection is available for local `codex exec
+--json` artifacts. Other agent-specific collectors for Claude Code, OpenCode,
+Cursor, or similar tools can be added later only when their local transcript or
 hook formats are stable enough to test with fixtures.
+
+Codex support should prefer Codex JSONL from `codex exec --json` over
+unstructured logs. The intended case-local evidence files are
+`codex-events.jsonl` for the event stream and `codex-final-message.md` for the
+assistant's final reply. The `codex-jsonl` collector normalizes usage, model,
+tool, and command-call data from those local artifacts. Missing fields stay
+unavailable rather than guessed.
 
 Collectors must be local-only. They must not call a hosted API, upload logs,
 perform cost estimation through a remote service, or execute agent commands on
@@ -73,10 +82,10 @@ and never guesses missing counts.
 
 ## Result Schema
 
-`CaseResult` should preserve existing fields and add optional normalized
-telemetry fields. Missing telemetry must not break old result files.
+`CaseResult` preserves existing fields and adds optional normalized telemetry
+fields. Missing telemetry must not break old result files.
 
-Planned fields:
+Fields:
 
 - `agent_duration_seconds`: duration of the agent command itself, excluding
   workspace setup, overlay, diff, validation, and cleanup work.
@@ -84,11 +93,19 @@ Planned fields:
 - `telemetry_source`: a short source label, such as `none`, `json-file`, or a
   future agent-specific collector name.
 - `prompt_tokens`
+- `cached_input_tokens`
 - `completion_tokens`
 - `total_tokens`
 - `reasoning_tokens`
 - `tool_call_count`
 - `tool_calls_by_name`
+- `command_call_count`
+- `model_name`
+- `provider_name`
+- `telemetry_evidence_gaps`
+- `codex_events_path`
+- `codex_final_message_path`
+- `codex_error_reason`
 
 Token and tool fields should be nullable or default to zero only when the
 collector can distinguish a real zero from missing data. The schema should also
@@ -108,6 +125,7 @@ Useful aggregations include:
 - average `agent_duration_seconds`;
 - average `total_tokens`;
 - average `tool_call_count`;
+- average `command_call_count`;
 - common tool names from `tool_calls_by_name`.
 
 Reports must preserve the existing warning that context-eval evaluates context
