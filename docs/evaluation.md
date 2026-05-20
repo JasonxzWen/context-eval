@@ -160,17 +160,25 @@ that do not contain these fields still parse as
 The telemetry envelope fields are:
 
 - `telemetry_status`: `unavailable`, `collected`, `partial`, or `error`.
-- `telemetry_source`: the collector source label, such as `none` or a future
-  `json-file` collector.
+- `telemetry_source`: the collector source label, such as `none`, `json-file`,
+  or `codex-jsonl`.
 - `telemetry_error`: a concise local collection error when telemetry collection
   fails.
 - `agent_duration_seconds`: the agent command duration, excluding runner setup,
   overlay, diff, validation, and cleanup work when the adapter can report it.
-- `prompt_tokens`, `completion_tokens`, `total_tokens`, and
+- `prompt_tokens`, `cached_input_tokens`, `completion_tokens`, `total_tokens`, and
   `reasoning_tokens`: nullable token counts supplied by adapter telemetry.
 - `tool_call_count`: nullable total tool-call count supplied by adapter
   telemetry.
 - `tool_calls_by_name`: a map of tool name to non-negative local call count.
+- `command_call_count`: nullable count of shell/command executions when the
+  agent exposes that separately from other tool calls.
+- `model_name` and `provider_name`: optional local metadata from structured
+  agent output.
+- `telemetry_evidence_gaps`: machine-readable reasons why available telemetry
+  remains incomplete.
+- `codex_events_path`, `codex_final_message_path`, and `codex_error_reason`:
+  case-local Codex evidence fields when the `codex-jsonl` collector is used.
 
 Token and tool counts remain `null` when context-eval cannot distinguish a real
 zero from unavailable data. Existing command-template runs therefore record an

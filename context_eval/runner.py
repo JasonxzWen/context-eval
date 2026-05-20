@@ -391,7 +391,7 @@ class ContextEvalRunner:
                     output_dir=output_dir,
                     command_result=agent_result,
                 )
-                self._record_telemetry(result, telemetry)
+                self._record_telemetry(result, telemetry, run_dir, output_dir)
             except Exception as exc:
                 result.telemetry_status = "error"
                 result.telemetry_source = "adapter"
@@ -512,10 +512,12 @@ class ContextEvalRunner:
             "telemetry": profile.telemetry.model_dump(mode="json"),
         }
 
-    @staticmethod
     def _record_telemetry(
+        self,
         result: CaseResult,
         telemetry: TelemetryCollectionResult,
+        run_dir: Path,
+        output_dir: Path,
     ) -> None:
         result.telemetry_status = telemetry.status
         result.telemetry_source = telemetry.source
@@ -523,12 +525,42 @@ class ContextEvalRunner:
         if telemetry.agent_duration_seconds is not None:
             result.agent_duration_seconds = telemetry.agent_duration_seconds
         result.prompt_tokens = telemetry.prompt_tokens
+        result.cached_input_tokens = telemetry.cached_input_tokens
         result.completion_tokens = telemetry.completion_tokens
         result.total_tokens = telemetry.total_tokens
         result.reasoning_tokens = telemetry.reasoning_tokens
         result.reasoning_step_count = telemetry.reasoning_step_count
         result.tool_call_count = telemetry.tool_call_count
         result.tool_calls_by_name = telemetry.tool_calls_by_name
+        result.command_call_count = telemetry.command_call_count
+        result.model_name = telemetry.model_name
+        result.provider_name = telemetry.provider_name
+        result.telemetry_evidence_gaps = telemetry.telemetry_evidence_gaps
+        result.codex_events_path = self._telemetry_artifact_path(
+            telemetry.codex_events_path,
+            run_dir=run_dir,
+            output_dir=output_dir,
+        )
+        result.codex_final_message_path = self._telemetry_artifact_path(
+            telemetry.codex_final_message_path,
+            run_dir=run_dir,
+            output_dir=output_dir,
+        )
+        result.codex_error_reason = telemetry.codex_error_reason
+
+    def _telemetry_artifact_path(
+        self,
+        path: str | None,
+        *,
+        run_dir: Path,
+        output_dir: Path,
+    ) -> str | None:
+        if path is None:
+            return None
+        artifact_path = Path(path)
+        if not artifact_path.is_absolute():
+            artifact_path = output_dir / artifact_path
+        return self._rel(run_dir, artifact_path)
 
     def _write_validation_logs(
         self,

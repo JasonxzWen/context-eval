@@ -101,15 +101,25 @@ Telemetry is optional and local-artifact based. Rows may include:
 - `telemetry_error`: concise local collection error when collection fails.
 - `agent_duration_seconds`;
 - `prompt_tokens`;
+- `cached_input_tokens`;
 - `completion_tokens`;
 - `total_tokens`;
 - `reasoning_tokens`;
 - `tool_call_count`;
-- `tool_calls_by_name`.
+- `tool_calls_by_name`;
+- `command_call_count`;
+- `model_name`;
+- `provider_name`;
+- `telemetry_evidence_gaps`;
+- `codex_events_path`;
+- `codex_final_message_path`;
+- `codex_error_reason`.
 
 Missing telemetry is explicit. CSV exports leave missing scalar telemetry empty.
 Compact JSON uses `null`. context-eval does not guess token counts, tool-call
-counts, or billing data from logs.
+counts, command-call counts, model metadata, or billing data from logs. Codex
+artifact paths must be case-local evidence files captured during the run, not
+global CLI logs.
 
 ## How Artifacts Support Review
 

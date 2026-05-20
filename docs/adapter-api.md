@@ -39,8 +39,11 @@ coding agents automatically.
 agents:
   codex:
     kind: "codex-cli"
-    command: "codex exec -C {workspace} - < {prompt_file}"
+    command: "codex exec --json --sandbox workspace-write --output-last-message \"{output_dir}/codex-final-message.md\" -C \"{workspace}\" - < \"{prompt_file}\""
     timeout_minutes: 60
+    telemetry:
+      collector: "codex-jsonl"
+      file: "codex-events.jsonl"
 
   claude:
     kind: "claude-code"
@@ -136,3 +139,15 @@ Collectors must observe local artifacts only. They must not call hosted APIs,
 upload logs, estimate billing through a remote service, or execute an agent
 command themselves. A collector failure is reported as telemetry error state; it
 must not reinterpret the agent's exit code or validation result.
+
+## Codex JSONL Artifacts
+
+Codex profiles should prefer `codex exec --json` when the local Codex CLI
+supports it. The JSONL event stream is the machine-readable evidence source for
+Codex-specific telemetry normalization. The recommended starter command
+also writes the final assistant message with `--output-last-message` so a run
+can retain both `codex-events.jsonl` and `codex-final-message.md` as case-local
+artifacts. The `codex-jsonl` collector normalizes usage, tool-call, command-call,
+model, and error evidence from those local files only. Missing Codex JSONL
+events or usage fields remain unavailable evidence and must not be inferred from
+plain logs.

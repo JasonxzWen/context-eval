@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import shlex
+from collections import Counter
 from pathlib import Path
 
 from context_eval.adapters.base import (
@@ -230,6 +232,223 @@ class JsonFileTelemetryCollector(TelemetryCollector):
         return calls
 
 
+class CodexJsonlTelemetryCollector(TelemetryCollector):
+    source = "codex-jsonl"
+
+    def __init__(
+        self,
+        *,
+        file: str = "codex-events.jsonl",
+        final_message_file: str = "codex-final-message.md",
+    ) -> None:
+        self.file = file
+        self.final_message_file = final_message_file
+
+    def collect(
+        self,
+        *,
+        workspace: Path,
+        prompt_file: Path,
+        task: TaskConfig,
+        variant: str,
+        output_dir: Path,
+        command_result: CommandResult,
+    ) -> TelemetryCollectionResult:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        events_file = output_dir / self.file
+        final_message_file = output_dir / self.final_message_file
+        if command_result.stdout:
+            events_file.parent.mkdir(parents=True, exist_ok=True)
+            events_file.write_text(command_result.stdout, encoding="utf-8")
+
+        if not events_file.exists():
+            return TelemetryCollectionResult(
+                status="unavailable",
+                source=self.source,
+                error=f"Codex JSONL events not found: {events_file}",
+                telemetry_evidence_gaps=["codex_events_missing"],
+            )
+
+        raw_lines = events_file.read_text(encoding="utf-8", errors="replace").splitlines()
+        lines = [line for line in raw_lines if line.strip()]
+        if not lines:
+            return TelemetryCollectionResult(
+                status="unavailable",
+                source=self.source,
+                error=f"Codex JSONL events empty: {events_file}",
+                codex_events_path=str(events_file),
+                telemetry_evidence_gaps=["codex_events_empty"],
+            )
+
+        events: list[dict] = []
+        errors: list[str] = []
+        for line_number, line in enumerate(lines, 1):
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError as exc:
+                errors.append(f"invalid Codex JSONL line {line_number}: {exc}")
+                continue
+            if not isinstance(event, dict):
+                errors.append(f"invalid Codex JSONL line {line_number}: event must be an object")
+                continue
+            events.append(event)
+
+        if errors and not events:
+            return TelemetryCollectionResult(
+                status="error",
+                source=self.source,
+                error="; ".join(errors),
+                codex_events_path=str(events_file),
+                telemetry_evidence_gaps=["codex_events_malformed"],
+            )
+
+        metrics = self._normalize_events(events)
+        evidence_gaps: list[str] = []
+        if errors:
+            evidence_gaps.append("codex_events_malformed")
+        if metrics["usage"] is None:
+            evidence_gaps.append("codex_usage_missing")
+        model_name = self._model_from_command(command_result.command)
+        if model_name is None:
+            model_name = self._model_from_events(events)
+        if model_name is None:
+            evidence_gaps.append("codex_model_missing")
+
+        final_message_missing = not final_message_file.exists()
+        if final_message_missing and metrics["last_agent_message"]:
+            final_message_file.write_text(
+                str(metrics["last_agent_message"]),
+                encoding="utf-8",
+            )
+        elif final_message_missing:
+            evidence_gaps.append("codex_final_message_missing")
+        if final_message_missing and final_message_file.exists():
+            evidence_gaps.append("codex_output_last_message_missing")
+
+        status = "collected"
+        if errors or metrics["usage"] is None:
+            status = "partial" if events else "error"
+        error_message = "; ".join(errors)
+        if metrics["usage"] is None:
+            error_message = "; ".join(
+                item for item in [error_message, "missing turn.completed usage"] if item
+            )
+
+        usage = metrics["usage"] or {}
+        prompt_tokens = self._optional_int(usage.get("input_tokens"))
+        cached_input_tokens = self._optional_int(usage.get("cached_input_tokens"))
+        completion_tokens = self._optional_int(usage.get("output_tokens"))
+        reasoning_tokens = self._optional_int(usage.get("reasoning_output_tokens"))
+        total_tokens = (
+            prompt_tokens + completion_tokens
+            if prompt_tokens is not None and completion_tokens is not None
+            else None
+        )
+
+        return TelemetryCollectionResult(
+            status=status,
+            source=self.source,
+            error=error_message or None,
+            agent_duration_seconds=command_result.duration_seconds,
+            prompt_tokens=prompt_tokens,
+            cached_input_tokens=cached_input_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=total_tokens,
+            reasoning_tokens=reasoning_tokens,
+            tool_call_count=sum(metrics["tool_calls_by_name"].values())
+            if metrics["tool_calls_by_name"]
+            else 0,
+            tool_calls_by_name=dict(sorted(metrics["tool_calls_by_name"].items())),
+            command_call_count=metrics["command_call_count"],
+            model_name=model_name,
+            telemetry_evidence_gaps=evidence_gaps,
+            codex_events_path=str(events_file),
+            codex_final_message_path=str(final_message_file)
+            if final_message_file.exists()
+            else None,
+            codex_error_reason=metrics["error_reason"],
+        )
+
+    @staticmethod
+    def _normalize_events(events: list[dict]) -> dict[str, object]:
+        tool_calls: Counter[str] = Counter()
+        command_call_count = 0
+        usage: dict | None = None
+        last_agent_message: str | None = None
+        error_reason: str | None = None
+
+        for event in events:
+            event_type = event.get("type")
+            if event_type == "turn.completed" and isinstance(event.get("usage"), dict):
+                usage = event["usage"]
+            elif event_type == "turn.failed" and isinstance(event.get("error"), dict):
+                error_reason = str(event["error"].get("message") or "")
+            elif event_type == "error":
+                error_reason = str(event.get("message") or "")
+
+            item = event.get("item")
+            if not isinstance(item, dict) or event_type != "item.completed":
+                continue
+            item_type = item.get("type")
+            if item_type == "agent_message" and isinstance(item.get("text"), str):
+                last_agent_message = item["text"]
+            elif item_type == "command_execution":
+                command_call_count += 1
+                if item.get("status") == "failed" and item.get("command"):
+                    error_reason = f"command failed: {item.get('command')}"
+            elif item_type == "mcp_tool_call":
+                server = str(item.get("server") or "mcp")
+                tool = str(item.get("tool") or "unknown")
+                tool_calls[f"mcp:{server}/{tool}"] += 1
+                if item.get("error") and isinstance(item["error"], dict):
+                    error_reason = str(item["error"].get("message") or error_reason or "")
+            elif item_type == "collab_tool_call":
+                tool_calls[f"collab:{item.get('tool') or 'unknown'}"] += 1
+            elif item_type == "web_search":
+                tool_calls["web_search"] += 1
+            elif item_type == "file_change":
+                tool_calls["file_change"] += 1
+
+        return {
+            "usage": usage,
+            "tool_calls_by_name": tool_calls,
+            "command_call_count": command_call_count,
+            "last_agent_message": last_agent_message,
+            "error_reason": error_reason or None,
+        }
+
+    @staticmethod
+    def _optional_int(value: object) -> int | None:
+        if isinstance(value, bool) or not isinstance(value, int):
+            return None
+        if value < 0:
+            return None
+        return value
+
+    @staticmethod
+    def _model_from_command(command: str) -> str | None:
+        try:
+            parts = shlex.split(command, posix=False)
+        except ValueError:
+            return None
+        for index, part in enumerate(parts):
+            stripped = part.strip("\"'")
+            if stripped in {"--model", "-m"} and index + 1 < len(parts):
+                return parts[index + 1].strip("\"'")
+            if stripped.startswith("--model="):
+                return stripped.split("=", 1)[1].strip("\"'")
+        return None
+
+    @staticmethod
+    def _model_from_events(events: list[dict]) -> str | None:
+        for event in events:
+            for key in ["model", "model_name"]:
+                value = event.get(key)
+                if isinstance(value, str) and value.strip():
+                    return value.strip()
+        return None
+
+
 def build_telemetry_collector(config: AgentTelemetryConfig) -> TelemetryCollector:
     if config.collector == "none":
         return NoOpTelemetryCollector()
@@ -238,6 +457,9 @@ def build_telemetry_collector(config: AgentTelemetryConfig) -> TelemetryCollecto
             file=config.file,
             environment_variable=config.environment_variable,
         )
+    if config.collector == "codex-jsonl":
+        file = "codex-events.jsonl" if config.file == "telemetry.json" else config.file
+        return CodexJsonlTelemetryCollector(file=file)
     raise ValueError(f"unsupported telemetry collector: {config.collector}")
 
 

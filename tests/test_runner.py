@@ -276,6 +276,79 @@ def test_runner_records_coco_structured_telemetry_reasoning_steps(
     assert result["reasoning_step_count"] == 12
 
 
+def test_runner_records_codex_jsonl_artifacts_and_telemetry(tmp_path: Path) -> None:
+    repo = _create_repo(tmp_path)
+    overlay_source = tmp_path / "ctx" / "AGENTS.md"
+    overlay_source.parent.mkdir()
+    overlay_source.write_text("# Instructions\n", encoding="utf-8")
+
+    agent_script = tmp_path / "fake_codex.py"
+    agent_script.write_text(
+        "import json\n"
+        "import sys\n"
+        "from pathlib import Path\n"
+        "final_message = Path(sys.argv[1])\n"
+        "final_message.parent.mkdir(parents=True, exist_ok=True)\n"
+        "final_message.write_text('Codex final reply\\n', encoding='utf-8')\n"
+        "events = [\n"
+        "    {'type': 'thread.started', 'thread_id': 'thread-1'},\n"
+        "    {'type': 'item.completed', 'item': {'id': 'cmd-1', "
+        "'type': 'command_execution', 'command': 'python -m pytest', "
+        "'aggregated_output': 'ok', 'exit_code': 0, 'status': 'completed'}},\n"
+        "    {'type': 'item.completed', 'item': {'id': 'tool-1', "
+        "'type': 'mcp_tool_call', 'server': 'filesystem', 'tool': 'edit_file', "
+        "'arguments': {}, 'result': None, 'error': None, 'status': 'completed'}},\n"
+        "    {'type': 'turn.completed', 'usage': {'input_tokens': 20, "
+        "'cached_input_tokens': 5, 'output_tokens': 7, "
+        "'reasoning_output_tokens': 3}},\n"
+        "]\n"
+        "for event in events:\n"
+        "    print(json.dumps(event), flush=True)\n"
+        "Path('README.md').write_text('base\\ncodex\\n', encoding='utf-8')\n",
+        encoding="utf-8",
+    )
+    task_file = TaskFile(tasks=[TaskConfig(id="codex-jsonl", prompt="Append a line.")])
+    config = _base_config(
+        tmp_path=tmp_path,
+        repo=repo,
+        agent_command=(
+            f'"{sys.executable}" "{agent_script}" '
+            f'"{{output_dir}}/codex-final-message.md" --model gpt-5.4'
+        ),
+        overlay_source=overlay_source,
+    )
+    config.agent.kind = "codex-cli"
+    config.agent.telemetry = AgentTelemetryConfig(collector="codex-jsonl")
+
+    run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        cleanup=True,
+        console=_quiet_console(),
+    ).run()
+    result = json.loads((run_dir / "results.jsonl").read_text(encoding="utf-8"))
+
+    assert result["status"] == "completed"
+    assert result["telemetry_status"] == "collected"
+    assert result["telemetry_source"] == "codex-jsonl"
+    assert result["prompt_tokens"] == 20
+    assert result["cached_input_tokens"] == 5
+    assert result["completion_tokens"] == 7
+    assert result["total_tokens"] == 27
+    assert result["reasoning_tokens"] == 3
+    assert result["command_call_count"] == 1
+    assert result["model_name"] == "gpt-5.4"
+    assert result["tool_call_count"] == 1
+    assert result["tool_calls_by_name"] == {"mcp:filesystem/edit_file": 1}
+    assert result["codex_events_path"].endswith("codex-events.jsonl")
+    assert result["codex_final_message_path"].endswith("codex-final-message.md")
+    assert (run_dir / result["codex_events_path"]).exists()
+    assert (run_dir / result["codex_final_message_path"]).read_text(encoding="utf-8") == (
+        "Codex final reply\n"
+    )
+    assert result["telemetry_evidence_gaps"] == []
+
+
 def test_runner_writes_hard_and_soft_evaluation_sidecars(tmp_path: Path) -> None:
     repo = _create_repo(tmp_path)
     overlay_source = tmp_path / "ctx" / "AGENTS.md"

@@ -46,7 +46,10 @@ noninteractive commands.
 agents:
   codex:
     kind: "codex-cli"
-    command: "codex exec -C {workspace} - < {prompt_file}"
+    command: "codex exec --json --sandbox workspace-write --output-last-message \"{output_dir}/codex-final-message.md\" -C \"{workspace}\" - < \"{prompt_file}\""
+    telemetry:
+      collector: "codex-jsonl"
+      file: "codex-events.jsonl"
     timeout_minutes: 60
     network: "disabled"
 
@@ -102,7 +105,10 @@ the run artifact directory. context-eval also sets
 `environment_variable: null` is configured. The JSON file may include
 `agent_duration_seconds`, `prompt_tokens`, `completion_tokens`,
 `total_tokens`, `reasoning_tokens`, `tool_call_count`, and
-`tool_calls_by_name`.
+`tool_calls_by_name`. Codex `codex-jsonl` profiles add case-local Codex
+evidence fields such as `cached_input_tokens`, `command_call_count`,
+`model_name`, `telemetry_evidence_gaps`, `codex_events_path`, and
+`codex_final_message_path` from structured JSONL artifacts.
 
 The same telemetry block is valid inside each `agents.<profile>` entry.
 

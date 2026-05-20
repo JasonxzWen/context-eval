@@ -8,6 +8,11 @@ import yaml
 from context_eval.config import ConfigError
 
 GENERIC_AGENT_COMMAND = "agent -p {prompt_file}"
+CODEX_EXEC_JSON_COMMAND = (
+    'codex exec --json --sandbox workspace-write '
+    '--output-last-message "{output_dir}/codex-final-message.md" '
+    '-C "{workspace}" - < "{prompt_file}"'
+)
 COCO_UNATTENDED_COMMAND = (
     'coco -y --query-timeout 10m --bash-tool-timeout 5m -p "{prompt}"'
 )
@@ -44,13 +49,21 @@ def create_starter_files(
     return list(targets)
 
 
-def _agent_profile(kind: str, command: str) -> dict[str, object]:
-    return {
+def _agent_profile(
+    kind: str,
+    command: str,
+    *,
+    telemetry: dict[str, object] | None = None,
+) -> dict[str, object]:
+    profile: dict[str, object] = {
         "kind": kind,
         "command": command,
         "timeout_minutes": 60,
         "network": "disabled",
     }
+    if telemetry is not None:
+        profile["telemetry"] = telemetry
+    return profile
 
 
 def _config_yaml(repo_path: str, agent_command: str, *, agent_profiles: bool) -> str:
@@ -65,7 +78,11 @@ def _config_yaml(repo_path: str, agent_command: str, *, agent_profiles: bool) ->
             "agents": {
                 "codex": _agent_profile(
                     "codex-cli",
-                    "codex exec -C {workspace} - < {prompt_file}",
+                    CODEX_EXEC_JSON_COMMAND,
+                    telemetry={
+                        "collector": "codex-jsonl",
+                        "file": "codex-events.jsonl",
+                    },
                 ),
                 "claude": _agent_profile("claude-code", "claude -p {prompt_file}"),
                 "trae": _agent_profile("traecli", 'traecli -p "{prompt}"'),

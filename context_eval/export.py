@@ -12,7 +12,7 @@ from typing import Any
 from context_eval.models import CaseResult
 from context_eval.reporting import status_counts_map
 
-EXPORT_SCHEMA_VERSION = "1"
+EXPORT_SCHEMA_VERSION = "2"
 
 CASE_COLUMNS = [
     "run_id",
@@ -30,12 +30,20 @@ CASE_COLUMNS = [
     "duration_seconds",
     "agent_duration_seconds",
     "prompt_tokens",
+    "cached_input_tokens",
     "completion_tokens",
     "total_tokens",
     "reasoning_tokens",
     "tool_call_count",
+    "command_call_count",
     "tool_calls_by_name",
     "reasoning_step_count",
+    "model_name",
+    "provider_name",
+    "telemetry_evidence_gaps",
+    "codex_events_path",
+    "codex_final_message_path",
+    "codex_error_reason",
     "hard_evaluation_status",
     "hard_evaluation_score",
     "hard_evaluation_max_score",
@@ -144,9 +152,12 @@ def agent_summary_rows(results: list[CaseResult]) -> list[dict[str, Any]]:
     summaries = []
     for agent_name, items in sorted(by_agent.items()):
         tool_counts: Counter[str] = Counter()
+        model_counts: Counter[str] = Counter()
         telemetry_statuses: Counter[str] = Counter()
         for item in items:
             tool_counts.update(item.tool_calls_by_name)
+            if item.model_name:
+                model_counts.update([item.model_name])
             telemetry_statuses.update([item.telemetry_status])
 
         summaries.append(
@@ -164,8 +175,12 @@ def agent_summary_rows(results: list[CaseResult]) -> list[dict[str, Any]]:
                 ),
                 "avg_total_tokens": _mean_optional(item.total_tokens for item in items),
                 "avg_tool_call_count": _mean_optional(item.tool_call_count for item in items),
+                "avg_command_call_count": _mean_optional(
+                    item.command_call_count for item in items
+                ),
                 "telemetry_statuses": status_counts_map(telemetry_statuses),
                 "common_tool_names": _common_tool_names(tool_counts),
+                "common_model_names": _common_model_names(model_counts),
             }
         )
     return summaries
@@ -179,6 +194,13 @@ def _common_tool_names(tool_counts: Counter[str]) -> list[str]:
     return [
         name
         for name, _ in sorted(tool_counts.items(), key=lambda item: (-item[1], item[0]))[:5]
+    ]
+
+
+def _common_model_names(model_counts: Counter[str]) -> list[str]:
+    return [
+        name
+        for name, _ in sorted(model_counts.items(), key=lambda item: (-item[1], item[0]))[:5]
     ]
 
 
@@ -249,12 +271,20 @@ def _case_csv_row(result: CaseResult) -> dict[str, str | int]:
         "duration_seconds": _format_number(result.duration_seconds),
         "agent_duration_seconds": _format_optional_number(result.agent_duration_seconds),
         "prompt_tokens": _format_optional_int(result.prompt_tokens),
+        "cached_input_tokens": _format_optional_int(result.cached_input_tokens),
         "completion_tokens": _format_optional_int(result.completion_tokens),
         "total_tokens": _format_optional_int(result.total_tokens),
         "reasoning_tokens": _format_optional_int(result.reasoning_tokens),
         "reasoning_step_count": _format_optional_int(result.reasoning_step_count),
         "tool_call_count": _format_optional_int(result.tool_call_count),
+        "command_call_count": _format_optional_int(result.command_call_count),
         "tool_calls_by_name": _format_tool_calls_csv(result.tool_calls_by_name),
+        "model_name": result.model_name or "",
+        "provider_name": result.provider_name or "",
+        "telemetry_evidence_gaps": _format_list_csv(result.telemetry_evidence_gaps),
+        "codex_events_path": result.codex_events_path or "",
+        "codex_final_message_path": result.codex_final_message_path or "",
+        "codex_error_reason": result.codex_error_reason or "",
     }
 
 
@@ -293,12 +323,20 @@ def _case_json_row(
         "duration_seconds": result.duration_seconds,
         "agent_duration_seconds": result.agent_duration_seconds,
         "prompt_tokens": result.prompt_tokens,
+        "cached_input_tokens": result.cached_input_tokens,
         "completion_tokens": result.completion_tokens,
         "total_tokens": result.total_tokens,
         "reasoning_tokens": result.reasoning_tokens,
         "reasoning_step_count": result.reasoning_step_count,
         "tool_call_count": result.tool_call_count,
+        "command_call_count": result.command_call_count,
         "tool_calls_by_name": dict(sorted(result.tool_calls_by_name.items())),
+        "model_name": result.model_name,
+        "provider_name": result.provider_name,
+        "telemetry_evidence_gaps": list(result.telemetry_evidence_gaps),
+        "codex_events_path": result.codex_events_path,
+        "codex_final_message_path": result.codex_final_message_path,
+        "codex_error_reason": result.codex_error_reason,
         "manual_review": (manual_reviews or {}).get(
             case_id,
             {

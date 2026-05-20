@@ -20,6 +20,10 @@ def test_agent_profiles_spec_documents_noninteractive_contract() -> None:
 
     for term in [
         "Codex CLI",
+        "codex exec --json",
+        "--output-last-message",
+        "codex-events.jsonl",
+        "codex-final-message.md",
         "Claude Code",
         "traecli",
         "coco",

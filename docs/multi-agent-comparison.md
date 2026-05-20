@@ -41,15 +41,24 @@ The normalized comparison contract includes these dimensions and fields:
 - `duration_seconds`
 - `agent_duration_seconds`
 - `prompt_tokens`
+- `cached_input_tokens`
 - `completion_tokens`
 - `total_tokens`
 - `reasoning_tokens`
 - `tool_call_count`
+- `command_call_count`
 - `tool_calls_by_name`
+- `model_name`
+- `provider_name`
+- `telemetry_evidence_gaps`
+- `codex_events_path`
+- `codex_final_message_path`
+- `codex_error_reason`
 
 Missing telemetry fields remain missing. CSV exports use empty fields for
 missing scalar telemetry; compact JSON exports use `null`. `tool_calls_by_name`
-uses an empty object only when no tool-call map was recorded.
+uses an empty object only when no tool-call map was recorded. Codex artifact
+paths point to case-local evidence files; they are not global CLI logs.
 
 ## Export Formats
 
@@ -109,8 +118,10 @@ Useful agent summaries include:
 - average `agent_duration_seconds`;
 - average `total_tokens`;
 - average `tool_call_count`;
+- average `command_call_count`;
 - telemetry status counts;
-- common tool names from `tool_calls_by_name`.
+- common tool names from `tool_calls_by_name`;
+- common model names from `model_name`.
 
 Single-agent runs may keep the current variant-oriented display and suppress
 the agent summary to avoid redundant output.
@@ -138,9 +149,8 @@ separately from the raw artifact links. The risk signal set covers failed,
 timeout, low-confidence, and telemetry-gap cases.
 In short: failed, timeout, low-confidence, and telemetry-gap cases are
 first-class reporting signals.
-Telemetry-gap cases include rows whose `telemetry_status` is not `collected`;
-reports must not infer missing telemetry values from logs, command output, or
-neighboring rows.
+Telemetry-gap cases include rows whose `telemetry_status` is not `collected`
+or whose `telemetry_evidence_gaps` list is non-empty. Reports must not infer missing telemetry values from logs, command output, or neighboring rows.
 
 ## Static UI Behavior
 
@@ -167,7 +177,7 @@ a useful `agent_name` value:
 ```yaml
 agent:
   name: "codex-local"
-  command: "codex exec -C {workspace} - < {prompt_file}"
+  command: "codex exec --json --sandbox workspace-write --output-last-message \"{output_dir}/codex-final-message.md\" -C \"{workspace}\" - < \"{prompt_file}\""
 ```
 
 The planned agent profile model in `docs/agent-profiles.md` will make this a

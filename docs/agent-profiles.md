@@ -18,8 +18,11 @@ agent and provides a noninteractive command template such as:
 agents:
   codex:
     kind: "codex-cli"
-    command: "codex exec -C {workspace} - < {prompt_file}"
+    command: "codex exec --json --sandbox workspace-write --output-last-message \"{output_dir}/codex-final-message.md\" -C \"{workspace}\" - < \"{prompt_file}\""
     timeout_minutes: 60
+    telemetry:
+      collector: "codex-jsonl"
+      file: "codex-events.jsonl"
 
   claude:
     kind: "claude-code"
@@ -71,7 +74,8 @@ Each profile has:
 - `timeout_minutes`: command timeout for the coding agent process.
 - `network`: recorded in results as today; still not real network isolation.
 - `prompt_template`: optional path resolved relative to the config file.
-- `telemetry`: optional collector config, starting with `none` and `json-file`.
+- `telemetry`: optional collector config, starting with `none`, `json-file`,
+  and Codex's `codex-jsonl`.
 
 The `kind` field is a profile classification for validation, presets, and UI
 copy. It does not install agents and does not imply a hosted provider
@@ -101,7 +105,13 @@ changes the local agent configuration outside context-eval.
 
 Built-in presets help users start, but they remain editable templates:
 
-- `codex-cli`: a Codex CLI noninteractive command template.
+- `codex-cli`: a Codex CLI noninteractive command template. The starter
+  template uses `codex exec --json` so stdout can be saved as
+  `codex-events.jsonl`, and pairs it with `--output-last-message` so the final
+  assistant reply can be saved as `codex-final-message.md`. The matching
+  `codex-jsonl` telemetry collector reads only those case-local artifacts under
+  `{output_dir}`. This is still a user-editable command template; context-eval
+  does not install Codex, validate credentials, or read global Codex logs.
 - `claude-code`: a Claude Code noninteractive command template.
 - `traecli`: a traecli noninteractive command template such as
   `traecli -p "{prompt}"`.
@@ -170,6 +180,9 @@ local observations. Agent summaries are shown only when more than one
 - Timeouts produce `timeout`.
 - Missing telemetry remains `unavailable`; token or tool counts must not be
   guessed from logs.
+- Missing Codex JSONL events, missing usage fields, or a missing final-message
+  artifact are evidence gaps, not failures to be guessed from unstructured
+  stdout/stderr.
 
 ## Non-Goals
 

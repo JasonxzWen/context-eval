@@ -190,8 +190,8 @@ Compact JSON export metadata includes:
 
 CSV and compact JSON case rows include telemetry status fields such as
 `telemetry_status`, `telemetry_source`, and `telemetry_error`, plus available
-duration, token, and tool-call counts. Missing telemetry remains empty in CSV
-and `null` in JSON.
+duration, token, tool-call, command-call, model, and Codex evidence fields.
+Missing telemetry remains empty in CSV and `null` in JSON.
 
 These fields describe the exported local observation. They do not make the
 output an absolute agent benchmark.
@@ -386,7 +386,11 @@ this single-agent shape compatible while adding named `codex-cli`,
 ## Agent Profile Matrix Example
 
 `examples/agent-matrix/context-eval.yaml` shows the named `agents` map for
-Codex CLI, Claude Code, traecli, and a Coco unattended
+Codex CLI, Claude Code, traecli, and Coco. The Codex starter command uses
+`codex exec --json` plus `--output-last-message` so the `codex-jsonl` collector
+can keep a case-local JSONL event stream and final reply artifact while
+normalizing only those local artifacts. The
+Coco profile keeps the unattended
 `coco -y --query-timeout 10m --bash-tool-timeout 5m -p "{prompt}"` command.
 It targets the same local fixture repository as the basic example and is meant
 to make profile-map validation and dry-run planning easy to inspect before any
@@ -442,8 +446,10 @@ sets `CONTEXT_EVAL_TELEMETRY_FILE` to that path unless
 
 The JSON object may include `agent_duration_seconds`, `prompt_tokens`,
 `completion_tokens`, `total_tokens`, `reasoning_tokens`, `tool_call_count`, and
-`tool_calls_by_name`. Invalid or missing fields become `partial`, `error`, or
-`unavailable` telemetry states instead of guessed values.
+`tool_calls_by_name`. Codex JSONL collectors additionally preserve
+`cached_input_tokens`, `command_call_count`, `model_name`, evidence gaps, and
+case-local Codex artifact paths. Invalid or missing fields become `partial`,
+`error`, or `unavailable` telemetry states instead of guessed values.
 
 ## Context Variants
 
