@@ -132,6 +132,14 @@ def _copy_fixture_repo(tmp_path: Path) -> Path:
     return fixture
 
 
+def _write_results(run_dir: Path, rows: list[dict[str, object]]) -> None:
+    run_dir.mkdir(parents=True)
+    run_dir.joinpath("results.jsonl").write_text(
+        "\n".join(json.dumps(row, sort_keys=True) for row in rows) + "\n",
+        encoding="utf-8",
+    )
+
+
 def test_local_app_rejects_traversal_for_writes_and_artifact_reads(tmp_path: Path) -> None:
     service = LocalAppService(workspace_root=tmp_path)
     run_dir = tmp_path / "runs" / "run-1"
@@ -239,23 +247,26 @@ def test_local_app_reports_empty_workspace_and_bootstraps_demo(tmp_path: Path) -
     assert by_variant["experiment"]["telemetry_status"] == "collected"
     assert by_variant["experiment"]["total_tokens"] == 180
     assert by_variant["experiment"]["tool_calls_by_name"]["edit_file"] == 1
-    assert results["compare_groups"] == [
-        {
-            "group_id": "fix-greeting-demo__demo-agent__trial-1",
-            "task_id": "fix-greeting-demo",
-            "agent_name": "demo-agent",
-            "trial_index": 1,
-            "baseline_variant": "baseline",
-            "experiment_variant": "experiment",
-            "baseline_case_id": by_variant["baseline"]["case_id"],
-            "experiment_case_id": by_variant["experiment"]["case_id"],
-            "verdict": "experiment_improved",
-            "hard_delta": 1,
-            "validation_delta": 0,
-            "total_tokens_delta": 0,
-            "summary": "experiment improved hard evaluation without changing validation status",
-        }
-    ]
+    assert results["selected_baseline_variant"] == "baseline"
+    assert results["available_baseline_variants"] == ["baseline", "experiment"]
+    assert results["evaluation_explanation"]["hard_evaluation"]["score_meaning"].startswith(
+        "hard score 是通过检查数"
+    )
+    assert len(results["compare_groups"]) == 1
+    compare_group = results["compare_groups"][0]
+    assert compare_group["baseline_variant"] == "baseline"
+    assert compare_group["comparison_variant"] == "experiment"
+    assert compare_group["baseline_case_id"] == by_variant["baseline"]["case_id"]
+    assert compare_group["comparison_case_id"] == by_variant["experiment"]["case_id"]
+    assert compare_group["experiment_variant"] == "experiment"
+    assert compare_group["experiment_case_id"] == by_variant["experiment"]["case_id"]
+    assert compare_group["verdict"] == "comparison_improved"
+    assert compare_group["hard_delta"] == 1
+    assert compare_group["hard_check_delta"] == 1
+    assert compare_group["validation_delta"] == 0
+    assert compare_group["total_tokens_delta"] == 0
+    assert compare_group["evidence_gaps"] == []
+    assert compare_group["summary"] == "对比对象 hard checks 改善，validation 状态未变化。"
 
     detail = service.case_detail(
         run_dir=run_status["run_dir"],
@@ -299,6 +310,159 @@ def test_local_app_reports_empty_workspace_and_bootstraps_demo(tmp_path: Path) -
     assert exported_cases[by_variant["experiment"]["case_id"]]["manual_review"][
         "confidence"
     ] == "high"
+
+
+def test_local_app_results_compares_selected_baseline_against_other_variants(
+    tmp_path: Path,
+) -> None:
+    service = LocalAppService(workspace_root=tmp_path)
+    run_dir = tmp_path / "runs" / "run-compare"
+    _write_results(
+        run_dir,
+        [
+            {
+                "run_id": "run-compare",
+                "case_id": "task-a__baseline__coco",
+                "task_id": "task-a",
+                "variant": "baseline",
+                "repo_ref": "main",
+                "agent_name": "coco",
+                "network": "disabled",
+                "status": "completed",
+                "validation_status": "passed",
+                "confidence": "high",
+                "hard_evaluation_status": "passed",
+                "hard_evaluation_score": 2,
+                "hard_evaluation_max_score": 2,
+                "telemetry_status": "collected",
+                "telemetry_source": "json-file",
+                "total_tokens": 100,
+            },
+            {
+                "run_id": "run-compare",
+                "case_id": "task-a__docs-overlay__coco",
+                "task_id": "task-a",
+                "variant": "docs-overlay",
+                "repo_ref": "main",
+                "agent_name": "coco",
+                "network": "disabled",
+                "status": "completed",
+                "validation_status": "skipped",
+                "confidence": "low",
+                "hard_evaluation_status": "skipped",
+                "telemetry_status": "unavailable",
+                "telemetry_source": "json-file",
+                "telemetry_error": "telemetry file not found: artifacts/telemetry.json",
+                "total_tokens": 120,
+            },
+            {
+                "run_id": "run-compare",
+                "case_id": "task-a__experiment__coco",
+                "task_id": "task-a",
+                "variant": "experiment",
+                "repo_ref": "main",
+                "agent_name": "coco",
+                "network": "disabled",
+                "status": "validation_failed",
+                "validation_status": "failed",
+                "confidence": "medium",
+                "hard_evaluation_status": "failed",
+                "hard_evaluation_score": 1,
+                "hard_evaluation_max_score": 2,
+                "telemetry_status": "unavailable",
+                "telemetry_source": "none",
+            },
+        ],
+    )
+
+    payload = service.results(
+        run_dir="runs/run-compare",
+        baseline_variant="docs-overlay",
+    )
+
+    assert payload["selected_baseline_variant"] == "docs-overlay"
+    assert payload["available_baseline_variants"] == [
+        "baseline",
+        "docs-overlay",
+        "experiment",
+    ]
+    assert payload["baseline_selection_notice"] is None
+    groups = {
+        (group["baseline_variant"], group["comparison_variant"]): group
+        for group in payload["compare_groups"]
+    }
+    assert set(groups) == {
+        ("docs-overlay", "baseline"),
+        ("docs-overlay", "experiment"),
+    }
+    baseline_group = groups[("docs-overlay", "baseline")]
+    assert baseline_group["baseline_case_id"] == "task-a__docs-overlay__coco"
+    assert baseline_group["comparison_case_id"] == "task-a__baseline__coco"
+    assert baseline_group["validation_delta"] == 1
+    assert baseline_group["hard_check_delta"] is None
+    assert {gap["code"] for gap in baseline_group["evidence_gaps"]} >= {
+        "baseline_validation_missing",
+        "baseline_hard_evaluation_skipped",
+        "baseline_telemetry_missing",
+    }
+    experiment_group = groups[("docs-overlay", "experiment")]
+    assert experiment_group["comparison_variant"] == "experiment"
+    assert experiment_group["validation_delta"] == 0
+    assert experiment_group["hard_check_delta"] is None
+    assert {gap["code"] for gap in experiment_group["evidence_gaps"]} >= {
+        "baseline_validation_missing",
+        "baseline_hard_evaluation_skipped",
+        "baseline_telemetry_missing",
+        "comparison_telemetry_missing",
+    }
+
+
+def test_local_app_results_cleans_removed_baseline_selection(tmp_path: Path) -> None:
+    service = LocalAppService(workspace_root=tmp_path)
+    run_dir = tmp_path / "runs" / "run-compare"
+    _write_results(
+        run_dir,
+        [
+            {
+                "run_id": "run-compare",
+                "case_id": "task-a__baseline__coco",
+                "task_id": "task-a",
+                "variant": "baseline",
+                "repo_ref": "main",
+                "agent_name": "coco",
+                "network": "disabled",
+                "status": "completed",
+                "validation_status": "passed",
+                "confidence": "high",
+            },
+            {
+                "run_id": "run-compare",
+                "case_id": "task-a__experiment__coco",
+                "task_id": "task-a",
+                "variant": "experiment",
+                "repo_ref": "main",
+                "agent_name": "coco",
+                "network": "disabled",
+                "status": "completed",
+                "validation_status": "passed",
+                "confidence": "high",
+            },
+        ],
+    )
+
+    payload = service.results(
+        run_dir="runs/run-compare",
+        baseline_variant="removed-variant",
+    )
+
+    assert payload["selected_baseline_variant"] == "baseline"
+    assert payload["baseline_selection_notice"] == (
+        "已清理不存在的比较基线 removed-variant，改用 baseline。"
+    )
+    assert [
+        (group["baseline_variant"], group["comparison_variant"])
+        for group in payload["compare_groups"]
+    ] == [("baseline", "experiment")]
 
 
 def test_local_app_initializes_existing_project_without_overwriting(tmp_path: Path) -> None:

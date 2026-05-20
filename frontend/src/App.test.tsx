@@ -4,10 +4,12 @@ import { App } from './App';
 import { reconcileRunScope } from './localConfig';
 
 function jsonResponse(data: unknown, options: { ok?: boolean; status?: number } = {}) {
+  const body = JSON.stringify(data);
   return Promise.resolve({
     ok: options.ok ?? true,
     status: options.status ?? 200,
     json: async () => data,
+    text: async () => body,
   } as Response);
 }
 
@@ -99,6 +101,7 @@ const loadedPayload = {
 };
 
 afterEach(() => {
+  window.localStorage.clear();
   vi.unstubAllGlobals();
 });
 
@@ -724,6 +727,8 @@ describe('App workflow shell', () => {
         });
       }
       if (target.startsWith('/api/results')) {
+        const requestedBaseline = new URL(target, 'http://local.test').searchParams.get('baseline_variant');
+        const selectedBaseline = requestedBaseline || 'baseline';
         return jsonResponse({
           ok: true,
           overview: {
@@ -733,21 +738,48 @@ describe('App workflow shell', () => {
             low_confidence_count: 0,
             telemetry_gap_count: 0,
           },
+          selected_baseline_variant: selectedBaseline,
+          available_baseline_variants: ['baseline', 'experiment'],
+          baseline_selection_notice: requestedBaseline === 'removed' ? '已清理不存在的比较基线 removed，改用 baseline。' : null,
+          evaluation_explanation: {
+            local_only: '仅比较本地 artifact 中的观察结果，不是公开 benchmark、绝对排名或 agent leaderboard。',
+            validation_confidence: {
+              high: '有 validation commands 且全部通过。',
+              medium: '有 validation commands 但失败或超时。',
+              low: '没有 validation commands，不能高置信判断。',
+            },
+            hard_evaluation: {
+              score_meaning: 'hard score 是通过检查数 / 可评分检查数，不是综合质量分。',
+              skipped_meaning: 'skipped 表示本地产物不足。',
+            },
+            soft_evaluation: {
+              mode: 'payload-only',
+              meaning: 'soft evaluation 只生成 payload-only 复核材料，不自动调用 LLM judge。',
+            },
+            manual_review: {
+              meaning: 'manual review 是人工复核证据和结论，不是自动评分。',
+            },
+            evidence_limits: ['无 validation、hard skipped 或 telemetry missing 时只能提示证据不足。'],
+          },
           compare_groups: [
             {
               group_id: 'fix-greeting-punctuation__coco__trial-1',
               task_id: 'fix-greeting-punctuation',
               agent_name: 'coco',
               trial_index: 1,
-              baseline_variant: 'baseline',
+              baseline_variant: selectedBaseline,
+              comparison_variant: selectedBaseline === 'baseline' ? 'experiment' : 'baseline',
               experiment_variant: 'experiment',
               baseline_case_id: 'fix-greeting-punctuation__baseline__coco',
+              comparison_case_id: 'fix-greeting-punctuation__experiment__coco',
               experiment_case_id: 'fix-greeting-punctuation__experiment__coco',
-              verdict: 'experiment_improved',
+              verdict: 'comparison_improved',
               hard_delta: 1,
+              hard_check_delta: 1,
               validation_delta: 0,
               total_tokens_delta: -20,
-              summary: 'experiment improved hard evaluation without changing validation status',
+              summary: '对比对象 hard evaluation 增加 1，validation 结果未变化。',
+              evidence_gaps: [],
             },
           ],
           cases: [
@@ -768,6 +800,8 @@ describe('App workflow shell', () => {
               hard_evaluation_status: 'passed',
               hard_evaluation_score: 4,
               hard_evaluation_max_score: 4,
+              hard_evaluation_passed_checks: 4,
+              hard_evaluation_failed_checks: 0,
               soft_evaluation_status: 'payload_generated',
               soft_evaluation_payload_path:
                 'artifacts/fix-greeting-punctuation__baseline__coco/soft_evaluation_payload.json',
@@ -796,9 +830,14 @@ describe('App workflow shell', () => {
             agent_name: 'coco',
             status: 'completed',
             validation_status: 'passed',
+            confidence: 'high',
+            telemetry_status: 'collected',
             hard_evaluation_status: 'passed',
             hard_evaluation_score: 4,
             hard_evaluation_max_score: 4,
+            soft_evaluation_status: 'payload_generated',
+            soft_evaluation_payload_path:
+              'artifacts/fix-greeting-punctuation__baseline__coco/soft_evaluation_payload.json',
             manual_review: {
               case_id: 'fix-greeting-punctuation__baseline__coco',
               decision: 'not_reviewed',
@@ -814,7 +853,17 @@ describe('App workflow shell', () => {
             exists: true,
           },
           logs: [{ kind: 'agent_stdout', path: 'logs/stdout.log', content: 'done', exists: true }],
-          hard_evaluation: { status: 'passed', checks: [] },
+          hard_evaluation: {
+            status: 'passed',
+            score: 4,
+            max_score: 4,
+            checks: [{ name: 'README.md', status: 'passed', message: 'found expected marker' }],
+          },
+          soft_evaluation: {
+            status: 'payload_generated',
+            payload_path: 'artifacts/fix-greeting-punctuation__baseline__coco/soft_evaluation_payload.json',
+            result_path: null,
+          },
           manual_review: {
             case_id: 'fix-greeting-punctuation__baseline__coco',
             decision: 'not_reviewed',
@@ -857,13 +906,25 @@ describe('App workflow shell', () => {
     expect(screen.getByText('已生成待复核材料')).toBeVisible();
     expect(screen.getByText('180')).toBeVisible();
     expect(screen.getByText('轮次 2')).toBeVisible();
-    expect(screen.getByText('experiment_improved')).toBeVisible();
-    expect(screen.getByText('experiment improved hard evaluation without changing validation status')).toBeVisible();
+    expect(screen.getByText('评分依据')).toBeVisible();
+    expect(screen.getByText('soft evaluation 只生成 payload-only 复核材料，不自动调用 LLM judge。')).toBeVisible();
+    expect(screen.getByLabelText('比较基线')).toHaveValue('baseline');
+    expect(screen.getByText('对比对象改善')).toBeVisible();
+    expect(screen.getByText('对比对象 hard evaluation 增加 1，validation 结果未变化。')).toBeVisible();
+    fireEvent.change(screen.getByLabelText('比较基线'), { target: { value: 'experiment' } });
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/results?run_dir=.%2Fruns%2Frun-a&baseline_variant=experiment',
+        expect.any(Object),
+      ),
+    );
 
     fireEvent.click(screen.getByRole('button', { name: '查看详情' }));
     await waitFor(() => expect(screen.getByRole('heading', { name: '用例详情' })).toBeVisible());
     expect(screen.getByText('patches/fix-greeting-punctuation__baseline__coco.patch')).toBeVisible();
     expect(screen.getByText(/context-eval marker/)).toBeVisible();
+    expect(screen.getByRole('heading', { name: '硬性检查明细' })).toBeVisible();
+    expect(screen.getByText('found expected marker')).toBeVisible();
 
     fireEvent.change(screen.getByLabelText('复核结论'), { target: { value: 'pass' } });
     fireEvent.change(screen.getByLabelText('复核可信度'), { target: { value: 'high' } });

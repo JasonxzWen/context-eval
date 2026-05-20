@@ -249,11 +249,23 @@ patches, workspaces, and reports.
 The results view should read local run artifacts and show:
 
 - run matrix overview;
+- a scoring explanation near the plan or results, written as user-facing
+  language instead of YAML field names;
+- the selected compare baseline variant and which variants are compared against
+  it;
 - variant-level summaries;
 - agent-level summaries only when more than one `agent_name` exists;
 - failed, timeout, low-confidence, and telemetry-gap cases;
-- hard evaluation status, score, failed checks, and sidecar links when present;
-- soft evaluation payload/result status and sidecar links when present;
+- validation confidence with explicit `high`, `medium`, and `low` meanings;
+- hard evaluation status, score, failed checks, and sidecar links when present,
+  with the score labeled as passed checks / scoreable checks rather than a
+  combined quality score;
+- soft evaluation payload/result status and sidecar links when present, labeled
+  as payload-only material rather than automatic LLM scoring;
+- manual review status as human-entered evidence and conclusions rather than
+  automatic scoring;
+- evidence-gap explanations and next steps when validation is missing, a hard
+  check is skipped, or structured telemetry is unavailable;
 - validation command output;
 - patch links and touched paths;
 - export controls for CSV, compact JSON, Markdown, and static HTML.
@@ -261,6 +273,13 @@ The results view should read local run artifacts and show:
 All results are local observations for the selected repo, tasks, context
 variants, agents, and validation commands. The UI must not present them as an
 absolute coding-agent leaderboard.
+
+The compare baseline is the variant treated as the reference row for
+task/agent/trial comparisons. It defaults to a `baseline` variant when present,
+otherwise the first available variant. Users can switch it in the UI; the
+server then compares every other selected variant in the same task, agent, and
+trial group against that baseline. If a saved baseline no longer exists, the
+selection is cleared to the fallback and the UI shows that cleanup.
 
 ## API Boundary
 
@@ -304,8 +323,9 @@ The local app API endpoints are:
   current cleanup behavior.
 - `GET /api/runs/{id}/logs`: return local console output and available stdout
   or stderr log tails for the run.
-- `GET /api/results?run_dir=...`: read local `results.jsonl` and
-  `run_metadata.json` and return matrix overview, risk signals, cases, and
+- `GET /api/results?run_dir=...&baseline_variant=...`: read local
+  `results.jsonl` and `run_metadata.json` and return matrix overview, risk
+  signals, cases, scoring explanations, selected baseline metadata, and compare
   summaries.
 - `GET /api/artifacts?run_dir=...&path=...`: read a safe relative artifact path
   under the selected run directory.

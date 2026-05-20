@@ -172,6 +172,11 @@ def test_export_run_json_contains_sorted_cases_and_agent_summaries(tmp_path: Pat
     assert payload["agent_count"] == 2
     assert payload["variant_count"] == 1
     assert payload["task_count"] == 1
+    assert (
+        payload["evaluation_explanation"]["hard_evaluation"]["score_meaning"]
+        == "hard score 是通过检查数 / 可评分检查数，不是综合质量分。"
+    )
+    assert payload["evaluation_explanation"]["soft_evaluation"]["mode"] == "payload-only"
     assert payload["run"]["run_id"] == "run-1"
     assert [case["agent_name"] for case in payload["cases"]] == [
         "agent-a",

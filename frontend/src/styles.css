@@ -49,6 +49,7 @@ button {
   color: #ffffff;
   cursor: pointer;
   font-weight: 700;
+  white-space: nowrap;
   transition:
     transform 140ms ease,
     border-color 140ms ease,
@@ -783,6 +784,8 @@ pre {
 }
 
 details {
+  min-width: 0;
+  max-width: 100%;
   border: 1px solid var(--line);
   border-radius: 6px;
   padding: 8px 10px;
@@ -792,6 +795,8 @@ details {
 summary {
   cursor: pointer;
   font-weight: 800;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 pre {
@@ -822,12 +827,19 @@ td small {
   margin-top: 3px;
   color: var(--muted);
   font-size: 11px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 th {
   color: var(--muted);
   font-size: 11px;
   text-transform: none;
+}
+
+th,
+td {
+  overflow-wrap: anywhere;
 }
 
 .selected-row {
@@ -1030,6 +1042,7 @@ legend {
 
 .subsection-heading {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   align-items: center;
   justify-content: space-between;
@@ -1102,7 +1115,24 @@ legend {
 }
 
 .compare-summary {
+  display: grid;
+  gap: 10px;
   margin-top: 12px;
+}
+
+.baseline-control {
+  display: grid;
+  grid-template-columns: minmax(180px, 280px) minmax(0, 1fr);
+  gap: 10px;
+  align-items: end;
+}
+
+.baseline-control label {
+  min-width: 0;
+}
+
+.baseline-control select {
+  width: 100%;
 }
 
 .compare-grid {
@@ -1121,16 +1151,20 @@ legend {
 .compare-card > div {
   display: grid;
   gap: 4px;
+}
+
+.compare-card-heading {
   margin-bottom: 10px;
 }
 
-.compare-card strong {
+.compare-card-heading strong {
   color: var(--green);
 }
 
-.compare-card span {
+.compare-card-heading span {
   color: var(--muted);
   font-size: 12px;
+  line-height: 1.4;
 }
 
 .compare-card dl,
@@ -1140,7 +1174,7 @@ legend {
 }
 
 .compare-card dl {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin: 0;
 }
 
@@ -1153,7 +1187,7 @@ legend {
 
 .evaluation-guide {
   display: grid;
-  gap: 8px;
+  gap: 12px;
   margin-bottom: 12px;
   border: 1px solid #9ec5b0;
   border-radius: 6px;
@@ -1161,18 +1195,71 @@ legend {
   background: #f3faf6;
 }
 
-.evaluation-guide strong {
+.guide-heading {
+  display: grid;
+  gap: 4px;
+}
+
+.guide-heading strong,
+.guide-card strong {
   color: var(--green);
 }
 
-.evaluation-guide ul {
+.guide-heading span,
+.guide-card p,
+.evidence-limit-list,
+.evidence-gap-block small,
+.evidence-gap-list small,
+.evidence-note-panel p,
+.evidence-note-panel small,
+.soft-detail-panel p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.guide-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.guide-card {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px;
+  background: #ffffff;
+}
+
+.guide-card p {
+  margin: 7px 0 0;
+}
+
+.guide-card dl {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+}
+
+.guide-card dt {
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.guide-card dd {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.evidence-limit-list {
   display: grid;
   gap: 6px;
   margin: 0;
   padding-left: 18px;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.45;
 }
 
 #agent-command,
@@ -1189,6 +1276,32 @@ legend {
   margin: 3px 0 0;
   font-weight: 850;
   overflow-wrap: anywhere;
+}
+
+.evidence-gap-block {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  border-top: 1px solid rgba(42, 71, 56, 0.18);
+  padding-top: 10px;
+}
+
+.evidence-gap-block > strong {
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.evidence-gap-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.evidence-gap-list span {
+  display: block;
+  color: var(--ink);
+  font-size: 12px;
 }
 
 .case-detail-panel {
@@ -1217,8 +1330,80 @@ legend {
   white-space: pre-wrap;
 }
 
+.evidence-note-panel,
+.hard-detail-panel,
+.soft-detail-panel {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px;
+  background: #fbfcfb;
+}
+
+.evidence-note-panel h4,
+.hard-detail-panel h4,
+.soft-detail-panel h4 {
+  margin: 0;
+  color: var(--green);
+}
+
+.case-evidence-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+}
+
+.case-evidence-grid article {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 9px;
+  background: #ffffff;
+}
+
+.case-evidence-grid strong {
+  color: var(--ink);
+}
+
+.case-evidence-grid p {
+  margin: 6px 0;
+}
+
+.hard-check-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hard-check-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(72px, auto) minmax(0, 2fr);
+  gap: 8px;
+  align-items: start;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px;
+  background: #ffffff;
+}
+
+.hard-check-row strong,
+.hard-check-row small {
+  overflow-wrap: anywhere;
+}
+
+.hard-check-row span {
+  color: var(--green);
+  font-weight: 850;
+}
+
 .artifact-grid {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
   margin-top: 12px;
 }
@@ -1238,15 +1423,19 @@ legend {
 }
 
 .artifact-pane pre {
+  max-width: 100%;
   max-height: 260px;
   background: #101413;
   color: #dfeee6;
   border-radius: 6px;
   padding: 10px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .export-output {
   width: 100%;
+  max-width: 100%;
   min-height: 180px;
   margin: 12px 0 0;
   border: 1px solid var(--line);
@@ -1254,6 +1443,9 @@ legend {
   padding: 10px;
   background: #101413;
   color: #dfeee6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 @keyframes logIn {
@@ -1283,7 +1475,9 @@ legend {
   .brief-layout,
   .scope-panel,
   .advanced-grid,
-  .two-column-list {
+  .two-column-list,
+  .guide-grid,
+  .baseline-control {
     grid-template-columns: 1fr;
   }
 
@@ -1296,23 +1490,20 @@ legend {
   }
 
   .content-grid > .panel,
-  .project-panel,
-  .run-brief-panel,
-  .yaml-panel,
-  .run-panel,
-  .results-panel,
-  .matrix-panel,
-  .task-editor-panel,
-  .variant-editor-panel,
-  .agent-editor-panel,
-  .scope-notice,
+  .content-grid > .project-panel,
+  .content-grid > .run-brief-panel,
+  .content-grid > .yaml-panel,
+  .content-grid > .run-panel,
+  .content-grid > .results-panel,
+  .content-grid > .matrix-panel,
+  .content-grid > .task-editor-panel,
+  .content-grid > .variant-editor-panel,
+  .content-grid > .agent-editor-panel,
+  .content-grid > .scope-notice,
+  .content-grid > .advanced-workbench,
   .advanced-grid > .panel,
   .advanced-grid > .yaml-panel {
-    grid-column: span 1;
-  }
-
-  .content-grid > .advanced-workbench {
-    grid-column: span 1;
+    grid-column: 1 / -1;
   }
 
   .brief-actions {
@@ -1382,6 +1573,7 @@ legend {
   .compare-card dl,
   .detail-grid,
   .review-form,
+  .hard-check-row,
   .editor-split,
   .task-editor-layout,
   .overlay-row,

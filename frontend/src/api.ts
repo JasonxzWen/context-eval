@@ -3,9 +3,15 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
     headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
     ...init,
   });
-  const data = await response.json();
+  const text = await response.text();
+  let data: Record<string, unknown> = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = { ok: false, error: text || `请求失败: ${response.status}` };
+  }
   if (!response.ok || data.ok === false) {
-    throw new Error(data.error || `请求失败: ${response.status}`);
+    throw new Error(typeof data.error === 'string' ? data.error : `请求失败: ${response.status}`);
   }
   return data as T;
 }

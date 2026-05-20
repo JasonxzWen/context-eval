@@ -44,6 +44,20 @@ When comparing variants, keep the task, repo ref, agent command, validation
 commands, trials, and cleanup policy aligned unless the change itself is the
 subject of the evaluation.
 
+## Compare Baseline
+
+The compare baseline is the variant used as the reference for a local
+task/agent/trial comparison. It is not a global winner, a default truth source,
+or a leaderboard anchor. In the local app it defaults to the `baseline` variant
+when present, otherwise the first available variant, and users can choose a
+different reference variant.
+
+For each task, agent, and trial group, context-eval compares the selected
+baseline against the other selected variants. The compare summary reports the
+baseline variant, the comparison variant, validation delta, hard-check delta,
+token delta when available, and any evidence gaps that make the comparison
+low-confidence.
+
 ## Correctness Layers
 
 The evaluation model has three layers:
@@ -82,6 +96,11 @@ forbidden snippets, simple diff-stat bounds, and agent completion. Checks read
 only local case artifacts such as `results.jsonl`, patches, touched paths,
 validation results, and retained workspaces.
 
+The hard score is the number of passed deterministic checks divided by the
+number of scoreable deterministic checks. Skipped checks do not enter the
+denominator. This is not a combined quality score and should not be added to
+validation confidence or manual review as a single overall score.
+
 When a hard check cannot be evaluated because a workspace was cleaned up and
 the patch does not contain enough evidence, the check is marked `skipped` with
 an explicit message instead of guessing.
@@ -95,6 +114,10 @@ evaluation summary, and artifact links.
 
 The first implementation does not call hosted model APIs, does not require
 provider keys, and does not make soft scores mandatory for pass/fail.
+
+Manual review is separate from soft payload generation. A saved manual review
+records the human reviewer's evidence, confidence, and notes; it is not an
+automatic score and does not prove absolute task correctness.
 
 ## Telemetry And Metrics
 
