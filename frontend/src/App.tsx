@@ -24,13 +24,16 @@ import {
 import type {
   BootstrapResponse,
   CaseDetailPayload,
+  CompareGroup,
   EditableAgent,
   EditableConfig,
   EditableTask,
   EditableVariant,
+  HardEvaluationPayload,
   LoadedConfig,
   LogPayload,
   ManualReview,
+  ResultCase,
   ResultsPayload,
   RunPlan,
   RunScope,
@@ -106,9 +109,95 @@ const confidenceLabels: Record<string, string> = {
   high: '高',
 };
 
+const compareVerdictLabels: Record<string, string> = {
+  comparison_improved: '对比对象改善',
+  comparison_regressed: '对比对象回退',
+  evidence_limited: '证据不足',
+  no_clear_change: '无明确变化',
+};
+
+const baselineStorageKey = 'context-eval.compareBaselineVariant';
+
 function labelFor(labels: Record<string, string>, value: string | undefined | null) {
   if (!value) return '未知';
   return labels[value] ?? value;
+}
+
+function storedBaselineVariant() {
+  if (typeof window === 'undefined') return '';
+  try {
+    return window.localStorage.getItem(baselineStorageKey) || '';
+  } catch {
+    return '';
+  }
+}
+
+function rememberBaselineVariant(value: string) {
+  if (typeof window === 'undefined') return;
+  try {
+    if (value) {
+      window.localStorage.setItem(baselineStorageKey, value);
+    } else {
+      window.localStorage.removeItem(baselineStorageKey);
+    }
+  } catch {
+    // localStorage can be unavailable in restricted browser contexts.
+  }
+}
+
+function signedDelta(value: number | null | undefined) {
+  if (value === null || value === undefined) return '-';
+  return value > 0 ? `+${value}` : String(value);
+}
+
+function resultVariants(results: ResultsPayload | null) {
+  return results?.available_baseline_variants?.length
+    ? results.available_baseline_variants
+    : Array.from(new Set((results?.cases || []).map((item) => item.variant))).sort();
+}
+
+function confidenceReason(value: string | undefined | null) {
+  if (value === 'high') return '已配置 validation commands，且全部通过。';
+  if (value === 'medium') return 'validation commands 存在，但至少一个失败或超时。';
+  if (value === 'low') return '没有可用 validation commands，不能给高置信判断。';
+  return '缺少可信度信息。';
+}
+
+function caseEvidenceNotes(result: ResultCase) {
+  const notes: { title: string; message: string; nextStep: string }[] = [];
+  if (result.validation_status === 'skipped') {
+    notes.push({
+      title: '无 validation',
+      message: '本用例没有运行项目验证命令，patch 和日志只能作为人工复核材料。',
+      nextStep: '为任务配置项目自己的测试或验证脚本后重新运行。',
+    });
+  }
+  if (result.hard_evaluation_status === 'skipped') {
+    notes.push({
+      title: 'hard check skipped',
+      message: '硬性检查缺少可评分本地产物，不能把缺失证据当作通过。',
+      nextStep: '保留工作区，或补充可从 patch 判断的 hard_evaluation 规则。',
+    });
+  }
+  if (result.hard_evaluation_status === 'not_configured') {
+    notes.push({
+      title: '未配置 hard evaluation',
+      message: '当前没有 deterministic hard checks，不能读成综合质量分。',
+      nextStep: '添加 required paths、snippet checks 或 command checks。',
+    });
+  }
+  if ((result.telemetry_status || 'unavailable') !== 'collected') {
+    notes.push({
+      title: 'telemetry missing',
+      message: result.telemetry_error || '没有结构化 telemetry，token、耗时和工具调用保持未知。',
+      nextStep: '确认 agent 是否写入本地 telemetry JSON；不要从日志猜测。',
+    });
+  }
+  return notes;
+}
+
+function hardEvaluationFrom(caseDetail: CaseDetailPayload | null): HardEvaluationPayload | null {
+  return caseDetail?.hard_evaluation || caseDetail?.case.hard_evaluation || null;
 }
 
 export function App() {
@@ -130,6 +219,7 @@ export function App() {
   const [run, setRun] = useState<RunStatus | null>(null);
   const [logs, setLogs] = useState<LogPayload | null>(null);
   const [results, setResults] = useState<ResultsPayload | null>(null);
+  const [compareBaselineVariant, setCompareBaselineVariant] = useState(storedBaselineVariant);
   const [selectedCaseId, setSelectedCaseId] = useState('');
   const [caseDetail, setCaseDetail] = useState<CaseDetailPayload | null>(null);
   const [reviewDraft, setReviewDraft] = useState<ManualReview>({
@@ -416,14 +506,28 @@ export function App() {
     }
   }
 
-  async function loadResults(runDir: string) {
-    const resultPayload = await apiRequest<ResultsPayload>(
-      `/api/results?run_dir=${encodeURIComponent(runDir)}`,
-    );
+  async function loadResults(runDir: string, baselineVariant = compareBaselineVariant) {
+    const params = new URLSearchParams({ run_dir: runDir });
+    if (baselineVariant) {
+      params.set('baseline_variant', baselineVariant);
+    }
+    const resultPayload = await apiRequest<ResultsPayload>(`/api/results?${params.toString()}`);
+    const resolvedBaseline = resultPayload.selected_baseline_variant || '';
+    setCompareBaselineVariant(resolvedBaseline);
+    rememberBaselineVariant(resolvedBaseline);
     setResults(resultPayload);
     if (selectedCaseId && !resultPayload.cases.some((item) => item.case_id === selectedCaseId)) {
       setSelectedCaseId('');
       setCaseDetail(null);
+    }
+  }
+
+  async function changeCompareBaseline(value: string) {
+    setError('');
+    setCompareBaselineVariant(value);
+    rememberBaselineVariant(value);
+    if (run?.run_dir) {
+      await loadResults(run.run_dir, value);
     }
   }
 
@@ -635,6 +739,12 @@ export function App() {
   const runBrief = configLoaded
     ? `用 ${agentSummary} 在 ${variantSummary} 上执行 ${runScope.task_ids.length} 个任务，预计 ${visibleCaseCount} 个评测用例。`
     : '先试用示例或打开一个本地 Git 项目。';
+  const availableBaselineVariants = resultVariants(results);
+  const selectedBaselineValue =
+    compareBaselineVariant || results?.selected_baseline_variant || availableBaselineVariants[0] || '';
+  const evaluationExplanation = results?.evaluation_explanation;
+  const detailHardEvaluation = hardEvaluationFrom(caseDetail);
+  const detailEvidenceNotes = caseDetail ? caseEvidenceNotes(caseDetail.case) : [];
 
   const isFirstRun = serverMode === 'connected' && workspaceState?.state === 'empty' && !configLoaded;
 
@@ -795,13 +905,70 @@ export function App() {
           </div>
           {results ? (
             <>
-              <div className="evaluation-guide" aria-label="评测指标说明">
-                <strong>如何判断效果</strong>
-                <ul>
-                  <li>验证命令：运行项目自己的测试或脚本，确认改动能否工作。</li>
-                  <li>硬性检查：检查文件、片段或命令输出，给出确定性的通过/失败。</li>
-                  <li>人工评审规则：给人工复核用的维度，不自动假装理解质量。</li>
-                  <li>遥测缺口：执行器没有提供耗时、token 或工具调用数据时保持为空，不猜测。</li>
+              <div className="evaluation-guide" aria-label="评分依据">
+                <div className="guide-heading">
+                  <strong>评分依据</strong>
+                  <span>{evaluationExplanation?.local_only || '仅基于本地产物观察，不是公开 benchmark 或 agent 排行。'}</span>
+                </div>
+                <div className="guide-grid">
+                  <article className="guide-card">
+                    <strong>Validation confidence</strong>
+                    <dl>
+                      <div>
+                        <dt>高</dt>
+                        <dd>
+                          {evaluationExplanation?.validation_confidence.high ||
+                            '配置了 validation commands，且验证通过。'}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>中</dt>
+                        <dd>
+                          {evaluationExplanation?.validation_confidence.medium ||
+                            '配置了 validation commands，但验证失败或超时。'}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>低</dt>
+                        <dd>
+                          {evaluationExplanation?.validation_confidence.low ||
+                            '没有 validation commands，不能做高置信判断。'}
+                        </dd>
+                      </div>
+                    </dl>
+                  </article>
+                  <article className="guide-card">
+                    <strong>Hard evaluation</strong>
+                    <p>
+                      {evaluationExplanation?.hard_evaluation.score_meaning ||
+                        'hard score 是通过检查数 / 可评分检查数，不是综合质量分。'}
+                    </p>
+                    <p>
+                      {evaluationExplanation?.hard_evaluation.skipped_meaning ||
+                        'skipped 表示本地产物不足，不能把缺失证据当作通过。'}
+                    </p>
+                  </article>
+                  <article className="guide-card">
+                    <strong>Soft evaluation</strong>
+                    <p>
+                      {evaluationExplanation?.soft_evaluation.meaning ||
+                        '当前只生成 payload-only 复核材料，不自动调用 OpenAI、Claude 或其他 LLM judge。'}
+                    </p>
+                  </article>
+                  <article className="guide-card">
+                    <strong>Manual review</strong>
+                    <p>
+                      {evaluationExplanation?.manual_review.meaning ||
+                        '人工复核保存的是 reviewer 的证据和结论，不是自动评分。'}
+                    </p>
+                  </article>
+                </div>
+                <ul className="evidence-limit-list">
+                  {(evaluationExplanation?.evidence_limits || [
+                    '无 validation、hard check skipped 或 telemetry missing 时，只能提示证据不足和下一步。',
+                  ]).map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
                 </ul>
               </div>
               <dl className="metric-grid">
@@ -822,42 +989,91 @@ export function App() {
                   <dd>{results.overview.telemetry_gap_count}</dd>
                 </div>
               </dl>
-              {(results.compare_groups || []).length > 0 && (
-                <section className="compare-summary" aria-label="baseline experiment compare">
+              {availableBaselineVariants.length > 0 && (
+                <section className="compare-summary" aria-label="对比摘要">
                   <div className="panel-heading compact-heading">
                     <h3>对比摘要</h3>
                     <span>{results.compare_groups?.length ?? 0}</span>
                   </div>
-                  <div className="compare-grid">
-                    {(results.compare_groups || []).map((group) => (
-                      <article className="compare-card" key={group.group_id}>
-                        <div>
-                          <strong>{group.verdict}</strong>
-                          <span>{group.summary}</span>
-                        </div>
-                        <dl>
-                          <div>
-                            <dt>任务</dt>
-                            <dd>{group.task_id}</dd>
-                          </div>
-                          <div>
-                            <dt>硬性差值</dt>
-                            <dd>{group.hard_delta > 0 ? `+${group.hard_delta}` : group.hard_delta}</dd>
-                          </div>
-                          <div>
-                            <dt>验证差值</dt>
-                            <dd>
-                              {group.validation_delta > 0 ? `+${group.validation_delta}` : group.validation_delta}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt>令牌差值</dt>
-                            <dd>{group.total_tokens_delta ?? '-'}</dd>
-                          </div>
-                        </dl>
-                      </article>
-                    ))}
+                  <div className="baseline-control">
+                    <label htmlFor="compare-baseline">
+                      比较基线
+                      <select
+                        id="compare-baseline"
+                        aria-label="比较基线"
+                        value={selectedBaselineValue}
+                        onChange={(event) => {
+                          const nextBaseline = event.target.value;
+                          void guarded(() => changeCompareBaseline(nextBaseline));
+                        }}
+                      >
+                        {availableBaselineVariants.map((variant) => (
+                          <option key={variant} value={variant}>
+                            {variant}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <p className="status-line">除当前基线外的上下文版本会与当前基线比较。</p>
                   </div>
+                  {results.baseline_selection_notice && (
+                    <div className="notice validation-notice">{results.baseline_selection_notice}</div>
+                  )}
+                  {(results.compare_groups || []).length > 0 ? (
+                    <div className="compare-grid">
+                      {(results.compare_groups || []).map((group: CompareGroup) => (
+                        <article className="compare-card" key={group.group_id}>
+                          <div className="compare-card-heading">
+                            <strong>{labelFor(compareVerdictLabels, group.verdict)}</strong>
+                            <span>{group.summary}</span>
+                          </div>
+                          <dl>
+                            <div>
+                              <dt>任务</dt>
+                              <dd>{group.task_id}</dd>
+                            </div>
+                            <div>
+                              <dt>比较基线</dt>
+                              <dd>{group.baseline_variant}</dd>
+                            </div>
+                            <div>
+                              <dt>对比对象</dt>
+                              <dd>{group.comparison_variant}</dd>
+                            </div>
+                            <div>
+                              <dt>Validation delta</dt>
+                              <dd>{signedDelta(group.validation_delta)}</dd>
+                            </div>
+                            <div>
+                              <dt>Hard check delta</dt>
+                              <dd>{signedDelta(group.hard_check_delta)}</dd>
+                            </div>
+                            <div>
+                              <dt>令牌差值</dt>
+                              <dd>{signedDelta(group.total_tokens_delta)}</dd>
+                            </div>
+                          </dl>
+                          <div className="evidence-gap-block">
+                            <strong>证据不足原因</strong>
+                            {group.evidence_gaps.length > 0 ? (
+                              <ul className="evidence-gap-list">
+                                {group.evidence_gaps.map((gap) => (
+                                  <li key={`${group.group_id}:${gap.code}:${gap.variant}`}>
+                                    <span>{gap.message}</span>
+                                    <small>{gap.next_step}</small>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <small>未发现影响本次比较的证据缺口。</small>
+                            )}
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="status-line">当前基线没有可对比对象，至少选择两个 variant 后会生成摘要。</p>
+                  )}
                 </section>
               )}
               <table>
@@ -867,65 +1083,77 @@ export function App() {
                     <th>执行器</th>
                     <th>状态</th>
                     <th>验证</th>
+                    <th>可信度</th>
                     <th>遥测</th>
                     <th>令牌</th>
                     <th>工具</th>
                     <th>硬性检查</th>
-                    <th>人工评审</th>
+                    <th>软性材料</th>
                     <th>复核</th>
                     <th>详情</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {results.cases.map((result) => (
-                    <tr key={result.case_id} className={selectedCaseId === result.case_id ? 'selected-row' : ''}>
-                      <td data-label="用例">
-                        {result.task_id}
-                        <small>{result.variant}</small>
-                      </td>
-                      <td data-label="执行器">{result.agent_name}</td>
-                      <td data-label="状态">{labelFor(resultStatusLabels, result.status)}</td>
-                      <td data-label="验证">{labelFor(validationLabels, result.validation_status)}</td>
-                      <td data-label="遥测">
-                        {labelFor(telemetryLabels, result.telemetry_status || 'unavailable')}
-                        {result.agent_duration_seconds != null && (
-                          <small>{result.agent_duration_seconds.toFixed(1)}s</small>
-                        )}
-                      </td>
-                      <td data-label="令牌">
-                        {result.total_tokens ?? '-'}
-                        {result.reasoning_tokens != null && <small>推理 {result.reasoning_tokens}</small>}
-                      </td>
-                      <td data-label="工具">
-                        {result.tool_call_count ?? '-'}
-                        {result.reasoning_step_count != null && <small>轮次 {result.reasoning_step_count}</small>}
-                      </td>
-                      <td data-label="硬性检查">
-                        {labelFor(evaluationLabels, result.hard_evaluation_status || 'not_configured')}{' '}
-                        {result.hard_evaluation_score ?? '-'}
-                        /
-                        {result.hard_evaluation_max_score ?? '-'}
-                      </td>
-                      <td data-label="人工评审">
-                        {labelFor(evaluationLabels, result.soft_evaluation_status || 'not_configured')}
-                      </td>
-                      <td data-label="复核">
-                        {labelFor(reviewDecisionLabels, result.manual_review?.decision || 'not_reviewed')}
-                        {result.manual_review?.confidence && (
-                          <small>{labelFor(confidenceLabels, result.manual_review.confidence)}</small>
-                        )}
-                      </td>
-                      <td data-label="详情">
-                        <button
-                          type="button"
-                          className="secondary compact-button"
-                          onClick={() => guarded(() => loadCaseDetail(result.case_id))}
-                        >
-                          查看详情
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {results.cases.map((result) => {
+                    const evidenceNotes = caseEvidenceNotes(result);
+                    return (
+                      <tr key={result.case_id} className={selectedCaseId === result.case_id ? 'selected-row' : ''}>
+                        <td data-label="用例">
+                          {result.task_id}
+                          <small>{result.variant}</small>
+                        </td>
+                        <td data-label="执行器">{result.agent_name}</td>
+                        <td data-label="状态">{labelFor(resultStatusLabels, result.status)}</td>
+                        <td data-label="验证">{labelFor(validationLabels, result.validation_status)}</td>
+                        <td data-label="可信度">
+                          {labelFor(confidenceLabels, result.confidence)}
+                          <small>{confidenceReason(result.confidence)}</small>
+                        </td>
+                        <td data-label="遥测">
+                          {labelFor(telemetryLabels, result.telemetry_status || 'unavailable')}
+                          {result.agent_duration_seconds != null && (
+                            <small>{result.agent_duration_seconds.toFixed(1)}s</small>
+                          )}
+                          {result.telemetry_error && <small>{result.telemetry_error}</small>}
+                        </td>
+                        <td data-label="令牌">
+                          {result.total_tokens ?? '-'}
+                          {result.reasoning_tokens != null && <small>推理 {result.reasoning_tokens}</small>}
+                        </td>
+                        <td data-label="工具">
+                          {result.tool_call_count ?? '-'}
+                          {result.reasoning_step_count != null && <small>轮次 {result.reasoning_step_count}</small>}
+                        </td>
+                        <td data-label="硬性检查">
+                          {labelFor(evaluationLabels, result.hard_evaluation_status || 'not_configured')}{' '}
+                          {result.hard_evaluation_score ?? '-'}
+                          /
+                          {result.hard_evaluation_max_score ?? '-'}
+                          <small>通过检查数 / 可评分检查数</small>
+                        </td>
+                        <td data-label="软性材料">
+                          {labelFor(evaluationLabels, result.soft_evaluation_status || 'not_configured')}
+                          {result.soft_evaluation_payload_path && <small>payload-only</small>}
+                        </td>
+                        <td data-label="复核">
+                          {labelFor(reviewDecisionLabels, result.manual_review?.decision || 'not_reviewed')}
+                          {result.manual_review?.confidence && (
+                            <small>{labelFor(confidenceLabels, result.manual_review.confidence)}</small>
+                          )}
+                        </td>
+                        <td data-label="详情">
+                          <button
+                            type="button"
+                            className="secondary compact-button"
+                            onClick={() => guarded(() => loadCaseDetail(result.case_id))}
+                          >
+                            查看详情
+                          </button>
+                          {evidenceNotes.length > 0 && <small>有证据不足解释</small>}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
               {caseDetail && (
@@ -949,11 +1177,33 @@ export function App() {
                         <dd>{labelFor(validationLabels, caseDetail.case.validation_status)}</dd>
                       </div>
                       <div>
+                        <dt>可信度</dt>
+                        <dd>
+                          {labelFor(confidenceLabels, caseDetail.case.confidence)}
+                          <small>{confidenceReason(caseDetail.case.confidence)}</small>
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>遥测</dt>
+                        <dd>
+                          {labelFor(telemetryLabels, caseDetail.case.telemetry_status || 'unavailable')}
+                          {caseDetail.case.telemetry_error && <small>{caseDetail.case.telemetry_error}</small>}
+                        </dd>
+                      </div>
+                      <div>
                         <dt>硬性检查</dt>
                         <dd>
                           {labelFor(evaluationLabels, caseDetail.case.hard_evaluation_status)}{' '}
                           {caseDetail.case.hard_evaluation_score ?? '-'}/
                           {caseDetail.case.hard_evaluation_max_score ?? '-'}
+                          <small>通过检查数 / 可评分检查数，不是综合质量分。</small>
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>软性材料</dt>
+                        <dd>
+                          {labelFor(evaluationLabels, caseDetail.case.soft_evaluation_status || 'not_configured')}
+                          {caseDetail.case.soft_evaluation_payload_path && <small>payload-only</small>}
                         </dd>
                       </div>
                     </dl>
@@ -1024,6 +1274,72 @@ export function App() {
                       </div>
                     </form>
                   </div>
+                  {detailEvidenceNotes.length > 0 && (
+                    <section className="evidence-note-panel" aria-label="证据不足解释">
+                      <h4>为什么不能高置信判断</h4>
+                      <div className="case-evidence-grid">
+                        {detailEvidenceNotes.map((note) => (
+                          <article key={note.title}>
+                            <strong>{note.title}</strong>
+                            <p>{note.message}</p>
+                            <small>{note.nextStep}</small>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+                  )}
+                  {detailHardEvaluation && (
+                    <section className="hard-detail-panel" aria-label="硬性检查明细">
+                      <div className="panel-heading compact-heading">
+                        <h4>硬性检查明细</h4>
+                        <span>
+                          {detailHardEvaluation.score ?? caseDetail.case.hard_evaluation_score ?? '-'}/
+                          {detailHardEvaluation.max_score ?? caseDetail.case.hard_evaluation_max_score ?? '-'}
+                        </span>
+                      </div>
+                      {detailHardEvaluation.error && <p className="status-line">{detailHardEvaluation.error}</p>}
+                      {detailHardEvaluation.summary && <p className="status-line">{detailHardEvaluation.summary}</p>}
+                      {(detailHardEvaluation.checks || []).length > 0 ? (
+                        <ul className="hard-check-list">
+                          {(detailHardEvaluation.checks || []).map((check) => (
+                            <li className="hard-check-row" key={`${check.name}:${check.status}:${check.message}`}>
+                              <strong>{check.name}</strong>
+                              <span>{labelFor(evaluationLabels, check.status)}</span>
+                              <small>{check.message}</small>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="status-line">没有单项检查明细。</p>
+                      )}
+                    </section>
+                  )}
+                  {(caseDetail.soft_evaluation || caseDetail.case.soft_evaluation_payload_path) && (
+                    <section className="soft-detail-panel" aria-label="软性复核材料">
+                      <h4>软性复核材料</h4>
+                      <p>
+                        这里展示的是 payload-only 材料位置，context-eval 不会自动调用 OpenAI、Claude 或其他 LLM judge。
+                      </p>
+                      <dl className="compact-list">
+                        <div>
+                          <dt>payload</dt>
+                          <dd>
+                            {caseDetail.soft_evaluation?.payload_path ||
+                              caseDetail.case.soft_evaluation_payload_path ||
+                              '-'}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>result</dt>
+                          <dd>
+                            {caseDetail.soft_evaluation?.result_path ||
+                              caseDetail.case.soft_evaluation_result_path ||
+                              '-'}
+                          </dd>
+                        </div>
+                      </dl>
+                    </section>
+                  )}
                   <div className="artifact-grid">
                     {caseDetail.patch && (
                       <article className="artifact-pane">

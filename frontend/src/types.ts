@@ -171,6 +171,30 @@ export type ManualReview = {
   updated_at?: string | null;
 };
 
+export type HardEvaluationCheck = {
+  name: string;
+  status: string;
+  message: string;
+  evidence?: Record<string, unknown>;
+};
+
+export type HardEvaluationPayload = {
+  status?: string;
+  path?: string | null;
+  error?: string;
+  passed?: boolean;
+  score?: number | null;
+  max_score?: number | null;
+  summary?: string;
+  checks?: HardEvaluationCheck[];
+};
+
+export type SoftEvaluationPayload = {
+  status: string;
+  payload_path?: string | null;
+  result_path?: string | null;
+};
+
 export type ResultCase = {
   case_id: string;
   agent_name: string;
@@ -180,6 +204,8 @@ export type ResultCase = {
   validation_status: string;
   confidence: string;
   telemetry_status?: string;
+  telemetry_source?: string;
+  telemetry_error?: string | null;
   agent_duration_seconds?: number | null;
   total_tokens?: number | null;
   reasoning_tokens?: number | null;
@@ -189,12 +215,66 @@ export type ResultCase = {
   hard_evaluation_status?: string;
   hard_evaluation_score?: number | null;
   hard_evaluation_max_score?: number | null;
+  hard_evaluation_passed_checks?: number | null;
+  hard_evaluation_failed_checks?: number | null;
+  hard_evaluation?: HardEvaluationPayload | null;
   soft_evaluation_status?: string;
   soft_evaluation_payload_path?: string | null;
+  soft_evaluation_result_path?: string | null;
+  soft_evaluation?: SoftEvaluationPayload | null;
   patch_path?: string | null;
   stdout_path?: string | null;
   stderr_path?: string | null;
   manual_review?: ManualReview;
+};
+
+export type EvaluationExplanation = {
+  local_only: string;
+  validation_confidence: {
+    high: string;
+    medium: string;
+    low: string;
+  };
+  hard_evaluation: {
+    score_meaning: string;
+    skipped_meaning: string;
+  };
+  soft_evaluation: {
+    mode: 'payload-only';
+    meaning: string;
+  };
+  manual_review: {
+    meaning: string;
+  };
+  evidence_limits: string[];
+};
+
+export type CompareEvidenceGap = {
+  code: string;
+  variant: string;
+  case_id?: string | null;
+  message: string;
+  next_step: string;
+};
+
+export type CompareGroup = {
+  group_id: string;
+  task_id: string;
+  agent_name: string;
+  trial_index: number;
+  baseline_variant: string;
+  comparison_variant: string;
+  baseline_case_id: string;
+  comparison_case_id: string;
+  verdict: string;
+  validation_delta: number;
+  hard_check_delta: number | null;
+  total_tokens_delta?: number | null;
+  summary: string;
+  evidence_gaps: CompareEvidenceGap[];
+  experiment_variant?: string;
+  experiment_case_id?: string;
+  hard_delta: number;
 };
 
 export type ResultsPayload = {
@@ -205,21 +285,11 @@ export type ResultsPayload = {
     low_confidence_count: number;
     telemetry_gap_count: number;
   };
-  compare_groups?: {
-    group_id: string;
-    task_id: string;
-    agent_name: string;
-    trial_index: number;
-    baseline_variant: string;
-    experiment_variant: string;
-    baseline_case_id: string;
-    experiment_case_id: string;
-    verdict: string;
-    hard_delta: number;
-    validation_delta: number;
-    total_tokens_delta?: number | null;
-    summary: string;
-  }[];
+  selected_baseline_variant?: string | null;
+  available_baseline_variants?: string[];
+  baseline_selection_notice?: string | null;
+  evaluation_explanation?: EvaluationExplanation;
+  compare_groups?: CompareGroup[];
   cases: ResultCase[];
 };
 
@@ -235,8 +305,8 @@ export type CaseDetailPayload = {
   patch?: ArtifactContent | null;
   prompt?: ArtifactContent | null;
   logs: (ArtifactContent & { kind: string })[];
-  hard_evaluation?: unknown;
-  soft_evaluation?: unknown;
+  hard_evaluation?: HardEvaluationPayload | null;
+  soft_evaluation?: SoftEvaluationPayload | null;
   manual_review: ManualReview;
 };
 

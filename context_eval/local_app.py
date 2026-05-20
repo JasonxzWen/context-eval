@@ -651,11 +651,20 @@ class LocalAppService:
             "files": files,
         }
 
-    def results(self, *, run_dir: str | Path) -> dict[str, Any]:
+    def results(
+        self,
+        *,
+        run_dir: str | Path,
+        baseline_variant: str | None = None,
+    ) -> dict[str, Any]:
         path = self.guard.resolve_workspace_path(run_dir, field="run_dir")
         results = _load_results(path)
         metadata = _load_metadata(path)
         manual_reviews = self._load_manual_reviews(path)
+        selected_baseline, baseline_notice = self._resolve_baseline_variant(
+            results,
+            baseline_variant,
+        )
         risks = {
             "failed": [
                 self._case_payload(result, run_dir=path, manual_reviews=manual_reviews)
@@ -687,7 +696,14 @@ class LocalAppService:
                 self._case_payload(result, run_dir=path, manual_reviews=manual_reviews)
                 for result in results
             ],
-            "compare_groups": self._compare_groups(results),
+            "available_baseline_variants": self._available_baseline_variants(results),
+            "selected_baseline_variant": selected_baseline,
+            "baseline_selection_notice": baseline_notice,
+            "evaluation_explanation": self._evaluation_explanation(),
+            "compare_groups": self._compare_groups(
+                results,
+                baseline_variant=selected_baseline,
+            ),
             "manual_reviews": {
                 "schema_version": MANUAL_REVIEW_SCHEMA_VERSION,
                 "reviews": manual_reviews,
@@ -1353,7 +1369,73 @@ class LocalAppService:
             "updated_at": updated_at,
         }
 
-    def _compare_groups(self, results: list[CaseResult]) -> list[dict[str, Any]]:
+    def _available_baseline_variants(self, results: list[CaseResult]) -> list[str]:
+        return sorted({result.variant for result in results})
+
+    def _resolve_baseline_variant(
+        self,
+        results: list[CaseResult],
+        requested: str | None,
+    ) -> tuple[str | None, str | None]:
+        variants = self._available_baseline_variants(results)
+        if not variants:
+            return None, None
+        if requested and requested in variants:
+            return requested, None
+        fallback = "baseline" if "baseline" in variants else variants[0]
+        if requested:
+            return (
+                fallback,
+                f"已清理不存在的比较基线 {requested}，改用 {fallback}。",
+            )
+        return fallback, None
+
+    def _evaluation_explanation(self) -> dict[str, Any]:
+        return {
+            "local_only": (
+                "结果只来自本地运行产物；context-eval 比较上下文版本，不生成公开基准、"
+                "绝对排名或 agent leaderboard。"
+            ),
+            "validation_confidence": {
+                "high": "已配置 validation commands，且全部通过。",
+                "medium": "已配置 validation commands，但至少一个失败或超时。",
+                "low": "没有可用 validation commands，补丁和日志只能作为人工复核材料。",
+            },
+            "hard_evaluation": {
+                "score_meaning": (
+                    "hard score 是通过检查数 / 可评分检查数；skipped 检查不进入分母，"
+                    "它不是综合质量分。"
+                ),
+                "skipped_meaning": (
+                    "hard check skipped 表示缺少可判断的本地产物，例如工作区已清理且补丁证据不足。"
+                ),
+            },
+            "soft_evaluation": {
+                "mode": "payload-only",
+                "meaning": (
+                    "soft evaluation 当前只生成复核 payload，不自动调用 OpenAI、"
+                    "Claude 或其他 LLM judge。"
+                ),
+            },
+            "manual_review": {
+                "meaning": "manual review 是人工复核证据，不是自动评分。"
+            },
+            "evidence_limits": [
+                "无 validation commands 时不能给高置信判断。",
+                "hard check skipped 时不能把缺失证据当作通过。",
+                "telemetry missing 时 token、耗时和工具调用保持空值，不从日志猜测。",
+                "validation 通过不等于任务绝对正确，仍需结合 patch、日志和人工复核。",
+            ],
+        }
+
+    def _compare_groups(
+        self,
+        results: list[CaseResult],
+        *,
+        baseline_variant: str | None = None,
+    ) -> list[dict[str, Any]]:
+        if baseline_variant is None:
+            return []
         grouped: dict[tuple[str, str, int], list[CaseResult]] = {}
         for result in results:
             grouped.setdefault(
@@ -1363,31 +1445,55 @@ class LocalAppService:
         compare_groups: list[dict[str, Any]] = []
         for (task_id, agent_name, trial_index), items in sorted(grouped.items()):
             by_variant = {item.variant: item for item in items}
-            baseline = by_variant.get("baseline")
-            experiment = by_variant.get("experiment")
-            if baseline is None or experiment is None:
+            baseline = by_variant.get(baseline_variant)
+            if baseline is None:
                 continue
-            validation_delta = self._validation_value(experiment) - self._validation_value(baseline)
-            hard_delta = self._hard_value(experiment) - self._hard_value(baseline)
-            token_delta = self._optional_delta(experiment.total_tokens, baseline.total_tokens)
-            verdict = self._compare_verdict(validation_delta, hard_delta)
-            compare_groups.append(
-                {
-                    "group_id": f"{task_id}__{agent_name}__trial-{trial_index}",
-                    "task_id": task_id,
-                    "agent_name": agent_name,
-                    "trial_index": trial_index,
-                    "baseline_variant": baseline.variant,
-                    "experiment_variant": experiment.variant,
-                    "baseline_case_id": baseline.case_id,
-                    "experiment_case_id": experiment.case_id,
-                    "verdict": verdict,
-                    "hard_delta": hard_delta,
-                    "validation_delta": validation_delta,
-                    "total_tokens_delta": token_delta,
-                    "summary": self._compare_summary(verdict, validation_delta, hard_delta),
-                }
-            )
+            for comparison in sorted(items, key=lambda item: item.variant):
+                if comparison.variant == baseline.variant:
+                    continue
+                validation_delta = self._validation_value(
+                    comparison
+                ) - self._validation_value(baseline)
+                hard_delta = self._hard_value(comparison) - self._hard_value(baseline)
+                hard_check_delta = self._hard_check_delta(comparison, baseline)
+                token_delta = self._optional_delta(comparison.total_tokens, baseline.total_tokens)
+                evidence_gaps = self._compare_evidence_gaps(baseline, comparison)
+                verdict = self._compare_verdict(
+                    validation_delta,
+                    hard_check_delta,
+                    hard_delta,
+                    evidence_gaps,
+                )
+                compare_groups.append(
+                    {
+                        "group_id": (
+                            f"{task_id}__{agent_name}__trial-{trial_index}"
+                            f"__{baseline.variant}__vs__{comparison.variant}"
+                        ),
+                        "task_id": task_id,
+                        "agent_name": agent_name,
+                        "trial_index": trial_index,
+                        "baseline_variant": baseline.variant,
+                        "comparison_variant": comparison.variant,
+                        "baseline_case_id": baseline.case_id,
+                        "comparison_case_id": comparison.case_id,
+                        "verdict": verdict,
+                        "hard_delta": hard_delta,
+                        "hard_check_delta": hard_check_delta,
+                        "validation_delta": validation_delta,
+                        "total_tokens_delta": token_delta,
+                        "summary": self._compare_summary(
+                            verdict,
+                            validation_delta,
+                            hard_check_delta,
+                            evidence_gaps,
+                        ),
+                        "evidence_gaps": evidence_gaps,
+                        # Backwards-compatible aliases for the earlier two-variant UI.
+                        "experiment_variant": comparison.variant,
+                        "experiment_case_id": comparison.case_id,
+                    }
+                )
         return compare_groups
 
     def _validation_value(self, result: CaseResult) -> int:
@@ -1401,21 +1507,157 @@ class LocalAppService:
             return None
         return experiment - baseline
 
-    def _compare_verdict(self, validation_delta: int, hard_delta: int) -> str:
-        if validation_delta > 0 or hard_delta > 0:
-            return "experiment_improved"
-        if validation_delta < 0 or hard_delta < 0:
-            return "experiment_regressed"
+    def _hard_check_delta(
+        self,
+        comparison: CaseResult,
+        baseline: CaseResult,
+    ) -> int | None:
+        if (
+            comparison.hard_evaluation_score is None
+            or baseline.hard_evaluation_score is None
+        ):
+            return None
+        return comparison.hard_evaluation_score - baseline.hard_evaluation_score
+
+    def _compare_verdict(
+        self,
+        validation_delta: int,
+        hard_check_delta: int | None,
+        hard_delta: int,
+        evidence_gaps: list[dict[str, Any]],
+    ) -> str:
+        if evidence_gaps:
+            return "evidence_limited"
+        if (
+            validation_delta > 0
+            or (hard_check_delta is not None and hard_check_delta > 0)
+            or hard_delta > 0
+        ):
+            return "comparison_improved"
+        if (
+            validation_delta < 0
+            or (hard_check_delta is not None and hard_check_delta < 0)
+            or hard_delta < 0
+        ):
+            return "comparison_regressed"
         return "no_clear_change"
 
-    def _compare_summary(self, verdict: str, validation_delta: int, hard_delta: int) -> str:
-        if verdict == "experiment_improved" and hard_delta > 0 and validation_delta == 0:
-            return "experiment improved hard evaluation without changing validation status"
-        if verdict == "experiment_improved":
-            return "experiment improved evaluation signals"
-        if verdict == "experiment_regressed":
-            return "experiment regressed on evaluation signals"
-        return "baseline and experiment produced no clear evaluation change"
+    def _compare_summary(
+        self,
+        verdict: str,
+        validation_delta: int,
+        hard_check_delta: int | None,
+        evidence_gaps: list[dict[str, Any]],
+    ) -> str:
+        if evidence_gaps:
+            return "证据不足，需先补齐 validation、hard check 或 telemetry 后再判断。"
+        if (
+            verdict == "comparison_improved"
+            and hard_check_delta is not None
+            and hard_check_delta > 0
+            and validation_delta == 0
+        ):
+            return "对比对象 hard checks 改善，validation 状态未变化。"
+        if verdict == "comparison_improved":
+            return "对比对象的本地评测信号更好。"
+        if verdict == "comparison_regressed":
+            return "对比对象的本地评测信号回退。"
+        return "比较基线与对比对象没有明确评测变化。"
+
+    def _compare_evidence_gaps(
+        self,
+        baseline: CaseResult,
+        comparison: CaseResult,
+    ) -> list[dict[str, Any]]:
+        gaps: list[dict[str, Any]] = []
+        gaps.extend(self._case_evidence_gaps(baseline, role="baseline"))
+        gaps.extend(self._case_evidence_gaps(comparison, role="comparison"))
+        if (
+            baseline.hard_evaluation_max_score is not None
+            and comparison.hard_evaluation_max_score is not None
+            and baseline.hard_evaluation_max_score != comparison.hard_evaluation_max_score
+        ):
+            gaps.append(
+                {
+                    "code": "hard_check_denominator_mismatch",
+                    "variant": comparison.variant,
+                    "case_id": comparison.case_id,
+                    "message": (
+                        "比较基线和对比对象的 hard score 分母不同，不能直接解读为同一组检查的差值。"
+                    ),
+                    "next_step": "确认两组 variant 使用相同 hard_evaluation 配置后再比较。",
+                }
+            )
+        return gaps
+
+    def _case_evidence_gaps(
+        self,
+        result: CaseResult,
+        *,
+        role: str,
+    ) -> list[dict[str, Any]]:
+        role_label = "比较基线" if role == "baseline" else "对比对象"
+        gaps: list[dict[str, Any]] = []
+        if result.validation_status == "skipped":
+            gaps.append(
+                {
+                    "code": f"{role}_validation_missing",
+                    "variant": result.variant,
+                    "case_id": result.case_id,
+                    "message": f"{role_label}没有 validation commands，本次不能给高置信判断。",
+                    "next_step": "为任务配置项目自己的测试或验证脚本后重新运行。",
+                }
+            )
+        if result.hard_evaluation_status == "skipped":
+            gaps.append(
+                {
+                    "code": f"{role}_hard_evaluation_skipped",
+                    "variant": result.variant,
+                    "case_id": result.case_id,
+                    "message": f"{role_label}的 hard check 被跳过，缺少可评分的确定性证据。",
+                    "next_step": (
+                        "保留工作区或补充可从 patch 判断的 hard_evaluation 规则后重新运行。"
+                    ),
+                }
+            )
+        elif result.hard_evaluation_status == "not_configured":
+            gaps.append(
+                {
+                    "code": f"{role}_hard_evaluation_missing",
+                    "variant": result.variant,
+                    "case_id": result.case_id,
+                    "message": f"{role_label}未配置 hard evaluation。",
+                    "next_step": "添加 required paths、snippet checks 或 command checks。",
+                }
+            )
+        elif result.hard_evaluation_score is None or result.hard_evaluation_max_score is None:
+            gaps.append(
+                {
+                    "code": f"{role}_hard_score_missing",
+                    "variant": result.variant,
+                    "case_id": result.case_id,
+                    "message": f"{role_label}缺少 hard score 分子或分母。",
+                    "next_step": "检查 hard_evaluation.json 是否存在并可读取。",
+                }
+            )
+        if has_telemetry_gap(result):
+            telemetry_detail = (
+                f"：{result.telemetry_error}"
+                if result.telemetry_error
+                else ""
+            )
+            gaps.append(
+                {
+                    "code": f"{role}_telemetry_missing",
+                    "variant": result.variant,
+                    "case_id": result.case_id,
+                    "message": f"{role_label}缺少结构化 telemetry{telemetry_detail}。",
+                    "next_step": (
+                        "确认 agent 是否写入本地 telemetry JSON；不要从日志猜测 token 或工具调用。"
+                    ),
+                }
+            )
+        return gaps
 
     def _hard_evaluation_payload(
         self,
@@ -1555,7 +1797,12 @@ class _LocalAppHandler(BaseHTTPRequestHandler):
             self._send_json(service.run_logs(logs_match.group(1)))
             return
         if path == "/api/results":
-            self._send_json(service.results(run_dir=self._query_one(query, "run_dir")))
+            self._send_json(
+                service.results(
+                    run_dir=self._query_one(query, "run_dir"),
+                    baseline_variant=self._query_optional(query, "baseline_variant"),
+                )
+            )
             return
         if path == "/api/case-detail":
             self._send_json(
@@ -1685,6 +1932,12 @@ class _LocalAppHandler(BaseHTTPRequestHandler):
         values = query.get(key)
         if not values or values[0] == "":
             raise LocalAppError(f"missing query parameter: {key}")
+        return values[0]
+
+    def _query_optional(self, query: dict[str, list[str]], key: str) -> str | None:
+        values = query.get(key)
+        if not values or values[0] == "":
+            return None
         return values[0]
 
     def _serve_static(self, path: str) -> None:

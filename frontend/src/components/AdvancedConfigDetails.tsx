@@ -104,10 +104,23 @@ export function AdvancedConfigDetails({
             </label>
           </div>
           <div className="button-row">
-            <button type="button" onClick={onLoadConfig}>
+            <button
+              type="button"
+              className="secondary"
+              aria-label="加载配置"
+              title="加载配置"
+              onClick={onLoadConfig}
+            >
               加载配置
             </button>
-            <button type="button" onClick={onSaveConfig} disabled={serverMode !== 'connected'}>
+            <button
+              type="button"
+              className="secondary"
+              aria-label="保存并重载"
+              title="保存并重载"
+              onClick={onSaveConfig}
+              disabled={serverMode !== 'connected'}
+            >
               保存并重载
             </button>
           </div>

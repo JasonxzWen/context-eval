@@ -75,6 +75,7 @@ def export_run_json(run_dir: Path, *, exported_at: datetime | None = None) -> st
             "run_id": metadata.get("run_id") or (results[0].run_id if results else run_dir.name),
             "metadata": metadata,
         },
+        "evaluation_explanation": _evaluation_explanation(),
         "cases": [_case_json_row(result, manual_reviews=manual_reviews) for result in results],
         "manual_reviews": {
             "schema_version": "1",
@@ -100,6 +101,39 @@ def _source_files(run_dir: Path) -> list[str]:
     if (run_dir / "manual_reviews.json").exists():
         source_files.append("manual_reviews.json")
     return source_files
+
+
+def _evaluation_explanation() -> dict[str, Any]:
+    return {
+        "local_only": (
+            "仅比较本地 artifact 中的观察结果，不是公开 benchmark、绝对排名或 agent "
+            "leaderboard。"
+        ),
+        "validation_confidence": {
+            "high": "有 validation commands 且全部通过。",
+            "medium": "有 validation commands 但失败或超时。",
+            "low": "没有 validation commands，不能做高置信判断。",
+        },
+        "hard_evaluation": {
+            "score_meaning": "hard score 是通过检查数 / 可评分检查数，不是综合质量分。",
+            "skipped_meaning": "skipped 表示缺少可评分本地产物，不能把缺失证据当作通过。",
+        },
+        "soft_evaluation": {
+            "mode": "payload-only",
+            "meaning": (
+                "soft evaluation 目前只生成复核 payload，不自动调用 OpenAI、Claude 或其他 "
+                "LLM judge。"
+            ),
+        },
+        "manual_review": {
+            "meaning": "manual review 是人工保存的复核证据和结论，不是自动评分。",
+        },
+        "evidence_limits": [
+            "无 validation commands 时不能给高置信判断。",
+            "hard check skipped 表示缺少可评分证据。",
+            "telemetry missing 时 token、耗时和工具调用保持未知，不猜测。",
+        ],
+    }
 
 
 def agent_summary_rows(results: list[CaseResult]) -> list[dict[str, Any]]:
