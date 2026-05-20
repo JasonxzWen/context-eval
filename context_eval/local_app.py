@@ -941,7 +941,7 @@ class LocalAppService:
                         ),
                         "acceptance_points": [
                             "验证脚本确认问候语已经更新。",
-                            "实验上下文版本包含 context-eval-demo 证据。",
+                            "实验上下文方案包含 context-eval-demo 证据。",
                         ],
                         "files": [
                             {
@@ -1393,13 +1393,13 @@ class LocalAppService:
     def _evaluation_explanation(self) -> dict[str, Any]:
         return {
             "local_only": (
-                "结果只来自本地运行产物；context-eval 比较上下文版本，不生成公开基准、"
+                "结果只来自本地运行产物；context-eval 比较上下文方案，不生成公开基准、"
                 "绝对排名或 agent leaderboard。"
             ),
             "validation_confidence": {
                 "high": "已配置 validation commands，且全部通过。",
                 "medium": "已配置 validation commands，但至少一个失败或超时。",
-                "low": "没有可用 validation commands，补丁和日志只能作为人工复核材料。",
+                "low": "没有可用 validation commands，补丁和日志只能作为人工反馈材料。",
             },
             "hard_evaluation": {
                 "score_meaning": (
@@ -1418,13 +1418,13 @@ class LocalAppService:
                 ),
             },
             "manual_review": {
-                "meaning": "manual review 是人工复核证据，不是自动评分。"
+                "meaning": "manual review 是人工反馈证据，不是自动评分。"
             },
             "evidence_limits": [
                 "无 validation commands 时不能给高置信判断。",
                 "hard check skipped 时不能把缺失证据当作通过。",
                 "telemetry missing 时 token、耗时和工具调用保持空值，不从日志猜测。",
-                "validation 通过不等于任务绝对正确，仍需结合 patch、日志和人工复核。",
+                "validation 通过不等于任务绝对正确，仍需结合 patch、日志和人工反馈。",
             ],
         }
 

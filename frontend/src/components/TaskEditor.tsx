@@ -7,6 +7,7 @@ import type {
   SoftEvaluation,
   SoftRubricItem,
 } from '../types';
+import { HelpTip } from './HelpTip';
 
 type TaskEditorProps = {
   tasks: EditableTask[];
@@ -89,12 +90,12 @@ export function TaskEditor({
     return (
       <section className="panel task-editor-panel">
         <div className="panel-heading">
-          <h2>评测任务编辑器</h2>
-          <span>0 个任务</span>
+          <h2>测试用例</h2>
+          <span>0 个用例</span>
         </div>
-        <p className="status-line">当前配置没有评测任务。新建一个任务后再保存。</p>
+        <p className="status-line">当前配置没有测试用例。新建一个用例后再保存。</p>
         <button type="button" onClick={onAddTask}>
-          新建任务
+          新建测试用例
         </button>
       </section>
     );
@@ -127,14 +128,18 @@ export function TaskEditor({
   const rubric = soft.rubric || [];
 
   return (
-    <section className="panel task-editor-panel" aria-label="评测任务编辑器">
+    <section className="panel task-editor-panel" aria-label="测试用例配置">
       <div className="panel-heading">
-        <h2>评测任务编辑器</h2>
-        <span>{tasks.length} 个任务</span>
+        <h2>测试用例</h2>
+        <span>{tasks.length} 个用例</span>
       </div>
+      <p className="panel-note">
+        一个测试用例会在每个选中的上下文方案下重复执行，用来观察不同 `AGENTS.md` 和 skills
+        对同一个 coding agent 任务的影响。
+      </p>
 
       <div className="task-editor-layout">
-        <aside className="task-rail" aria-label="任务列表">
+        <aside className="task-rail" aria-label="测试用例列表">
           {tasks.map((item, index) => (
             <button
               type="button"
@@ -175,7 +180,10 @@ export function TaskEditor({
             <legend>核心信息</legend>
             <div className="form-grid">
               <label htmlFor="task-id">
-                任务 ID
+                <span className="label-with-help">
+                  用例 ID
+                  <HelpTip text="稳定的本地标识，用于结果文件名和导出。建议使用英文、数字和短横线。" />
+                </span>
                 <input
                   id="task-id"
                   value={task.id}
@@ -183,7 +191,10 @@ export function TaskEditor({
                 />
               </label>
               <label htmlFor="task-title">
-                标题
+                <span className="label-with-help">
+                  用例标题
+                  <HelpTip text="给人看的短标题，方便在结果列表里快速识别这个测试用例。" />
+                </span>
                 <input
                   id="task-title"
                   value={task.title || ''}
@@ -204,7 +215,10 @@ export function TaskEditor({
               />
             </div>
             <label htmlFor="task-prompt">
-              任务说明
+              <span className="label-with-help">
+                任务说明
+                <HelpTip text="会交给 coding agent 的任务描述。请写清目标、限制和验收重点，不要写评测工具内部操作。" />
+              </span>
               <textarea
                 id="task-prompt"
                 aria-label="任务说明"
@@ -215,7 +229,10 @@ export function TaskEditor({
           </fieldset>
 
           <fieldset>
-            <legend>适用的上下文版本</legend>
+            <legend>适用的上下文方案</legend>
+            <p className="field-help">
+              保存后可在“本次运行”里选择实际要跑的方案；同一个用例会在这些方案之间对比。
+            </p>
             <div className="variant-chip-row">
               {variants.map((variant) => (
                 <span className="variant-chip" key={variant.name}>
@@ -223,14 +240,17 @@ export function TaskEditor({
                   {variant.description && <small>{variant.description}</small>}
                 </span>
               ))}
-              {variants.length === 0 && <span className="status-line">未配置上下文版本</span>}
+              {variants.length === 0 && <span className="status-line">未配置上下文方案</span>}
             </div>
           </fieldset>
 
           <fieldset>
             <legend>期望结果</legend>
             <label htmlFor="expected-summary">
-              期望结果摘要
+              <span className="label-with-help">
+                期望结果摘要
+                <HelpTip text="一句话说明什么样的结果算达成目标。它会出现在执行计划和结果列表里。" />
+              </span>
               <textarea
                 id="expected-summary"
                 aria-label="期望结果摘要"
@@ -242,6 +262,7 @@ export function TaskEditor({
               title="验收点"
               values={acceptancePoints}
               placeholder="例如：验证脚本确认问候语已经更新"
+              helpText="给人工反馈使用的逐条检查项。验证通过不代表任务绝对正确，仍应结合这些验收点复核。"
               onChange={(values) => updateExpected({ acceptance_points: values })}
             />
             <ExpectedFileEditor
@@ -251,19 +272,24 @@ export function TaskEditor({
           </fieldset>
 
           <fieldset>
-            <legend>验证命令</legend>
-            <p className="field-help">运行结束后执行项目自己的测试或脚本，用来确认改动是否真的可用。</p>
+            <legend>自动验收命令</legend>
+            <p className="field-help">
+              运行结束后执行项目自己的测试或脚本，用来确认改动是否真的可用。通过只表示这些命令通过。
+            </p>
             <ListEditor
               title="命令"
               values={validationCommands}
               placeholder="python -m pytest"
+              helpText="建议使用项目已有的单测、构建或校验脚本。命令在本地运行，不会调用远程 judge。"
               onChange={(values) => updateTask({ validation_commands: values })}
             />
           </fieldset>
 
           <fieldset>
             <legend>硬性检查</legend>
-            <p className="field-help">确定性检查文件、片段或命令输出；失败时会直接降低本次评测可信度。</p>
+            <p className="field-help">
+              确定性检查文件、片段或命令输出；失败时会直接降低本次评测可信度，但它不是综合质量分。
+            </p>
             <label className="checkbox-label" htmlFor="hard-enabled">
               <input
                 id="hard-enabled"
@@ -289,8 +315,10 @@ export function TaskEditor({
           </fieldset>
 
           <fieldset>
-            <legend>人工评审规则</legend>
-            <p className="field-help">给人工复核或后续软性评分使用，不会替代验证命令和硬性检查。</p>
+            <legend>人工反馈规则</legend>
+            <p className="field-help">
+              给人工反馈或后续可选软性评分使用，不会替代验证命令和硬性检查，也不会自动调用 LLM judge。
+            </p>
             <RubricEditor items={rubric} onChange={(items) => updateSoft({ rubric: items })} />
           </fieldset>
 
@@ -304,7 +332,7 @@ export function TaskEditor({
 
           <div className="button-row editor-actions">
             <button type="submit" disabled={serverMode !== 'connected'}>
-              保存任务
+              保存测试用例
             </button>
             <span className="status-line" data-testid="task-save-status">
               {saveStatus}
@@ -320,14 +348,18 @@ type ListEditorProps = {
   title: string;
   values: string[];
   placeholder: string;
+  helpText?: string;
   onChange: (values: string[]) => void;
 };
 
-function ListEditor({ title, values, placeholder, onChange }: ListEditorProps) {
+function ListEditor({ title, values, placeholder, helpText, onChange }: ListEditorProps) {
   return (
     <div className="list-editor">
       <div className="subsection-heading">
-        <strong>{title}</strong>
+        <strong className="label-with-help">
+          {title}
+          {helpText && <HelpTip text={helpText} />}
+        </strong>
         <button type="button" className="secondary compact-button" onClick={() => onChange([...values, ''])}>
           添加
         </button>
@@ -398,7 +430,10 @@ function ExpectedFileEditor({ files, onChange }: ExpectedFileEditorProps) {
   return (
     <div className="list-editor">
       <div className="subsection-heading">
-        <strong>期望变更文件</strong>
+        <strong className="label-with-help">
+          期望变更文件
+          <HelpTip text="用于提示哪些文件应该被新增、修改或删除。它帮助人工反馈，不会单独证明任务正确。" />
+        </strong>
         <button
           type="button"
           className="secondary compact-button"
@@ -468,7 +503,10 @@ function CommandCheckEditor({ checks, onChange }: CommandCheckEditorProps) {
   return (
     <div className="list-editor">
       <div className="subsection-heading">
-        <strong>命令检查</strong>
+        <strong className="label-with-help">
+          命令检查
+          <HelpTip text="更细的确定性检查：运行命令并匹配期望输出，适合补充自动验收命令覆盖不到的证据。" />
+        </strong>
         <button
           type="button"
           className="secondary compact-button"
@@ -532,7 +570,10 @@ function RubricEditor({ items, onChange }: RubricEditorProps) {
   return (
     <div className="list-editor">
       <div className="subsection-heading">
-        <strong>评分规则</strong>
+        <strong className="label-with-help">
+          反馈维度
+          <HelpTip text="给人工反馈或未来可选 soft judge 的维度说明；默认不自动评分，也不进入综合排名。" />
+        </strong>
         <button
           type="button"
           className="secondary compact-button"

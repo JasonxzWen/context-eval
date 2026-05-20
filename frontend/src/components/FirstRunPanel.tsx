@@ -21,7 +21,7 @@ export function FirstRunPanel({
         <article className="setup-option">
           <div>
             <strong>试用示例</strong>
-            <p>创建一个本地演示仓库、两组上下文版本、一个假执行器和可对比的硬性检查结果。</p>
+            <p>创建一个本地演示仓库、两组上下文方案、一个假执行器和可对比的硬性检查结果。</p>
           </div>
           <button type="button" onClick={onBootstrapDemo}>
             试用示例
@@ -30,7 +30,7 @@ export function FirstRunPanel({
         <article className="setup-option">
           <div>
             <strong>打开真实项目</strong>
-            <p>从已有 Git 仓库生成评测工作区，然后继续配置执行器、上下文版本和任务。</p>
+            <p>从已有 Git 仓库生成评测工作区，然后继续配置执行器、上下文方案和测试用例。</p>
           </div>
           <label htmlFor="project-repo-path">
             项目路径

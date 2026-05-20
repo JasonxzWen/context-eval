@@ -67,6 +67,10 @@ documented in `docs/frontend-workflow.md`. Maintainers should run
 `python scripts\validate-frontend.py --install --install-browsers` when working
 on the local app frontend.
 
+The designer-facing usability contract for configuring test cases, comparing
+`AGENTS.md`/`skills` context schemes, and saving manual feedback is documented
+in `docs/designer-usability.md`.
+
 ## Launcher Packaging
 
 The first launcher packaging step stays inside the existing Python package. It

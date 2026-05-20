@@ -199,7 +199,7 @@ function caseEvidenceNotes(result: ResultCase) {
   if (result.validation_status === 'skipped') {
     notes.push({
       title: '无 validation',
-      message: '本用例没有运行项目验证命令，patch 和日志只能作为人工复核材料。',
+      message: '本用例没有运行项目验证命令，patch 和日志只能作为人工反馈材料。',
       nextStep: '为任务配置项目自己的测试或验证脚本后重新运行。',
     });
   }
@@ -232,6 +232,34 @@ function caseEvidenceNotes(result: ResultCase) {
     });
   });
   return notes;
+}
+
+function DesignerGuide() {
+  return (
+    <section className="designer-guide" aria-label="策划工作流说明">
+      <div className="designer-guide-intro">
+        <strong>用于比较上下文质量</strong>
+        <span>
+          同一批测试用例会在不同上下文方案下运行，依据本地产物、执行指标和人工反馈判断哪套
+          `AGENTS.md`/skills 更适合任务。这里不是公开 benchmark，也不是 agent 排行榜。
+        </span>
+      </div>
+      <ol className="designer-guide-steps">
+        <li>
+          <strong>1. 配测试用例</strong>
+          <span>写清任务说明、期望结果、验收点和自动验收命令。</span>
+        </li>
+        <li>
+          <strong>2. 选上下文方案</strong>
+          <span>主要比较 AGENTS.md 工作说明和 skills 技能包。</span>
+        </li>
+        <li>
+          <strong>3. 做人工反馈</strong>
+          <span>查看 patch、日志、验证结果和证据缺口，再保存人工反馈。</span>
+        </li>
+      </ol>
+    </section>
+  );
 }
 
 function hardEvaluationFrom(caseDetail: CaseDetailPayload | null): HardEvaluationPayload | null {
@@ -432,7 +460,7 @@ export function App() {
     const duplicate = {
       ...structuredClone(source),
       id: uniqueTaskId(`${source.id || 'task'}-copy`, loaded.editable.tasks),
-      title: source.title ? `${source.title} 副本` : '复制的评测任务',
+      title: source.title ? `${source.title} 副本` : '复制的测试用例',
     };
     updateEditable((editable) => ({ ...editable, tasks: [...editable.tasks, duplicate] }));
     setSelectedTaskIndex(loaded.editable.tasks.length);
@@ -503,7 +531,7 @@ export function App() {
     } else {
       await loadConfig(payload.config_path || 'context-eval.yaml');
     }
-    setSaveStatus('真实项目配置已创建，请检查执行器命令和评测任务');
+    setSaveStatus('真实项目配置已创建，请检查执行器命令和测试用例');
   }
 
   async function runPreflight() {
@@ -597,7 +625,7 @@ export function App() {
     setReviewDraft(payload.review);
     await loadResults(run.run_dir);
     await loadCaseDetail(selectedCaseId);
-    setReviewStatus('复核已保存');
+    setReviewStatus('人工反馈已保存');
   }
 
   async function refreshRunStatus(appRunId: string) {
@@ -611,7 +639,7 @@ export function App() {
     setError('');
     const scope = runScopeRef.current;
     if (scope.task_ids.length === 0 || scope.variants.length === 0 || scope.agents.length === 0) {
-      throw new Error('请至少选择一个任务、上下文版本和执行器');
+      throw new Error('请至少选择一个测试用例、上下文方案和执行器');
     }
     setResults(null);
     setSelectedCaseId('');
@@ -772,10 +800,10 @@ export function App() {
         ? '自动'
         : preflightStatus;
   const taskTitle = task?.title || task?.id || '未配置任务';
-  const variantSummary = runScope.variants.join(' vs ') || '未选择上下文版本';
+  const variantSummary = runScope.variants.join(' vs ') || '未选择上下文方案';
   const agentSummary = runScope.agents.join(', ') || cocoAgent?.name || '未配置执行器';
   const runBrief = configLoaded
-    ? `用 ${agentSummary} 在 ${variantSummary} 上执行 ${runScope.task_ids.length} 个任务，预计 ${visibleCaseCount} 个评测用例。`
+    ? `用 ${agentSummary} 在 ${variantSummary} 上执行 ${runScope.task_ids.length} 个测试用例，预计 ${visibleCaseCount} 个评测用例。`
     : '先试用示例或打开一个本地 Git 项目。';
   const availableBaselineVariants = resultVariants(results);
   const selectedBaselineValue =
@@ -809,6 +837,8 @@ export function App() {
           ['结果', results ? '已加载' : '本地'],
         ]}
       />
+
+      <DesignerGuide />
 
       {isFirstRun && (
         <FirstRunPanel
@@ -868,7 +898,7 @@ export function App() {
           onAddTask={addTask}
           onDuplicateTask={duplicateTask}
           onDeleteTask={deleteTask}
-          onSave={() => guarded(() => saveEditableConfig('已保存任务并刷新执行计划'))}
+          onSave={() => guarded(() => saveEditableConfig('已保存测试用例并刷新执行计划'))}
         />
         <AdvancedConfigDetails
           agents={agents}
@@ -945,12 +975,12 @@ export function App() {
             <>
               <div className="evaluation-guide" aria-label="评分依据">
                 <div className="guide-heading">
-                  <strong>评分依据</strong>
+                  <strong>评分依据和边界</strong>
                   <span>{evaluationExplanation?.local_only || '仅基于本地产物观察，不是公开 benchmark 或 agent 排行。'}</span>
                 </div>
                 <div className="guide-grid">
                   <article className="guide-card">
-                    <strong>Validation confidence</strong>
+                    <strong>验证可信度</strong>
                     <dl>
                       <div>
                         <dt>高</dt>
@@ -976,7 +1006,7 @@ export function App() {
                     </dl>
                   </article>
                   <article className="guide-card">
-                    <strong>Hard evaluation</strong>
+                    <strong>硬性检查</strong>
                     <p>
                       {evaluationExplanation?.hard_evaluation.score_meaning ||
                         'hard score 是通过检查数 / 可评分检查数，不是综合质量分。'}
@@ -987,17 +1017,17 @@ export function App() {
                     </p>
                   </article>
                   <article className="guide-card">
-                    <strong>Soft evaluation</strong>
+                    <strong>复核材料</strong>
                     <p>
                       {evaluationExplanation?.soft_evaluation.meaning ||
                         '当前只生成 payload-only 复核材料，不自动调用 OpenAI、Claude 或其他 LLM judge。'}
                     </p>
                   </article>
                   <article className="guide-card">
-                    <strong>Manual review</strong>
+                    <strong>人工反馈</strong>
                     <p>
                       {evaluationExplanation?.manual_review.meaning ||
-                        '人工复核保存的是 reviewer 的证据和结论，不是自动评分。'}
+                        '人工反馈保存的是 reviewer 的证据和结论，不是自动评分。'}
                     </p>
                   </article>
                 </div>
@@ -1052,7 +1082,7 @@ export function App() {
                         ))}
                       </select>
                     </label>
-                    <p className="status-line">除当前基线外的上下文版本会与当前基线比较。</p>
+                    <p className="status-line">除当前基线外的上下文方案会与当前基线比较。</p>
                   </div>
                   {results.baseline_selection_notice && (
                     <div className="notice validation-notice">{results.baseline_selection_notice}</div>
@@ -1254,11 +1284,17 @@ export function App() {
                         guarded(saveManualReview);
                       }}
                     >
+                      <div className="review-form-heading">
+                        <strong>人工反馈</strong>
+                        <span>
+                          请根据期望结果、自动验收、patch 和日志记录结论；这是一条人工证据，不会替代硬指标。
+                        </span>
+                      </div>
                       <label htmlFor="review-decision">
-                        复核结论
+                        反馈结论
                         <select
                           id="review-decision"
-                          aria-label="复核结论"
+                          aria-label="反馈结论"
                           value={reviewDraft.decision}
                           onChange={(event) =>
                             setReviewDraft((current) => ({ ...current, decision: event.target.value }))
@@ -1271,10 +1307,10 @@ export function App() {
                         </select>
                       </label>
                       <label htmlFor="review-confidence">
-                        可信度
+                        反馈可信度
                         <select
                           id="review-confidence"
-                          aria-label="复核可信度"
+                          aria-label="反馈可信度"
                           value={reviewDraft.confidence}
                           onChange={(event) =>
                             setReviewDraft((current) => ({ ...current, confidence: event.target.value }))
@@ -1287,10 +1323,10 @@ export function App() {
                         </select>
                       </label>
                       <label htmlFor="reviewer">
-                        复核人
+                        反馈人
                         <input
                           id="reviewer"
-                          aria-label="复核人"
+                          aria-label="反馈人"
                           value={reviewDraft.reviewer}
                           onChange={(event) =>
                             setReviewDraft((current) => ({ ...current, reviewer: event.target.value }))
@@ -1298,10 +1334,11 @@ export function App() {
                         />
                       </label>
                       <label htmlFor="review-notes">
-                        备注
+                        反馈备注
                         <textarea
                           id="review-notes"
-                          aria-label="复核备注"
+                          aria-label="反馈备注"
+                          placeholder="建议记录：是否满足期望结果；你查看了哪些补丁、日志或验证证据；仍需谁复核。"
                           value={reviewDraft.notes}
                           onChange={(event) =>
                             setReviewDraft((current) => ({ ...current, notes: event.target.value }))
@@ -1309,7 +1346,7 @@ export function App() {
                         />
                       </label>
                       <div className="button-row">
-                        <button type="submit">保存复核</button>
+                        <button type="submit">保存人工反馈</button>
                         {reviewStatus && <span className="status-line">{reviewStatus}</span>}
                       </div>
                     </form>
