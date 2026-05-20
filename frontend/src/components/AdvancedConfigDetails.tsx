@@ -149,14 +149,14 @@ export function AdvancedConfigDetails({
 
         <section className="panel">
           <div className="panel-heading">
-            <h2>上下文版本</h2>
+            <h2>上下文方案</h2>
           </div>
           <ul className="two-column-list single-list">
             {loaded.editable.variants.map((variant) => (
               <li key={variant.name}>
                 <strong>{variant.name}</strong>
                 <span>{variant.description || '未描述'}</span>
-                <small>{variant.overlays.length} 个覆盖文件</small>
+                <small>{variant.overlays.length} 个上下文资料</small>
               </li>
             ))}
           </ul>
@@ -164,7 +164,7 @@ export function AdvancedConfigDetails({
 
         <section className="panel">
           <div className="panel-heading">
-            <h2>任务</h2>
+            <h2>测试用例</h2>
             <span>{loaded.editable.tasks.length}</span>
           </div>
           <ul className="two-column-list single-list">
@@ -225,7 +225,7 @@ export function AdvancedConfigDetails({
 
         <section className="panel">
           <div className="panel-heading">
-            <h2>人工评审规则</h2>
+            <h2>人工反馈规则</h2>
             <span>{labelFor(softModeLabels, task?.soft_evaluation?.mode)}</span>
           </div>
           <ul className="check-list">

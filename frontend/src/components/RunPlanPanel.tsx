@@ -31,11 +31,11 @@ export function RunPlanPanel({
           <dd>{runScope.agents.length || agents.length}</dd>
         </div>
         <div>
-          <dt>任务</dt>
+          <dt>测试用例</dt>
           <dd>{runScope.task_ids.length || taskCount}</dd>
         </div>
         <div>
-          <dt>上下文版本</dt>
+          <dt>上下文方案</dt>
           <dd>{runScope.variants.length || variants.length}</dd>
         </div>
         <div>
@@ -44,7 +44,7 @@ export function RunPlanPanel({
         </div>
       </dl>
       <p className="panel-note">
-        预计用例数 = 任务 × 上下文版本 × 执行器 × 轮次。这里用于确认本次会花多少执行成本。
+        预计用例数 = 测试用例 × 上下文方案 × 执行器 × 轮次。这里用于确认本次会花多少执行成本。
       </p>
       <ul className="check-list">
         {(plan?.cases || []).slice(0, 4).map((caseItem) => (
@@ -53,7 +53,7 @@ export function RunPlanPanel({
             <span>{caseItem.expected_outcome_summary || '未配置期望结果摘要'}</span>
             <small>
               {caseItem.hard_evaluation_enabled ? '硬性检查开启' : '硬性检查关闭'} /{' '}
-              {caseItem.soft_evaluation_enabled ? '人工评审规则已配置' : '未配置人工评审规则'}
+              {caseItem.soft_evaluation_enabled ? '人工反馈规则已配置' : '未配置人工反馈规则'}
             </small>
           </li>
         ))}

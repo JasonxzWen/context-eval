@@ -79,6 +79,38 @@ def test_local_app_workflow_spec_documents_full_visual_workflow() -> None:
         "GET /api/exports",
         "loopback",
         "does not add a hosted service",
+        "docs/designer-usability.md",
+    ]:
+        assert term in text
+
+
+def test_designer_usability_spec_documents_planner_workflow() -> None:
+    text = Path("docs/designer-usability.md").read_text(encoding="utf-8")
+
+    for heading in [
+        "## Product Purpose",
+        "## User Scope",
+        "## Terminology",
+        "## UI Requirements",
+        "## Acceptance Criteria",
+    ]:
+        assert heading in text
+
+    for term in [
+        "context package, not the agent brand",
+        "测试用例",
+        "上下文方案",
+        "人工反馈",
+        "`AGENTS.md`",
+        "`skills`",
+        "Agent 工作说明",
+        "技能包",
+        "local-only and artifact-based",
+        "not a public benchmark",
+        "not an agent leaderboard",
+        "no automatic OpenAI, Claude, or other LLM judge",
+        "validation passing means configured checks passed",
+        "AI arbitration is optional soft evidence",
     ]:
         assert term in text
 

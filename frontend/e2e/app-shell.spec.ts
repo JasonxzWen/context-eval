@@ -264,26 +264,26 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
     await expect(page.getByLabel('仓库路径')).toHaveValue('./demo-repo');
 
     await expect(page.locator('.run-brief-panel')).toContainText('baseline vs experiment');
-    await expect(page.getByRole('heading', { name: '评测任务编辑器' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '测试用例' })).toBeVisible();
     await expect(page.getByRole('radiogroup', { name: '任务分类' })).toBeVisible();
     await expect(page.getByRole('radio', { name: '缺陷修复' })).toHaveAttribute('aria-checked', 'true');
     await expect(page.getByRole('radio', { name: '简单' })).toHaveAttribute('aria-checked', 'true');
     await page.getByLabel('期望结果摘要').fill('Visual editor saved summary.');
-    await page.getByRole('button', { name: '保存任务' }).click();
-    await expect(page.getByTestId('task-save-status')).toContainText('已保存任务并刷新执行计划');
+    await page.getByRole('button', { name: '保存测试用例' }).click();
+    await expect(page.getByTestId('task-save-status')).toContainText('已保存测试用例并刷新执行计划');
     await expect(page.locator('.matrix-panel')).toContainText('Visual editor saved summary.');
 
-    await page.getByLabel('选择上下文版本 experiment').click();
-    await page.getByLabel('版本说明').fill('Edited experiment instructions');
+    await page.getByLabel('选择上下文方案 experiment').click();
+    await page.getByLabel('方案说明').fill('Edited experiment instructions');
     await page.getByLabel('执行器超时分钟').fill('3');
     await page.getByRole('button', { name: '保存执行器配置' }).click();
     await expect(page.getByTestId('agent-save-status')).toContainText('已保存配置并刷新执行计划');
     await expect(page.getByLabel('执行器超时分钟')).toHaveValue('3');
-    await page.getByRole('button', { name: '保存上下文版本' }).click();
+    await page.getByRole('button', { name: '保存上下文方案' }).click();
     await expect(page.getByTestId('variant-save-status')).toContainText('已保存配置并刷新执行计划');
-    await expect(page.getByLabel('版本说明')).toHaveValue('Edited experiment instructions');
+    await expect(page.getByLabel('方案说明')).toHaveValue('Edited experiment instructions');
 
-    await page.getByRole('checkbox', { name: '上下文版本 baseline' }).uncheck();
+    await page.getByRole('checkbox', { name: '上下文方案 baseline' }).uncheck();
     await page.getByRole('button', { name: '刷新执行计划' }).click();
     await expect(page.getByTestId('planned-case-count')).toHaveText('1');
 
@@ -300,12 +300,12 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
     await expect(page.locator('.case-detail-panel')).toContainText('experiment');
     await expect(page.locator('.artifact-pane').first()).toBeVisible();
 
-    await page.getByLabel('复核结论').selectOption('pass');
-    await page.getByLabel('复核可信度').selectOption('high');
-    await page.getByLabel('复核人').fill('manual');
-    await page.getByLabel('复核备注').fill('Experiment result accepted.');
+    await page.getByLabel('反馈结论').selectOption('pass');
+    await page.getByLabel('反馈可信度').selectOption('high');
+    await page.getByLabel('反馈人').fill('manual');
+    await page.getByLabel('反馈备注').fill('Experiment result accepted.');
     await page.locator('.review-form button[type="submit"]').click();
-    await expect(page.locator('.review-form .status-line')).toContainText('复核');
+    await expect(page.locator('.review-form .status-line')).toContainText('人工反馈');
 
     await page.getByRole('button', { name: /JSON/ }).click();
     await expect(page.getByTestId('export-output')).toContainText('"manual_reviews"');
@@ -335,7 +335,7 @@ test('empty workspace can open a real local project and surfaces bad project pat
 
     await page.getByLabel('项目路径').fill(fixture);
     await page.getByRole('button', { name: '创建工作区' }).click();
-    await expect(page.getByRole('heading', { name: '评测任务编辑器' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '测试用例' })).toBeVisible();
     await page.getByText('配置与任务细节').click();
     await expect(page.getByLabel('仓库路径')).toHaveValue(toPosix(fixture));
     await expect(page.getByLabel('配置路径')).toHaveValue(/context-eval\.yaml$/);
@@ -357,25 +357,25 @@ test('structured editors copy, delete, save, and reject unsafe overlay paths', a
   try {
     await page.goto(server.url);
     await page.getByRole('button', { name: '试用示例' }).click();
-    await expect(page.getByRole('heading', { name: '评测任务编辑器' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '测试用例' })).toBeVisible();
 
-    const variantPanel = page.getByLabel('上下文版本配置');
+    const variantPanel = page.getByLabel('上下文方案配置');
     await variantPanel.getByRole('button', { name: '复制' }).click();
-    await expect(variantPanel.getByLabel('版本名称')).toHaveValue('baseline-copy');
-    await variantPanel.getByLabel('覆盖文件目标路径 1').fill('../AGENTS.md');
-    await variantPanel.getByRole('button', { name: '保存上下文版本' }).click();
+    await expect(variantPanel.getByLabel('方案名称')).toHaveValue('baseline-copy');
+    await variantPanel.getByLabel('上下文资料目标路径 1').fill('../AGENTS.md');
+    await variantPanel.getByRole('button', { name: '保存上下文方案' }).click();
     const unsafeTargetError =
       '错误: export blocked: variant 3 overlay 1 target must be a safe relative path';
     await expect(page.getByText(unsafeTargetError)).toBeVisible();
 
-    await variantPanel.getByLabel('覆盖文件目标路径 1').fill('docs/AGENTS.md');
-    await variantPanel.getByRole('button', { name: '保存上下文版本' }).click();
+    await variantPanel.getByLabel('上下文资料目标路径 1').fill('docs/AGENTS.md');
+    await variantPanel.getByRole('button', { name: '保存上下文方案' }).click();
     await expect(page.getByTestId('variant-save-status')).toContainText('已保存配置并刷新执行计划');
     await expect(page.getByText(unsafeTargetError)).toHaveCount(0);
 
     page.once('dialog', (dialog) => dialog.accept());
-    await variantPanel.getByLabel('上下文版本列表').getByRole('button', { name: '删除' }).click();
-    await expect(variantPanel.getByLabel('版本名称')).toHaveValue('experiment');
+    await variantPanel.getByLabel('上下文方案列表').getByRole('button', { name: '删除' }).click();
+    await expect(variantPanel.getByLabel('方案名称')).toHaveValue('experiment');
 
     const agentPanel = page.getByLabel('执行器配置');
     await agentPanel.getByRole('button', { name: '复制' }).click();
@@ -418,7 +418,7 @@ test('renders the fixture-backed Coco hybrid shell', async ({ page }) => {
   await expect(page.getByRole('heading', { name: '执行器', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: '期望结果' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '硬性检查' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: '人工评审规则' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '人工反馈规则' })).toBeVisible();
   await expect(page.getByRole('button', { name: '加载配置' })).toBeVisible();
   await expect(page.getByRole('button', { name: '保存并重载' })).toBeVisible();
 
@@ -776,7 +776,7 @@ test('explains scoring gaps, baseline changes, and API errors in results UI', as
   await page.getByRole('button', { name: '开始运行' }).click();
   await expect(page.getByTestId('run-status')).toContainText('已完成');
   await expect(page.getByText('结果已生成')).toBeVisible();
-  await expect(page.getByLabel('评分依据')).toContainText('Validation confidence');
+  await expect(page.getByLabel('评分依据')).toContainText('验证可信度');
   await expect(page.getByLabel('评分依据')).toContainText('通过检查数 / 可评分检查数');
   await expect(page.getByLabel('评分依据')).toContainText('payload-only');
   await expect(page.getByLabel('比较基线')).toHaveValue('baseline');
@@ -794,8 +794,8 @@ test('explains scoring gaps, baseline changes, and API errors in results UI', as
   await expect(page.getByText('workspace missing and patch evidence was insufficient')).toBeVisible();
   await expect(page.getByLabel('软性复核材料')).toContainText('payload-only');
 
-  await page.getByLabel('复核人').fill('manual');
-  await page.getByRole('button', { name: '保存复核' }).click();
+  await page.getByLabel('反馈人').fill('manual');
+  await page.getByRole('button', { name: '保存人工反馈' }).click();
   await expect(page.getByText('错误: manual review write failed: disk full')).toBeVisible();
 
   const hasHorizontalOverflow = await page.evaluate(
@@ -988,7 +988,7 @@ test('completes the local server workflow with fake Coco and hybrid evaluation',
     await expect(page.getByTestId('run-status')).toContainText('已完成', { timeout: 60000 });
     await expect(page.getByText('结果已生成')).toBeVisible();
 
-    await expect(page.getByLabel('评分依据')).toContainText('Validation confidence');
+    await expect(page.getByLabel('评分依据')).toContainText('验证可信度');
     await expect(page.getByLabel('评分依据')).toContainText('通过检查数 / 可评分检查数');
     const baselineRow = page.locator('tbody tr', { hasText: 'baseline' }).first();
     await expect(baselineRow).toContainText('通过 3/3');

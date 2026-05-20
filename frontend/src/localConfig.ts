@@ -171,12 +171,12 @@ export function validateEditableConfig(editable: EditableConfig) {
     ...new Set(variantNames.filter((name, index) => name && variantNames.indexOf(name) !== index)),
   ];
   editable.variants.forEach((variant, index) => {
-    const label = `第 ${index + 1} 个上下文版本`;
+    const label = `第 ${index + 1} 个上下文方案`;
     if (!variant.name.trim()) {
       issues.push(`${label}名称不能为空`);
     }
     variant.overlays.forEach((overlay, overlayIndex) => {
-      const overlayLabel = `${label}的第 ${overlayIndex + 1} 个覆盖文件`;
+      const overlayLabel = `${label}的第 ${overlayIndex + 1} 个上下文资料`;
       if (!overlay.source.trim()) {
         issues.push(`${overlayLabel}来源路径不能为空`);
       }
@@ -185,7 +185,7 @@ export function validateEditableConfig(editable: EditableConfig) {
       }
     });
   });
-  duplicateVariants.forEach((name) => issues.push(`上下文版本名称重复: ${name}`));
+  duplicateVariants.forEach((name) => issues.push(`上下文方案名称重复: ${name}`));
 
   const agentProfiles =
     editable.agent_shape === 'agents'
@@ -215,7 +215,7 @@ export function validateEditableConfig(editable: EditableConfig) {
   const ids = editable.tasks.map((task) => task.id.trim());
   const duplicates = [...new Set(ids.filter((id, index) => id && ids.indexOf(id) !== index))];
   editable.tasks.forEach((task, index) => {
-    const label = task.id.trim() || `第 ${index + 1} 个任务`;
+    const label = task.id.trim() || `第 ${index + 1} 个测试用例`;
     if (!task.id.trim()) {
       issues.push(`${label}: 任务 ID 不能为空`);
     }
@@ -261,7 +261,7 @@ export function uniqueTaskId(base: string, tasks: EditableTask[]) {
 export function blankTask(tasks: EditableTask[]): EditableTask {
   return {
     id: uniqueTaskId('new-task', tasks),
-    title: '新的评测任务',
+    title: '新的测试用例',
     prompt: '',
     category: 'bugfix',
     difficulty: 'easy',
