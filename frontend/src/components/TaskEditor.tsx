@@ -130,13 +130,10 @@ export function TaskEditor({
   return (
     <section className="panel task-editor-panel" aria-label="测试用例配置">
       <div className="panel-heading">
-        <h2>测试用例</h2>
+        <h2>1 配测试用例</h2>
         <span>{tasks.length} 个用例</span>
       </div>
-      <p className="panel-note">
-        一个测试用例会在每个选中的上下文方案下重复执行，用来观察不同 `AGENTS.md` 和 skills
-        对同一个 coding agent 任务的影响。
-      </p>
+      <p className="panel-note">写清任务、成功标准和自动验收命令。</p>
 
       <div className="task-editor-layout">
         <aside className="task-rail" aria-label="测试用例列表">
@@ -177,19 +174,8 @@ export function TaskEditor({
           }}
         >
           <fieldset>
-            <legend>核心信息</legend>
-            <div className="form-grid">
-              <label htmlFor="task-id">
-                <span className="label-with-help">
-                  用例 ID
-                  <HelpTip text="稳定的本地标识，用于结果文件名和导出。建议使用英文、数字和短横线。" />
-                </span>
-                <input
-                  id="task-id"
-                  value={task.id}
-                  onChange={(event) => updateTask({ id: event.target.value })}
-                />
-              </label>
+            <legend>任务</legend>
+            <div className="form-grid simplified-grid">
               <label htmlFor="task-title">
                 <span className="label-with-help">
                   用例标题
@@ -201,18 +187,6 @@ export function TaskEditor({
                   onChange={(event) => updateTask({ title: event.target.value })}
                 />
               </label>
-              <SegmentedField
-                label="任务分类"
-                value={task.category || ''}
-                options={categoryOptions}
-                onChange={(value) => updateTask({ category: value })}
-              />
-              <SegmentedField
-                label="难度"
-                value={task.difficulty || ''}
-                options={difficultyOptions}
-                onChange={(value) => updateTask({ difficulty: value })}
-              />
             </div>
             <label htmlFor="task-prompt">
               <span className="label-with-help">
@@ -226,22 +200,6 @@ export function TaskEditor({
                 onChange={(event) => updateTask({ prompt: event.target.value })}
               />
             </label>
-          </fieldset>
-
-          <fieldset>
-            <legend>适用的上下文方案</legend>
-            <p className="field-help">
-              保存后可在“本次运行”里选择实际要跑的方案；同一个用例会在这些方案之间对比。
-            </p>
-            <div className="variant-chip-row">
-              {variants.map((variant) => (
-                <span className="variant-chip" key={variant.name}>
-                  <strong>{variant.name}</strong>
-                  {variant.description && <small>{variant.description}</small>}
-                </span>
-              ))}
-              {variants.length === 0 && <span className="status-line">未配置上下文方案</span>}
-            </div>
           </fieldset>
 
           <fieldset>
@@ -265,10 +223,6 @@ export function TaskEditor({
               helpText="给人工反馈使用的逐条检查项。验证通过不代表任务绝对正确，仍应结合这些验收点复核。"
               onChange={(values) => updateExpected({ acceptance_points: values })}
             />
-            <ExpectedFileEditor
-              files={expectedFiles}
-              onChange={(files) => updateExpected({ files })}
-            />
           </fieldset>
 
           <fieldset>
@@ -285,42 +239,92 @@ export function TaskEditor({
             />
           </fieldset>
 
-          <fieldset>
-            <legend>硬性检查</legend>
-            <p className="field-help">
-              确定性检查文件、片段或命令输出；失败时会直接降低本次评测可信度，但它不是综合质量分。
-            </p>
-            <label className="checkbox-label" htmlFor="hard-enabled">
-              <input
-                id="hard-enabled"
-                type="checkbox"
-                checked={hard.enabled}
-                onChange={(event) => updateHard({ enabled: event.target.checked })}
+          <details className="advanced-inline">
+            <summary>高级验收设置</summary>
+            <fieldset>
+              <legend>用例属性</legend>
+              <div className="form-grid">
+                <label htmlFor="task-id">
+                  <span className="label-with-help">
+                    用例 ID
+                    <HelpTip text="稳定的本地标识，用于结果文件名和导出。建议使用英文、数字和短横线。" />
+                  </span>
+                  <input
+                    id="task-id"
+                    value={task.id}
+                    onChange={(event) => updateTask({ id: event.target.value })}
+                  />
+                </label>
+                <SegmentedField
+                  label="任务分类"
+                  value={task.category || ''}
+                  options={categoryOptions}
+                  onChange={(value) => updateTask({ category: value })}
+                />
+                <SegmentedField
+                  label="难度"
+                  value={task.difficulty || ''}
+                  options={difficultyOptions}
+                  onChange={(value) => updateTask({ difficulty: value })}
+                />
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>适用的上下文方案</legend>
+              <p className="field-help">实际运行范围在“本次运行”里选择。</p>
+              <div className="variant-chip-row">
+                {variants.map((variant) => (
+                  <span className="variant-chip" key={variant.name}>
+                    <strong>{variant.name}</strong>
+                    {variant.description && <small>{variant.description}</small>}
+                  </span>
+                ))}
+                {variants.length === 0 && <span className="status-line">未配置上下文方案</span>}
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>期望变更文件</legend>
+              <ExpectedFileEditor
+                files={expectedFiles}
+                onChange={(files) => updateExpected({ files })}
               />
-              启用硬性检查
-            </label>
-            <label className="checkbox-label" htmlFor="require-validation-pass">
-              <input
-                id="require-validation-pass"
-                type="checkbox"
-                checked={Boolean(hard.require_validation_pass)}
-                onChange={(event) => updateHard({ require_validation_pass: event.target.checked })}
+            </fieldset>
+            <fieldset>
+              <legend>硬性检查</legend>
+              <p className="field-help">
+                确定性检查文件、片段或命令输出；失败时会降低可信度，但它不是综合质量分。
+              </p>
+              <label className="checkbox-label" htmlFor="hard-enabled">
+                <input
+                  id="hard-enabled"
+                  type="checkbox"
+                  checked={hard.enabled}
+                  onChange={(event) => updateHard({ enabled: event.target.checked })}
+                />
+                启用硬性检查
+              </label>
+              <label className="checkbox-label" htmlFor="require-validation-pass">
+                <input
+                  id="require-validation-pass"
+                  type="checkbox"
+                  checked={Boolean(hard.require_validation_pass)}
+                  onChange={(event) => updateHard({ require_validation_pass: event.target.checked })}
+                />
+                要求验证命令通过
+              </label>
+              <CommandCheckEditor
+                checks={commandChecks}
+                onChange={(checks) => updateHard({ command_checks: checks })}
               />
-              要求验证命令通过
-            </label>
-            <CommandCheckEditor
-              checks={commandChecks}
-              onChange={(checks) => updateHard({ command_checks: checks })}
-            />
-          </fieldset>
-
-          <fieldset>
-            <legend>人工反馈规则</legend>
-            <p className="field-help">
-              给人工反馈或后续可选软性评分使用，不会替代验证命令和硬性检查，也不会自动调用 LLM judge。
-            </p>
-            <RubricEditor items={rubric} onChange={(items) => updateSoft({ rubric: items })} />
-          </fieldset>
+            </fieldset>
+            <fieldset>
+              <legend>人工反馈规则</legend>
+              <p className="field-help">
+                给人工反馈或后续可选软性评分使用；默认不自动调用 LLM judge。
+              </p>
+              <RubricEditor items={rubric} onChange={(items) => updateSoft({ rubric: items })} />
+            </fieldset>
+          </details>
 
           {validationErrors.length > 0 && (
             <div className="notice validation-notice" role="alert">

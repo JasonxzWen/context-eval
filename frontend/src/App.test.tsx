@@ -114,12 +114,16 @@ describe('App workflow shell', () => {
     expect(screen.getByTestId('local-app-shell')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'context-eval 本地工作台' })).toBeVisible();
     await waitFor(() => expect(screen.getAllByText('示例模式').length).toBeGreaterThan(0));
-    expect(screen.getByText('用于比较上下文质量')).toBeVisible();
+    expect(screen.getByText(/用同一批测试用例/)).toBeVisible();
     expect(screen.getByText(/不是公开 benchmark/)).toBeVisible();
-    expect(screen.getAllByRole('heading', { name: '测试用例' }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('heading', { name: '上下文方案' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('1 配测试用例').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('2 配上下文方案').length).toBeGreaterThan(0);
+    expect(screen.getByText('3 看结果并反馈')).toBeVisible();
+    expect(screen.getAllByRole('heading', { name: '1 配测试用例' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('heading', { name: '2 配上下文方案' }).length).toBeGreaterThan(0);
     expect(screen.getByText(/AGENTS\.md 工作说明和 skills 技能包/)).toBeVisible();
     expect(screen.getByTestId('matrix-count')).toHaveTextContent('8');
+    fireEvent.click(screen.getByText('高级验收设置'));
     fireEvent.click(screen.getByText('配置与任务细节'));
     expect(screen.getByRole('heading', { name: '执行器' })).toBeVisible();
     expect(screen.getByRole('heading', { name: '期望结果' })).toBeVisible();
@@ -280,10 +284,15 @@ describe('App workflow shell', () => {
     render(<App />);
 
     await waitFor(() => expect(screen.getByLabelText('任务说明')).toHaveValue('Fix it.'));
-    expect(screen.getByRole('radiogroup', { name: '任务分类' })).toBeVisible();
-    expect(screen.getByRole('radio', { name: '运行时' })).toHaveAttribute('aria-checked', 'true');
-    expect(screen.getByRole('radiogroup', { name: '难度' })).toBeVisible();
-    expect(screen.getByRole('radio', { name: '简单' })).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(screen.getByText('高级验收设置'));
+    expect(screen.getAllByRole('radiogroup', { name: '任务分类' }).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole('radio', { name: '运行时' }).some((node) => node.getAttribute('aria-checked') === 'true'),
+    ).toBe(true);
+    expect(screen.getAllByRole('radiogroup', { name: '难度' }).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole('radio', { name: '简单' }).some((node) => node.getAttribute('aria-checked') === 'true'),
+    ).toBe(true);
     fireEvent.change(screen.getByLabelText('任务说明'), {
       target: { value: 'Use the visual editor prompt.' },
     });
@@ -408,6 +417,7 @@ describe('App workflow shell', () => {
     fireEvent.change(screen.getByLabelText('上下文资料来源路径 1'), {
       target: { value: './contexts/edited/AGENTS.md' },
     });
+    fireEvent.click(screen.getByText('执行器设置'));
     fireEvent.change(screen.getByLabelText('执行器命令模板'), {
       target: { value: 'coco -y --query-timeout 5m -p "{prompt_file}"' },
     });
@@ -479,6 +489,7 @@ describe('App workflow shell', () => {
     await waitFor(() => expect(screen.getByLabelText('方案名称')).toHaveValue('baseline'));
     fireEvent.change(screen.getByLabelText('方案名称'), { target: { value: ' ' } });
     fireEvent.change(screen.getByLabelText('上下文资料来源路径 1'), { target: { value: ' ' } });
+    fireEvent.click(screen.getByText('执行器设置'));
     fireEvent.change(screen.getByLabelText('执行器命令模板'), { target: { value: ' ' } });
     fireEvent.change(screen.getByLabelText('执行器超时分钟'), { target: { value: '0' } });
     await waitFor(() => expect(screen.getByLabelText('方案名称')).toHaveValue(' '));
@@ -935,8 +946,6 @@ describe('App workflow shell', () => {
     expect(screen.getByText('结果已生成')).toBeVisible();
     expect(screen.getByRole('button', { name: '查看结果' })).toBeVisible();
     expect(screen.getByText('已生成待复核材料')).toBeVisible();
-    expect(screen.getByText('27')).toBeVisible();
-    expect(screen.getByText('轮次 2')).toBeVisible();
     expect(screen.getByText('评分依据和边界')).toBeVisible();
     expect(screen.getByText('soft evaluation 只生成 payload-only 复核材料，不自动调用 LLM judge。')).toBeVisible();
     expect(screen.getByLabelText('比较基线')).toHaveValue('baseline');
@@ -956,8 +965,10 @@ describe('App workflow shell', () => {
     expect(screen.getByText(/context-eval marker/)).toBeVisible();
     expect(screen.getByRole('heading', { name: '硬性检查明细' })).toBeVisible();
     expect(screen.getByText('found expected marker')).toBeVisible();
-    expect(screen.getByTestId('codex-usage-panel')).toBeVisible();
+    expect(screen.getByTestId('codex-usage-panel')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('执行指标详情'));
     expect(screen.getByRole('heading', { name: 'Codex 使用画像' })).toBeVisible();
+    expect(screen.getByText('27')).toBeVisible();
     expect(screen.getByText('输入 20')).toBeVisible();
     expect(screen.getByText('缓存 5')).toBeVisible();
     expect(screen.getByText('输出 7')).toBeVisible();
