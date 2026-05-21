@@ -171,12 +171,12 @@ export function validateEditableConfig(editable: EditableConfig) {
     ...new Set(variantNames.filter((name, index) => name && variantNames.indexOf(name) !== index)),
   ];
   editable.variants.forEach((variant, index) => {
-    const label = `第 ${index + 1} 个上下文方案`;
+    const label = `第 ${index + 1} 个资料包`;
     if (!variant.name.trim()) {
       issues.push(`${label}名称不能为空`);
     }
     variant.overlays.forEach((overlay, overlayIndex) => {
-      const overlayLabel = `${label}的第 ${overlayIndex + 1} 个上下文资料`;
+      const overlayLabel = `${label}的第 ${overlayIndex + 1} 份资料`;
       if (!overlay.source.trim()) {
         issues.push(`${overlayLabel}来源路径不能为空`);
       }
@@ -185,7 +185,7 @@ export function validateEditableConfig(editable: EditableConfig) {
       }
     });
   });
-  duplicateVariants.forEach((name) => issues.push(`上下文方案名称重复: ${name}`));
+  duplicateVariants.forEach((name) => issues.push(`资料包名称重复: ${name}`));
 
   const agentProfiles =
     editable.agent_shape === 'agents'
@@ -220,7 +220,7 @@ export function validateEditableConfig(editable: EditableConfig) {
       issues.push(`${label}: 任务 ID 不能为空`);
     }
     if (!task.prompt.trim()) {
-      issues.push(`${label}: 给 AI 的任务提示词不能为空`);
+      issues.push(`${label}: AI 要做什么不能为空`);
     }
     task.validation_commands.forEach((command, commandIndex) => {
       if (!command.trim()) {

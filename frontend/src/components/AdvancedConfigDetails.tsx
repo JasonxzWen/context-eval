@@ -73,7 +73,7 @@ export function AdvancedConfigDetails({
     <details className="advanced-workbench">
       <summary>
         <span>配置与任务细节</span>
-        <small>执行器、上下文、验收标准和 YAML</small>
+        <small>执行器、资料包、验收标准和 YAML</small>
       </summary>
       <div className="advanced-grid">
         <section className="panel project-panel">
@@ -149,14 +149,14 @@ export function AdvancedConfigDetails({
 
         <section className="panel">
           <div className="panel-heading">
-            <h2>上下文方案</h2>
+            <h2>资料包</h2>
           </div>
           <ul className="two-column-list single-list">
             {loaded.editable.variants.map((variant) => (
               <li key={variant.name}>
                 <strong>{variant.name}</strong>
                 <span>{variant.description || '未描述'}</span>
-                <small>{variant.overlays.length} 个上下文资料</small>
+                <small>{variant.overlays.length} 份资料</small>
               </li>
             ))}
           </ul>
@@ -225,7 +225,7 @@ export function AdvancedConfigDetails({
 
         <section className="panel">
           <div className="panel-heading">
-            <h2>AI 仲裁与人工反馈维度</h2>
+            <h2>AI 仲裁维度</h2>
             <span>{labelFor(softModeLabels, task?.soft_evaluation?.mode)}</span>
           </div>
           <ul className="check-list">

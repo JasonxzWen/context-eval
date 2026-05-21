@@ -35,7 +35,7 @@ export function RunPlanPanel({
           <dd>{runScope.task_ids.length || taskCount}</dd>
         </div>
         <div>
-          <dt>上下文方案</dt>
+          <dt>资料包</dt>
           <dd>{runScope.variants.length || variants.length}</dd>
         </div>
         <div>
@@ -44,7 +44,7 @@ export function RunPlanPanel({
         </div>
       </dl>
       <p className="panel-note">
-        预计用例数 = 测试用例 × 上下文方案 × 执行器 × 轮次。这里用于确认本次会花多少执行成本。
+        预计用例数 = 测试用例 × 资料包 × 执行器 × 轮次。
       </p>
       <ul className="check-list">
         {(plan?.cases || []).slice(0, 4).map((caseItem) => (

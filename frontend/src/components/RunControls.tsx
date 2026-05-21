@@ -82,11 +82,11 @@ export function RunControls({
             onToggle={(value, checked) => onToggleScope('task_ids', value, checked)}
           />
           <ScopeGroup
-            title="上下文方案"
-            emptyLabel="未配置上下文方案"
+            title="资料包"
+            emptyLabel="未配置资料包"
             values={variants.map((variant) => variant.name).filter(Boolean)}
             selected={runScope.variants}
-            labelPrefix="上下文方案"
+            labelPrefix="资料包"
             onToggle={(value, checked) => onToggleScope('variants', value, checked)}
           />
           <ScopeGroup
@@ -133,7 +133,7 @@ export function RunControls({
         <div>
           <dt>当前选择</dt>
           <dd>
-            {runScope.task_ids.length} 个测试用例 / {runScope.variants.length} 个上下文方案 /{' '}
+            {runScope.task_ids.length} 个测试用例 / {runScope.variants.length} 个资料包 /{' '}
             {runScope.agents.length} 个执行器
           </dd>
         </div>

@@ -130,7 +130,7 @@ export function TaskEditor({
         <h2>1 配测试用例</h2>
         <span>{tasks.length} 个用例</span>
       </div>
-      <p className="panel-note">写清任务、成功标准和自动验收命令。</p>
+      <p className="panel-note">只要先填：让 AI 做什么，以及怎样算完成。</p>
 
       <div className="task-editor-layout">
         <aside className="task-rail" aria-label="测试用例列表">
@@ -180,25 +180,21 @@ export function TaskEditor({
             <legend>任务</legend>
             <div className="form-grid simplified-grid">
               <label htmlFor="task-title">
-                <span className="label-with-help">
-                  用例标题
-                  <HelpTip text="结果列表用。" />
-                </span>
+                用例标题
                 <input
                   id="task-title"
+                  placeholder="例如：修复问候语标点"
                   value={task.title || ''}
                   onChange={(event) => updateTask({ title: event.target.value })}
                 />
               </label>
             </div>
             <label htmlFor="task-prompt">
-              <span className="label-with-help">
-                给 AI 的任务提示词
-                <HelpTip text="写入 prompt，交给 agent。" />
-              </span>
+              AI 要做什么
               <textarea
                 id="task-prompt"
-                aria-label="给 AI 的任务提示词"
+                aria-label="AI 要做什么"
+                placeholder="写给 coding agent 的任务。说明目标、限制和重点即可。"
                 value={task.prompt}
                 onChange={(event) => updateTask({ prompt: event.target.value })}
               />
@@ -206,51 +202,36 @@ export function TaskEditor({
           </fieldset>
 
           <fieldset>
-            <legend>验收与 AI 仲裁材料</legend>
+            <legend>验收标准</legend>
             <label htmlFor="expected-summary">
-              <span className="label-with-help">
-                人类验收 / AI 仲裁目标
-                <HelpTip text="给人和 AI 仲裁看。" />
-              </span>
+              怎样算完成
               <textarea
                 id="expected-summary"
-                aria-label="人类验收 / AI 仲裁目标"
+                aria-label="怎样算完成"
+                placeholder="给人和 AI 仲裁看的成功标准。"
                 value={expected.summary || ''}
                 onChange={(event) => updateExpected({ summary: event.target.value })}
               />
             </label>
             <ListEditor
-              title="验收点"
+              title="检查项"
               values={acceptancePoints}
-              placeholder="例如：验证脚本确认问候语已经更新"
-              helpText="人类和 AI 仲裁逐条检查；通过不等于绝对正确。"
+              placeholder="例如：问候语包含正确标点"
               onChange={(values) => updateExpected({ acceptance_points: values })}
-            />
-            <div className="arbitration-material-note" aria-label="AI 仲裁材料说明">
-              <strong>AI 仲裁材料</strong>
-              <span>
-                运行后会把任务提示词、验收目标、验收点、仲裁维度、patch、日志和硬指标写入
-                soft_evaluation_payload.json；context-eval 不自动调用 LLM judge。
-              </span>
-            </div>
-          </fieldset>
-
-          <fieldset>
-            <legend>自动验收命令</legend>
-            <p className="field-help">
-              运行结束后执行项目自己的测试或脚本，用来确认改动是否真的可用。通过只表示这些命令通过。
-            </p>
-            <ListEditor
-              title="命令"
-              values={validationCommands}
-              placeholder="python -m pytest"
-              helpText="用项目已有测试；本地运行。"
-              onChange={(values) => updateTask({ validation_commands: values })}
             />
           </fieldset>
 
           <details className="advanced-inline">
-            <summary>高级验收设置</summary>
+            <summary>更多设置：自动检查 / AI 仲裁</summary>
+            <fieldset>
+              <legend>自动检查命令</legend>
+              <ListEditor
+                title="命令"
+                values={validationCommands}
+                placeholder="python -m pytest"
+                onChange={(values) => updateTask({ validation_commands: values })}
+              />
+            </fieldset>
             <fieldset>
               <legend>用例属性</legend>
               <div className="form-grid">
@@ -315,12 +296,16 @@ export function TaskEditor({
               />
             </fieldset>
             <fieldset>
-              <legend>AI 仲裁与人工反馈维度</legend>
+              <legend>AI 仲裁维度</legend>
               <p className="field-help">
-                写给复核人或 AI 仲裁的评分维度；只生成 payload，不自动调用 LLM judge。
+                只生成仲裁材料，不自动调用 LLM judge。
               </p>
               <RubricEditor items={rubric} onChange={(items) => updateSoft({ rubric: items })} />
             </fieldset>
+            <div className="arbitration-material-note" aria-label="AI 仲裁材料说明">
+              <strong>AI 仲裁材料</strong>
+              <span>结果页会生成 soft_evaluation_payload.json，供人工或外部 AI 仲裁复核。</span>
+            </div>
           </details>
 
           {validationErrors.length > 0 && (
