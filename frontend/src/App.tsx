@@ -471,6 +471,7 @@ export function App() {
     const issues = validateEditableConfig(currentLoaded.editable);
     setTaskValidationErrors(issues);
     if (issues.length > 0) {
+      setSaveStatus('有配置问题，请按红色提示修改后再保存');
       revealFirstValidationIssue(currentLoaded.editable, issues);
       return;
     }
