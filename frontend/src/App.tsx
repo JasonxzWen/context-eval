@@ -845,9 +845,9 @@ export function App() {
   }
 
   const modeLabel = {
-    checking: '检测中',
-    connected: '本地回环服务',
-    fixture: '示例模式',
+    checking: '正在连接本地服务',
+    connected: '本地服务已连接',
+    fixture: '示例数据预览',
   }[serverMode];
   const runLabel = run ? labelFor(runStatusLabels, run.status) : '待运行';
   const isRunActive = Boolean(run && ['queued', 'running', 'stop_requested'].includes(run.status));
@@ -886,7 +886,7 @@ export function App() {
           <h1>AGENTS.md / skills 效果对比</h1>
           <p className="topbar-subtitle">用同一批测试用例，比较不同上下文方案对 coding agent 执行效果的影响。</p>
         </div>
-        <div className="status-pill" aria-label="本地应用模式">
+        <div className="status-pill" aria-label="服务状态">
           {modeLabel}
         </div>
       </header>
