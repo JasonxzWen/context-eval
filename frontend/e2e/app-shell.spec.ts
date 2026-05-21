@@ -274,6 +274,8 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
     const navBoxAfterJump = await page.locator('.top-nav').boundingBox();
     const contextBoxAfterJump = await page.locator('#context-config').boundingBox();
     expect((contextBoxAfterJump?.y ?? 0) - ((navBoxAfterJump?.y ?? 0) + (navBoxAfterJump?.height ?? 0))).toBeGreaterThan(8);
+    await expect(page.getByRole('heading', { name: '2 配给 AI 的资料包' })).toBeVisible();
+    await expect(page.getByText(/一个资料包就是一套会交给 coding agent 的本地说明/)).toBeVisible();
     await page.locator('summary', { hasText: '高级验收设置' }).click();
     await expect(page.getByRole('radiogroup', { name: '任务分类' })).toBeVisible();
     await expect(page.getByRole('radio', { name: '缺陷修复' })).toHaveAttribute('aria-checked', 'true');
@@ -283,15 +285,15 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
     await expect(page.getByTestId('task-save-status')).toContainText('已保存测试用例并刷新执行计划');
     await expect(page.locator('.matrix-panel')).toContainText('Visual editor saved summary.');
 
-    await page.getByLabel('选择上下文方案 experiment').click();
-    await page.getByLabel('方案说明').fill('Edited experiment instructions');
+    await page.getByLabel('选择资料包 experiment').click();
+    await page.getByLabel('给人看的说明').fill('Edited experiment instructions');
     await page.getByLabel('执行器超时分钟').fill('3');
     await page.getByRole('button', { name: '保存执行器配置' }).click();
     await expect(page.getByTestId('agent-save-status')).toContainText('已保存配置并刷新执行计划');
     await expect(page.getByLabel('执行器超时分钟')).toHaveValue('3');
-    await page.getByRole('button', { name: '保存上下文方案' }).click();
+    await page.getByRole('button', { name: '保存资料包' }).click();
     await expect(page.getByTestId('variant-save-status')).toContainText('已保存配置并刷新执行计划');
-    await expect(page.getByLabel('方案说明')).toHaveValue('Edited experiment instructions');
+    await expect(page.getByLabel('给人看的说明')).toHaveValue('Edited experiment instructions');
 
     await page.getByRole('checkbox', { name: '上下文方案 baseline' }).uncheck();
     await page.getByRole('button', { name: '刷新执行计划' }).click();
@@ -369,24 +371,24 @@ test('structured editors copy, delete, save, and reject unsafe overlay paths', a
     await page.getByRole('button', { name: '试用示例' }).click();
     await expect(page.getByRole('heading', { name: '1 配测试用例' })).toBeVisible();
 
-    const variantPanel = page.getByLabel('上下文方案配置');
+    const variantPanel = page.getByLabel('对比资料包配置');
     await variantPanel.getByRole('button', { name: '复制' }).click();
-    await expect(variantPanel.getByLabel('方案名称')).toHaveValue('baseline-copy');
-    await variantPanel.getByText('路径设置').first().click();
-    await variantPanel.getByLabel('上下文资料目标路径 1').fill('../AGENTS.md');
-    await variantPanel.getByRole('button', { name: '保存上下文方案' }).click();
+    await expect(variantPanel.getByLabel('资料包 ID')).toHaveValue('baseline-copy');
+    await variantPanel.getByText('放置位置').first().click();
+    await variantPanel.getByLabel('资料目标路径 1').fill('../AGENTS.md');
+    await variantPanel.getByRole('button', { name: '保存资料包' }).click();
     const unsafeTargetError =
       '错误: export blocked: variant 3 overlay 1 target must be a safe relative path';
     await expect(page.getByText(unsafeTargetError)).toBeVisible();
 
-    await variantPanel.getByLabel('上下文资料目标路径 1').fill('docs/AGENTS.md');
-    await variantPanel.getByRole('button', { name: '保存上下文方案' }).click();
+    await variantPanel.getByLabel('资料目标路径 1').fill('docs/AGENTS.md');
+    await variantPanel.getByRole('button', { name: '保存资料包' }).click();
     await expect(page.getByTestId('variant-save-status')).toContainText('已保存配置并刷新执行计划');
     await expect(page.getByText(unsafeTargetError)).toHaveCount(0);
 
     page.once('dialog', (dialog) => dialog.accept());
-    await variantPanel.getByLabel('上下文方案列表').getByRole('button', { name: '删除' }).click();
-    await expect(variantPanel.getByLabel('方案名称')).toHaveValue('experiment');
+    await variantPanel.getByLabel('资料包列表').getByRole('button', { name: '删除' }).click();
+    await expect(variantPanel.getByLabel('资料包 ID')).toHaveValue('experiment');
 
     const agentPanel = page.getByLabel('执行器配置');
     await agentPanel.getByRole('button', { name: '复制' }).click();

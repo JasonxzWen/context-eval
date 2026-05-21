@@ -30,15 +30,22 @@ function blankVariant(variants: EditableVariant[]): EditableVariant {
   };
 }
 
-function displayVariantName(name: string) {
-  return name === 'baseline' ? 'baseline（当前默认上下文）' : name;
+function displayVariantTitle(variant: EditableVariant, index: number) {
+  if (variant.name === 'baseline') return '当前默认资料包';
+  return variant.description?.trim() || variant.name?.trim() || `第 ${index + 1} 个资料包`;
+}
+
+function displayVariantDetail(variant: EditableVariant, title: string) {
+  const name = variant.name?.trim();
+  if (name && name !== title) return `ID: ${name}`;
+  return `${variant.overlays.length} 份资料`;
 }
 
 function overlayKind(source: string, target: string) {
   const combined = `${source} ${target}`.toLowerCase();
   if (combined.includes('agents.md')) {
     return {
-      label: 'Agent 工作说明',
+      label: 'AI 工作说明',
       description: 'AGENTS.md',
       className: 'agent-instructions',
     };
@@ -51,7 +58,7 @@ function overlayKind(source: string, target: string) {
     };
   }
   return {
-    label: '其他上下文资料',
+    label: '其他资料',
     description: '本地文件',
     className: 'context-material',
   };
@@ -111,27 +118,32 @@ export function VariantEditor({
   }
 
   return (
-    <section className="panel variant-editor-panel" id="context-config" aria-label="上下文方案配置">
+    <section className="panel variant-editor-panel" id="context-config" aria-label="对比资料包配置">
       <div className="panel-heading">
-        <h2>2 配上下文方案</h2>
-        <span>{variants.length} 个方案</span>
+        <h2>2 配给 AI 的资料包</h2>
+        <span>{variants.length} 个资料包</span>
       </div>
-      <p className="panel-note">主要比较 AGENTS.md 工作说明和 skills 技能包。</p>
+      <p className="panel-note">
+        一个资料包就是一套会交给 coding agent 的本地说明，通常包含 AGENTS.md 和 skills。准备“当前默认”和“实验版本”，用同一批测试用例比较哪套效果更好。
+      </p>
       {variant ? (
         <div className="editor-split">
-          <aside className="task-rail" aria-label="上下文方案列表">
-            {variants.map((item, index) => (
-              <button
-                type="button"
-                className={index === selectedIndex ? 'task-tab active' : 'task-tab'}
-                key={`${item.name}:${index}`}
-                aria-label={`选择上下文方案 ${item.name || index + 1}`}
-                onClick={() => onSelectVariant(index)}
-              >
-                <strong>{displayVariantName(item.name) || `variant-${index + 1}`}</strong>
-                <span>{item.description || `${item.overlays.length} 个上下文资料`}</span>
-              </button>
-            ))}
+          <aside className="task-rail" aria-label="资料包列表">
+            {variants.map((item, index) => {
+              const title = displayVariantTitle(item, index);
+              return (
+                <button
+                  type="button"
+                  className={index === selectedIndex ? 'task-tab active' : 'task-tab'}
+                  key={`${item.name}:${index}`}
+                  aria-label={`选择资料包 ${item.name || index + 1}`}
+                  onClick={() => onSelectVariant(index)}
+                >
+                  <strong>{title}</strong>
+                  <span>{displayVariantDetail(item, title)}</span>
+                </button>
+              );
+            })}
             <div className="button-row rail-actions">
               <button type="button" className="secondary" onClick={addVariant}>
                 新建
@@ -160,24 +172,24 @@ export function VariantEditor({
             <div className="form-grid simplified-grid">
               <label htmlFor="variant-name">
                 <span className="label-with-help">
-                  方案名称
-                  <HelpTip text="结果对比用。" />
+                  资料包 ID
+                  <HelpTip text="结果文件和对比表使用。" />
                 </span>
                 <input
                   id="variant-name"
-                  aria-label="方案名称"
+                  aria-label="资料包 ID"
                   value={variant.name}
                   onChange={(event) => updateVariant({ name: event.target.value })}
                 />
               </label>
               <label htmlFor="variant-description">
                 <span className="label-with-help">
-                  方案说明
-                  <HelpTip text="说明默认方案或实验改动。" />
+                  给人看的说明
+                  <HelpTip text="写清默认包或实验改动。" />
                 </span>
                 <textarea
                   id="variant-description"
-                  aria-label="方案说明"
+                  aria-label="给人看的说明"
                   value={variant.description}
                   onChange={(event) => updateVariant({ description: event.target.value })}
                 />
@@ -186,8 +198,8 @@ export function VariantEditor({
             <div className="list-editor">
               <div className="subsection-heading">
                 <strong className="label-with-help">
-                  上下文资料
-                  <HelpTip text="本地资料，常用 AGENTS.md / skills。" />
+                  资料包内容
+                  <HelpTip text="本地 AGENTS.md / skills。" />
                 </strong>
                 <button
                   type="button"
@@ -196,7 +208,7 @@ export function VariantEditor({
                     overlays: [...variant.overlays, { source: '', target: 'AGENTS.md' }],
                   })}
                 >
-                  添加上下文资料
+                  添加资料
                 </button>
               </div>
               {variant.overlays.map((overlay, index) => {
@@ -208,21 +220,21 @@ export function VariantEditor({
                       <span>{kind.description}</span>
                     </div>
                     <label htmlFor={`overlay-source-${index}`}>
-                      来源路径
+                      本地文件或文件夹
                       <input
                         id={`overlay-source-${index}`}
-                        aria-label={`上下文资料来源路径 ${index + 1}`}
+                        aria-label={`资料来源路径 ${index + 1}`}
                         value={overlay.source}
                         onChange={(event) => updateOverlay(index, { source: event.target.value })}
                       />
                     </label>
                     <details className="overlay-advanced">
-                      <summary>路径设置</summary>
+                      <summary>放置位置</summary>
                       <label htmlFor={`overlay-target-${index}`}>
-                        放入项目中的位置
+                        放到运行项目里的位置
                         <input
                           id={`overlay-target-${index}`}
-                          aria-label={`上下文资料目标路径 ${index + 1}`}
+                          aria-label={`资料目标路径 ${index + 1}`}
                           value={overlay.target}
                           onChange={(event) => updateOverlay(index, { target: event.target.value })}
                         />
@@ -240,7 +252,7 @@ export function VariantEditor({
                   </div>
                 );
               })}
-              {variant.overlays.length === 0 && <p className="status-line">未配置上下文资料。</p>}
+              {variant.overlays.length === 0 && <p className="status-line">未添加资料。</p>}
             </div>
             {validationErrors.length > 0 && (
               <div className="notice validation-notice" role="alert">
@@ -251,7 +263,7 @@ export function VariantEditor({
             )}
             <div className="button-row editor-actions">
               <button type="submit" disabled={serverMode !== 'connected'}>
-                保存上下文方案
+                保存资料包
               </button>
               <span className="status-line" data-testid="variant-save-status">
                 {saveStatus}
@@ -261,9 +273,9 @@ export function VariantEditor({
         </div>
       ) : (
         <div className="empty-editor">
-          <p className="status-line">当前配置没有上下文方案。</p>
+          <p className="status-line">当前配置没有资料包。</p>
           <button type="button" onClick={addVariant}>
-            新建上下文方案
+            新建资料包
           </button>
         </div>
       )}

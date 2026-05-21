@@ -122,10 +122,10 @@ describe('App workflow shell', () => {
     expect(screen.getByText('添加上下文方案')).toBeVisible();
     expect(screen.getByText('运行后做人工反馈')).toBeVisible();
     expect(screen.getAllByRole('heading', { name: '1 配测试用例' }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('heading', { name: '2 配上下文方案' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('heading', { name: '2 配给 AI 的资料包' }).length).toBeGreaterThan(0);
+    expect(screen.getByText(/一个资料包就是一套会交给 coding agent 的本地说明/)).toBeVisible();
     expect(screen.getAllByRole('heading', { name: '3 配执行器' }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole('heading', { name: '4 配指标与反馈' }).length).toBeGreaterThan(0);
-    expect(screen.getByText(/AGENTS\.md 工作说明和 skills 技能包/)).toBeVisible();
     expect(screen.getByRole('navigation', { name: '工作台导航' })).toBeVisible();
     expect(screen.getByTestId('matrix-count')).toHaveTextContent('8');
     fireEvent.click(screen.getByText('高级验收设置'));
@@ -159,7 +159,7 @@ describe('App workflow shell', () => {
     const taskTab = screen.getByRole('button', { name: /Fix greeting punctuation/ });
     expect(within(taskTab).getByText('Fix greeting punctuation')).toBeVisible();
     expect(within(taskTab).getByText('ID: fix-greeting-punctuation')).toBeVisible();
-    expect(screen.getByText('Agent 工作说明')).toBeVisible();
+    expect(screen.getByText('AI 工作说明')).toBeVisible();
     expect(
       screen.getAllByText('coco -y --query-timeout 10m --bash-tool-timeout 5m -p "{prompt}"').length,
     ).toBeGreaterThan(0);
@@ -420,11 +420,11 @@ describe('App workflow shell', () => {
 
     render(<App />);
 
-    await waitFor(() => expect(screen.getByLabelText('方案说明')).toHaveValue('Baseline'));
-    fireEvent.change(screen.getByLabelText('方案说明'), {
+    await waitFor(() => expect(screen.getByLabelText('给人看的说明')).toHaveValue('Baseline'));
+    fireEvent.change(screen.getByLabelText('给人看的说明'), {
       target: { value: 'Edited baseline instructions' },
     });
-    fireEvent.change(screen.getByLabelText('上下文资料来源路径 1'), {
+    fireEvent.change(screen.getByLabelText('资料来源路径 1'), {
       target: { value: './contexts/edited/AGENTS.md' },
     });
     fireEvent.change(screen.getByLabelText('执行器命令模板'), {
@@ -436,7 +436,7 @@ describe('App workflow shell', () => {
     fireEvent.change(screen.getByLabelText('执行器联网权限'), {
       target: { value: 'enabled' },
     });
-    fireEvent.click(screen.getByRole('button', { name: '保存上下文方案' }));
+    fireEvent.click(screen.getByRole('button', { name: '保存资料包' }));
 
     await waitFor(() => {
       expect(screen.getByTestId('variant-save-status')).toHaveTextContent('已保存配置并刷新执行计划');
@@ -449,7 +449,7 @@ describe('App workflow shell', () => {
       '/api/run-plan',
       expect.objectContaining({ method: 'POST' }),
     );
-    expect(screen.getByLabelText('方案说明')).toHaveValue('Edited baseline instructions');
+    expect(screen.getByLabelText('给人看的说明')).toHaveValue('Edited baseline instructions');
   });
 
   it('blocks invalid task fields before submitting structured saves', async () => {
@@ -500,16 +500,16 @@ describe('App workflow shell', () => {
 
     render(<App />);
 
-    await waitFor(() => expect(screen.getByLabelText('方案名称')).toHaveValue('baseline'));
-    fireEvent.change(screen.getByLabelText('方案名称'), { target: { value: ' ' } });
-    fireEvent.change(screen.getByLabelText('上下文资料来源路径 1'), { target: { value: ' ' } });
+    await waitFor(() => expect(screen.getByLabelText('资料包 ID')).toHaveValue('baseline'));
+    fireEvent.change(screen.getByLabelText('资料包 ID'), { target: { value: ' ' } });
+    fireEvent.change(screen.getByLabelText('资料来源路径 1'), { target: { value: ' ' } });
     fireEvent.change(screen.getByLabelText('执行器命令模板'), { target: { value: ' ' } });
     fireEvent.change(screen.getByLabelText('执行器超时分钟'), { target: { value: '0' } });
-    await waitFor(() => expect(screen.getByLabelText('方案名称')).toHaveValue(' '));
+    await waitFor(() => expect(screen.getByLabelText('资料包 ID')).toHaveValue(' '));
     await waitFor(() => expect(screen.getByLabelText('执行器超时分钟')).toHaveValue(0));
     fireEvent.click(screen.getByRole('button', { name: '保存执行器配置' }));
 
-    const variantPanel = screen.getByRole('region', { name: '上下文方案配置' });
+    const variantPanel = screen.getByRole('region', { name: '对比资料包配置' });
     const agentPanel = screen.getByRole('region', { name: '执行器配置' });
     expect(await within(variantPanel).findByText('第 1 个上下文方案名称不能为空')).toBeVisible();
     expect(within(variantPanel).getByText('第 1 个上下文方案的第 1 个上下文资料来源路径不能为空')).toBeVisible();
