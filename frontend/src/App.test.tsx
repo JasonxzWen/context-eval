@@ -154,6 +154,9 @@ describe('App workflow shell', () => {
 
     fireEvent.click(screen.getByText('配置与任务细节'));
     await waitFor(() => expect(screen.getByLabelText('仓库路径')).toHaveValue('./fixture-repo'));
+    const taskTab = screen.getByRole('button', { name: /Fix greeting punctuation/ });
+    expect(within(taskTab).getByText('Fix greeting punctuation')).toBeVisible();
+    expect(within(taskTab).getByText('ID: fix-greeting-punctuation')).toBeVisible();
     expect(screen.getByText('Agent 工作说明')).toBeVisible();
     expect(
       screen.getAllByText('coco -y --query-timeout 10m --bash-tool-timeout 5m -p "{prompt}"').length,

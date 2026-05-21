@@ -134,17 +134,23 @@ export function TaskEditor({
 
       <div className="task-editor-layout">
         <aside className="task-rail" aria-label="测试用例列表">
-          {tasks.map((item, index) => (
-            <button
-              type="button"
-              className={index === selectedTaskIndex ? 'task-tab active' : 'task-tab'}
-              key={`${item.id}:${index}`}
-              onClick={() => onSelectTask(index)}
-            >
-              <strong>{item.id || `task-${index + 1}`}</strong>
-              <span>{item.title || item.category || '未命名任务'}</span>
-            </button>
-          ))}
+          {tasks.map((item, index) => {
+            const title = item.title?.trim() || item.id?.trim() || `第 ${index + 1} 个用例`;
+            const taskId = item.id?.trim();
+            const detail = taskId && taskId !== title ? `ID: ${taskId}` : item.category || '';
+
+            return (
+              <button
+                type="button"
+                className={index === selectedTaskIndex ? 'task-tab active' : 'task-tab'}
+                key={`${item.id}:${index}`}
+                onClick={() => onSelectTask(index)}
+              >
+                <strong>{title}</strong>
+                {detail ? <span>{detail}</span> : null}
+              </button>
+            );
+          })}
           <div className="button-row rail-actions">
             <button type="button" className="secondary" onClick={onAddTask}>
               新建
