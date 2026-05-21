@@ -278,7 +278,7 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
     await expect(page.getByRole('radiogroup', { name: '任务分类' })).toBeVisible();
     await expect(page.getByRole('radio', { name: '缺陷修复' })).toHaveAttribute('aria-checked', 'true');
     await expect(page.getByRole('radio', { name: '简单' })).toHaveAttribute('aria-checked', 'true');
-    await page.getByLabel('人工验收目标').fill('Visual editor saved summary.');
+    await page.getByLabel('人类验收 / AI 仲裁目标').fill('Visual editor saved summary.');
     await page.getByRole('button', { name: '保存测试用例' }).click();
     await expect(page.getByTestId('task-save-status')).toContainText('已保存测试用例并刷新执行计划');
     await expect(page.locator('.matrix-panel')).toContainText('Visual editor saved summary.');
@@ -430,7 +430,7 @@ test('renders the fixture-backed Coco hybrid shell', async ({ page }) => {
   await expect(page.getByRole('heading', { name: '执行器', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: '期望结果' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '硬性检查' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: '人工反馈规则' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'AI 仲裁与人工反馈维度' })).toBeVisible();
   await expect(page.getByRole('button', { name: '加载配置' })).toBeVisible();
   await expect(page.getByRole('button', { name: '保存并重载' })).toBeVisible();
 

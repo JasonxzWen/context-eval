@@ -225,7 +225,7 @@ export function AdvancedConfigDetails({
 
         <section className="panel">
           <div className="panel-heading">
-            <h2>人工反馈规则</h2>
+            <h2>AI 仲裁与人工反馈维度</h2>
             <span>{labelFor(softModeLabels, task?.soft_evaluation?.mode)}</span>
           </div>
           <ul className="check-list">

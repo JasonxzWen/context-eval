@@ -133,7 +133,7 @@ describe('App workflow shell', () => {
     expect(screen.getByRole('heading', { name: '执行器' })).toBeVisible();
     expect(screen.getByRole('heading', { name: '期望结果' })).toBeVisible();
     expect(screen.getByRole('heading', { name: '硬性检查' })).toBeVisible();
-    expect(screen.getByRole('heading', { name: '人工反馈规则' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'AI 仲裁与人工反馈维度' })).toBeVisible();
     expect(screen.getByText('写入 prompt，交给 agent。')).toBeVisible();
   });
 
@@ -304,7 +304,7 @@ describe('App workflow shell', () => {
     fireEvent.change(screen.getByLabelText('给 AI 的任务提示词'), {
       target: { value: 'Use the visual editor prompt.' },
     });
-    fireEvent.change(screen.getByLabelText('人工验收目标'), {
+    fireEvent.change(screen.getByLabelText('人类验收 / AI 仲裁目标'), {
       target: { value: 'Visual editor summary.' },
     });
     fireEvent.click(within(screen.getByRole('group', { name: '硬性检查' })).getByRole('button', { name: '添加' }));

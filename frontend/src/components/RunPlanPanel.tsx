@@ -50,10 +50,10 @@ export function RunPlanPanel({
         {(plan?.cases || []).slice(0, 4).map((caseItem) => (
           <li key={caseItem.case_id}>
             <strong>{caseItem.case_id}</strong>
-            <span>{caseItem.expected_outcome_summary || '未配置人工验收目标'}</span>
+            <span>{caseItem.expected_outcome_summary || '未配置验收 / 仲裁目标'}</span>
             <small>
               {caseItem.hard_evaluation_enabled ? '硬性检查开启' : '硬性检查关闭'} /{' '}
-              {caseItem.soft_evaluation_enabled ? '人工反馈规则已配置' : '未配置人工反馈规则'}
+              {caseItem.soft_evaluation_enabled ? 'AI 仲裁维度已配置' : '未配置 AI 仲裁维度'}
             </small>
           </li>
         ))}

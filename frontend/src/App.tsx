@@ -308,7 +308,7 @@ function EvaluationSetupPanel() {
     <section className="panel metric-guide-panel" id="metric-config" aria-label="指标与反馈配置">
       <div className="panel-heading">
         <h2>4 配指标与反馈</h2>
-        <span>硬指标 + 人工反馈</span>
+        <span>硬指标 + AI 仲裁 + 人工反馈</span>
       </div>
       <p className="panel-note">
         这里说明本次评测会看哪些证据。自动验收和硬性检查在“测试用例”的高级验收里配置；
@@ -324,8 +324,8 @@ function EvaluationSetupPanel() {
           <span>在高级验收设置里配置文件、片段和命令检查，用来补充机器可判定证据。</span>
         </article>
         <article>
-          <strong>人工反馈维度</strong>
-          <span>在高级验收设置里配置反馈维度；结果详情里保存人工结论、可信度和备注。</span>
+          <strong>AI 仲裁与人工反馈维度</strong>
+          <span>在高级验收设置里配置仲裁维度；结果详情里保存人工结论、可信度和备注。</span>
         </article>
         <article>
           <strong>Codex CLI 硬指标</strong>
@@ -1004,7 +1004,7 @@ export function App() {
           runScope={runScope}
           selectedCaseCount={visibleCaseCount}
           serverMode={serverMode}
-          taskSummary={task?.expected_outcome?.summary || '未配置人工验收目标'}
+          taskSummary={task?.expected_outcome?.summary || '未配置验收 / 仲裁目标'}
           taskTitle={taskTitle}
           tasks={loaded.editable.tasks}
           variants={loaded.editable.variants}

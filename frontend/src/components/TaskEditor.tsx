@@ -209,12 +209,12 @@ export function TaskEditor({
             <legend>期望结果</legend>
             <label htmlFor="expected-summary">
               <span className="label-with-help">
-                人工验收目标
-                <HelpTip text="给复核人看的成功标准。" />
+                人类验收 / AI 仲裁目标
+                <HelpTip text="给人和 AI 仲裁看。" />
               </span>
               <textarea
                 id="expected-summary"
-                aria-label="人工验收目标"
+                aria-label="人类验收 / AI 仲裁目标"
                 value={expected.summary || ''}
                 onChange={(event) => updateExpected({ summary: event.target.value })}
               />
@@ -308,9 +308,9 @@ export function TaskEditor({
               />
             </fieldset>
             <fieldset>
-              <legend>人工反馈规则</legend>
+              <legend>AI 仲裁与人工反馈维度</legend>
               <p className="field-help">
-                给人工反馈或后续可选软性评分使用；默认不自动调用 LLM judge。
+                写给复核人或 AI 仲裁的评分维度；只生成 payload，不自动调用 LLM judge。
               </p>
               <RubricEditor items={rubric} onChange={(items) => updateSoft({ rubric: items })} />
             </fieldset>
@@ -565,8 +565,8 @@ function RubricEditor({ items, onChange }: RubricEditorProps) {
     <div className="list-editor">
       <div className="subsection-heading">
         <strong className="label-with-help">
-          反馈维度
-          <HelpTip text="人工反馈维度。" />
+          仲裁维度
+          <HelpTip text="AI 仲裁和人工反馈共用。" />
         </strong>
         <button
           type="button"
