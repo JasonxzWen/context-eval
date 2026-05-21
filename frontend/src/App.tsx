@@ -237,23 +237,20 @@ function caseEvidenceNotes(result: ResultCase) {
 function DesignerGuide() {
   return (
     <section className="designer-guide" aria-label="策划工作流说明">
-      <div className="designer-guide-intro">
+      <article className="designer-guide-card">
+        <strong>作用</strong>
         <span>
-          用同一批测试用例，对比不同 AGENTS.md / skills 上下文方案对 coding agent 执行效果的影响。
+          比较不同 AGENTS.md / skills 上下文，看看哪套更能让 coding agent 完成同一个任务。
         </span>
-      </div>
-      <ol className="designer-guide-steps">
-        <li>
-          <strong>1 配测试用例</strong>
-        </li>
-        <li>
-          <strong>2 配上下文方案</strong>
-        </li>
-        <li>
-          <strong>3 看结果并反馈</strong>
-        </li>
-      </ol>
-      <small>本地 artifact 证据，不是公开 benchmark 或 agent 排行榜。</small>
+      </article>
+      <article className="designer-guide-card guide-start">
+        <strong>如何开始</strong>
+        <ol className="designer-guide-steps">
+          <li>写测试用例</li>
+          <li>添加上下文方案</li>
+          <li>运行后做人工反馈</li>
+        </ol>
+      </article>
     </section>
   );
 }

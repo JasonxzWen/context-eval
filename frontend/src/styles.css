@@ -169,9 +169,9 @@ button:disabled {
 
 .designer-guide {
   display: grid;
-  grid-template-columns: minmax(300px, 1fr) minmax(360px, 1.15fr) auto;
+  grid-template-columns: minmax(280px, 0.85fr) minmax(360px, 1.15fr);
   gap: 10px;
-  align-items: center;
+  align-items: stretch;
   margin: 0 0 12px;
   border: 1px solid #9eb6c8;
   border-radius: 8px;
@@ -179,14 +179,19 @@ button:disabled {
   background: #f7fbfd;
 }
 
-.designer-guide-intro {
+.designer-guide-card {
   display: grid;
-  gap: 6px;
+  align-content: start;
+  gap: 5px;
   min-width: 0;
 }
 
-.designer-guide-intro span,
-.designer-guide small {
+.designer-guide-card strong {
+  color: var(--blue);
+  font-size: 13px;
+}
+
+.designer-guide-card span {
   color: var(--muted);
   font-size: 13px;
   line-height: 1.45;
@@ -210,11 +215,9 @@ button:disabled {
   border-radius: 999px;
   padding: 6px 10px;
   background: #ffffff;
-}
-
-.designer-guide-steps strong {
   color: var(--ink);
   font-size: 12px;
+  font-weight: 850;
   white-space: nowrap;
 }
 

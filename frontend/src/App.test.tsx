@@ -114,11 +114,12 @@ describe('App workflow shell', () => {
     expect(screen.getByTestId('local-app-shell')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'context-eval 本地工作台' })).toBeVisible();
     await waitFor(() => expect(screen.getAllByText('示例模式').length).toBeGreaterThan(0));
-    expect(screen.getByText(/用同一批测试用例/)).toBeVisible();
-    expect(screen.getByText(/不是公开 benchmark/)).toBeVisible();
-    expect(screen.getAllByText('1 配测试用例').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('2 配上下文方案').length).toBeGreaterThan(0);
-    expect(screen.getByText('3 看结果并反馈')).toBeVisible();
+    expect(screen.getByText('作用')).toBeVisible();
+    expect(screen.getByText(/比较不同 AGENTS\.md \/ skills 上下文/)).toBeVisible();
+    expect(screen.getByText('如何开始')).toBeVisible();
+    expect(screen.getByText('写测试用例')).toBeVisible();
+    expect(screen.getByText('添加上下文方案')).toBeVisible();
+    expect(screen.getByText('运行后做人工反馈')).toBeVisible();
     expect(screen.getAllByRole('heading', { name: '1 配测试用例' }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole('heading', { name: '2 配上下文方案' }).length).toBeGreaterThan(0);
     expect(screen.getByText(/AGENTS\.md 工作说明和 skills 技能包/)).toBeVisible();
