@@ -882,8 +882,9 @@ export function App() {
     <main className="app-shell" data-testid="local-app-shell">
       <header className="topbar">
         <div>
-          <p className="eyebrow">仅使用本地产物</p>
-          <h1>context-eval 本地工作台</h1>
+          <p className="eyebrow">context-eval · 只看本地产物</p>
+          <h1>AGENTS.md / skills 效果对比</h1>
+          <p className="topbar-subtitle">用同一批测试用例，比较不同上下文方案对 coding agent 执行效果的影响。</p>
         </div>
         <div className="status-pill" aria-label="本地应用模式">
           {modeLabel}

@@ -101,6 +101,15 @@ button:disabled {
   line-height: 1.02;
 }
 
+.topbar-subtitle {
+  max-width: 760px;
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
 .eyebrow {
   margin: 0 0 6px;
   color: var(--teal);

@@ -112,7 +112,8 @@ describe('App workflow shell', () => {
     render(<App />);
 
     expect(screen.getByTestId('local-app-shell')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'context-eval 本地工作台' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'AGENTS.md / skills 效果对比' })).toBeVisible();
+    expect(screen.getByText(/比较不同上下文方案对 coding agent 执行效果的影响/)).toBeVisible();
     await waitFor(() => expect(screen.getAllByText('示例模式').length).toBeGreaterThan(0));
     expect(screen.getByText('作用')).toBeVisible();
     expect(screen.getByText(/比较不同 AGENTS\.md \/ skills 上下文/)).toBeVisible();

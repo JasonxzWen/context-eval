@@ -256,7 +256,7 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
     await page.goto(server.url);
     await page.waitForLoadState('networkidle');
 
-    await expect(page.getByRole('heading', { name: 'context-eval 本地工作台' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'AGENTS.md / skills 效果对比' })).toBeVisible();
     await expect(page.getByRole('heading', { name: '开始使用' })).toBeVisible();
     await expect(page.getByText('./fixture-repo')).toHaveCount(0);
 
@@ -414,7 +414,7 @@ async function stopLocalApp(child: ChildProcessWithoutNullStreams) {
 test('renders the fixture-backed Coco hybrid shell', async ({ page }) => {
   await page.goto('/');
 
-  await expect(page.getByRole('heading', { name: 'context-eval 本地工作台' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'AGENTS.md / skills 效果对比' })).toBeVisible();
   await expect(page.getByTestId('matrix-count')).toHaveText('8');
   await page.locator('summary', { hasText: '高级验收设置' }).click();
   await page.getByText('配置与任务细节').click();
@@ -977,7 +977,7 @@ test('completes the local server workflow with fake Coco and hybrid evaluation',
   try {
     await page.goto(server.url);
 
-    await expect(page.getByRole('heading', { name: 'context-eval 本地工作台' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'AGENTS.md / skills 效果对比' })).toBeVisible();
     await page.getByText('配置与任务细节').click();
     await page.getByRole('button', { name: '加载配置' }).click();
     await expect(page.getByLabel('仓库路径')).toHaveValue(toPosix(fixture));

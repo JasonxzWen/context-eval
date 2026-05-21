@@ -2000,11 +2000,11 @@ def _fallback_html() -> str:
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>context-eval 本地工作台</title>
+  <title>AGENTS.md / skills 效果对比</title>
 </head>
 <body>
   <main>
-    <h1>context-eval 本地工作台</h1>
+    <h1>AGENTS.md / skills 效果对比</h1>
     <p>未找到前端构建产物。请先运行前端验证流程。</p>
   </main>
 </body>
