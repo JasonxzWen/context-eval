@@ -21,7 +21,13 @@ const loadedPayload = {
   tasks_yaml: [
     'tasks:',
     '  - id: fix-greeting-punctuation',
+    '    case_type: bugfix',
+    '    repo_ref: main',
     '    prompt: Fix it.',
+    '    reference_evidence:',
+    '      summary: Real fix updates README punctuation.',
+    '      fix_ref: real-fix-ref',
+    '      files: [README.md]',
     '    expected_outcome:',
     '      summary: README contains fixed marker.',
     '    hard_evaluation:',
@@ -63,10 +69,18 @@ const loadedPayload = {
       {
         id: 'fix-greeting-punctuation',
         title: 'Fix greeting punctuation',
+        case_type: 'bugfix',
         prompt: 'Fix it.',
+        repo_ref: 'main',
         category: 'runtime',
         difficulty: 'easy',
         validation_commands: ['python -m pytest'],
+        reference_evidence: {
+          summary: 'Real fix updates README punctuation.',
+          fix_ref: 'real-fix-ref',
+          files: ['README.md'],
+          notes: ['Review only.'],
+        },
         expected_outcome: {
           summary: 'README contains fixed marker.',
           acceptance_points: ['The marker is present.'],
@@ -133,7 +147,8 @@ describe('App workflow shell', () => {
     expect(screen.getByRole('heading', { name: '硬性检查' })).toBeVisible();
     expect(screen.getByRole('heading', { name: 'AI 仲裁维度' })).toBeVisible();
     expect(screen.getAllByText('AI 仲裁材料').length).toBeGreaterThan(0);
-    expect(screen.getByText(/soft_evaluation_payload\.json/)).toBeVisible();
+    expect(screen.getByLabelText('仲裁方式')).toHaveValue('payload-only');
+    expect(screen.getByLabelText('仲裁执行器')).toBeDisabled();
   });
 
   it('loads Coco hybrid evaluation data from the local server API', async () => {
@@ -156,6 +171,10 @@ describe('App workflow shell', () => {
     const taskTab = screen.getByRole('button', { name: /Fix greeting punctuation/ });
     expect(within(taskTab).getByText('Fix greeting punctuation')).toBeVisible();
     expect(within(taskTab).getByText('ID: fix-greeting-punctuation')).toBeVisible();
+    expect(screen.getByRole('radiogroup', { name: '用例类型' })).toBeVisible();
+    expect(screen.getByRole('radio', { name: '修 Bug' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByLabelText('起始版本')).toHaveValue('main');
+    expect(screen.getByLabelText('真实结果 / 修复说明')).toHaveValue('Real fix updates README punctuation.');
     expect(screen.getByText('AI 工作说明')).toBeVisible();
     expect(
       screen.getAllByText('coco -y --query-timeout 10m --bash-tool-timeout 5m -p "{prompt}"').length,
@@ -233,6 +252,11 @@ describe('App workflow shell', () => {
               ...loadedPayload.editable.tasks[0].expected_outcome,
               summary: 'Visual editor summary.',
             },
+            reference_evidence: {
+              ...loadedPayload.editable.tasks[0].reference_evidence,
+              summary: 'Visual reference evidence.',
+              fix_ref: 'visual-fix-ref',
+            },
           },
         ],
       },
@@ -246,9 +270,14 @@ describe('App workflow shell', () => {
         return jsonResponse(loadedPayload);
       }
       if (target === '/api/config/save-editable') {
+        const body = JSON.parse(String(init?.body));
         expect(String(init?.body)).toContain('Use the visual editor prompt.');
         expect(String(init?.body)).toContain('Visual editor summary.');
+        expect(String(init?.body)).toContain('Visual reference evidence.');
+        expect(String(init?.body)).toContain('visual-fix-ref');
         expect(String(init?.body)).toContain('readme-marker');
+        expect(body.editable.tasks[0].soft_evaluation.mode).toBe('runner');
+        expect(body.editable.tasks[0].soft_evaluation.runner_agent).toBeNull();
         return jsonResponse({
           ok: true,
           config_path: 'context-eval.yaml',
@@ -276,10 +305,14 @@ describe('App workflow shell', () => {
               variant: 'baseline',
               trial_index: 1,
               repo_ref: 'main',
+              case_type: 'bugfix',
+              reference_evidence_summary: 'Visual reference evidence.',
               command_preview: 'coco -p prompt',
               expected_outcome_summary: 'Visual editor summary.',
               hard_evaluation_enabled: true,
               soft_evaluation_enabled: true,
+              soft_evaluation_mode: 'runner',
+              soft_evaluation_runner_agent: null,
             },
           ],
         });
@@ -291,6 +324,9 @@ describe('App workflow shell', () => {
     render(<App />);
 
     await waitFor(() => expect(screen.getByLabelText('AI 要做什么')).toHaveValue('Fix it.'));
+    expect(screen.getByRole('radiogroup', { name: '用例类型' })).toBeVisible();
+    expect(screen.getByRole('radio', { name: '修 Bug' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByLabelText('起始版本')).toHaveValue('main');
     fireEvent.click(screen.getByText('更多设置：自动检查 / AI 仲裁'));
     expect(screen.getAllByRole('radiogroup', { name: '任务分类' }).length).toBeGreaterThan(0);
     expect(
@@ -306,6 +342,12 @@ describe('App workflow shell', () => {
     fireEvent.change(screen.getByLabelText('怎样算完成'), {
       target: { value: 'Visual editor summary.' },
     });
+    fireEvent.change(screen.getByLabelText('真实结果 / 修复说明'), {
+      target: { value: 'Visual reference evidence.' },
+    });
+    fireEvent.change(screen.getByLabelText('真实修复版本'), {
+      target: { value: 'visual-fix-ref' },
+    });
     fireEvent.click(within(screen.getByRole('group', { name: '硬性检查' })).getByRole('button', { name: '添加' }));
     fireEvent.change(screen.getByLabelText('命令检查名称 1'), {
       target: { value: 'readme-marker' },
@@ -316,6 +358,13 @@ describe('App workflow shell', () => {
     fireEvent.change(screen.getByLabelText('命令检查期望输出 1'), {
       target: { value: 'ok' },
     });
+    const softMode = document.querySelector('#soft-mode') as HTMLSelectElement | null;
+    const softRunner = document.querySelector('#soft-runner-agent') as HTMLSelectElement | null;
+    expect(softMode).not.toBeNull();
+    expect(softRunner).not.toBeNull();
+    fireEvent.change(softMode!, { target: { value: 'runner' } });
+    expect(softRunner!.disabled).toBe(false);
+    expect(softRunner!.value).toBe('');
     fireEvent.click(screen.getByRole('button', { name: '保存测试用例' }));
 
     await waitFor(() => expect(screen.getByTestId('task-save-status')).toHaveTextContent('已保存测试用例并刷新执行计划'));
@@ -788,7 +837,7 @@ describe('App workflow shell', () => {
             },
             soft_evaluation: {
               mode: 'payload-only',
-              meaning: 'soft evaluation 只生成 payload-only 复核材料，不自动调用 LLM judge。',
+              meaning: 'soft evaluation 默认只生成本地复核 payload；显式选择 runner 时会运行本地仲裁执行器。',
             },
             manual_review: {
               meaning: 'manual review 是人工复核证据和结论，不是自动评分。',
@@ -846,9 +895,15 @@ describe('App workflow shell', () => {
               hard_evaluation_max_score: 4,
               hard_evaluation_passed_checks: 4,
               hard_evaluation_failed_checks: 0,
-              soft_evaluation_status: 'payload_generated',
+              soft_evaluation_status: 'result_available',
               soft_evaluation_payload_path:
                 'artifacts/fix-greeting-punctuation__baseline__coco/soft_evaluation_payload.json',
+              soft_evaluation_result_path:
+                'artifacts/fix-greeting-punctuation__baseline__coco/soft_evaluation_result.json',
+              soft_evaluation_runner_agent: 'judge',
+              soft_evaluation_score: 8,
+              soft_evaluation_max_score: 10,
+              soft_evaluation_verdict: 'pass',
               patch_path: 'patches/fix-greeting-punctuation__baseline__coco.patch',
               stdout_path: 'logs/fix-greeting-punctuation__baseline__coco.agent.stdout.log',
               stderr_path: 'logs/fix-greeting-punctuation__baseline__coco.agent.stderr.log',
@@ -893,9 +948,15 @@ describe('App workflow shell', () => {
             hard_evaluation_status: 'passed',
             hard_evaluation_score: 4,
             hard_evaluation_max_score: 4,
-            soft_evaluation_status: 'payload_generated',
+            soft_evaluation_status: 'result_available',
             soft_evaluation_payload_path:
               'artifacts/fix-greeting-punctuation__baseline__coco/soft_evaluation_payload.json',
+            soft_evaluation_result_path:
+              'artifacts/fix-greeting-punctuation__baseline__coco/soft_evaluation_result.json',
+            soft_evaluation_runner_agent: 'judge',
+            soft_evaluation_score: 8,
+            soft_evaluation_max_score: 10,
+            soft_evaluation_verdict: 'pass',
             manual_review: {
               case_id: 'fix-greeting-punctuation__baseline__coco',
               decision: 'not_reviewed',
@@ -918,14 +979,19 @@ describe('App workflow shell', () => {
             checks: [{ name: 'README.md', status: 'passed', message: 'found expected marker' }],
           },
           soft_evaluation: {
-            status: 'payload_generated',
+            status: 'result_available',
             payload_path: 'artifacts/fix-greeting-punctuation__baseline__coco/soft_evaluation_payload.json',
-            result_path: null,
+            result_path: 'artifacts/fix-greeting-punctuation__baseline__coco/soft_evaluation_result.json',
+            runner_agent: 'judge',
+            score: 8,
+            max_score: 10,
+            verdict: 'pass',
           },
           manual_review: {
             case_id: 'fix-greeting-punctuation__baseline__coco',
             decision: 'not_reviewed',
             confidence: 'unknown',
+            rating: null,
             reviewer: '',
             notes: '',
             updated_at: null,
@@ -940,6 +1006,7 @@ describe('App workflow shell', () => {
             case_id: 'fix-greeting-punctuation__baseline__coco',
             decision: 'pass',
             confidence: 'high',
+            rating: 5,
             reviewer: 'manual',
             notes: 'Looks good.',
             updated_at: '2026-05-19T16:30:00',
@@ -961,9 +1028,11 @@ describe('App workflow shell', () => {
     await waitFor(() => expect(screen.getByText('通过 4/4')).toBeVisible());
     expect(screen.getByText('结果已生成')).toBeVisible();
     expect(screen.getByRole('button', { name: '查看结果' })).toBeVisible();
-    expect(screen.getByText('已生成待复核材料')).toBeVisible();
+    expect(screen.getByText('AI 仲裁结果已保存')).toBeVisible();
+    expect(screen.getByText('软评分 8/10')).toBeVisible();
+    expect(screen.getByText('仲裁执行器 judge')).toBeVisible();
     expect(screen.getByText('评分依据和边界')).toBeVisible();
-    expect(screen.getByText('soft evaluation 只生成 payload-only 复核材料，不自动调用 LLM judge。')).toBeVisible();
+    expect(screen.getByText('soft evaluation 默认只生成本地复核 payload；显式选择 runner 时会运行本地仲裁执行器。')).toBeVisible();
     expect(screen.getByLabelText('对照组方案')).toHaveValue('baseline');
     expect(screen.getByText('对比对象改善')).toBeVisible();
     expect(screen.getByText('对比对象 hard evaluation 增加 1，validation 结果未变化。')).toBeVisible();
@@ -981,6 +1050,9 @@ describe('App workflow shell', () => {
     expect(screen.getByText(/context-eval marker/)).toBeVisible();
     expect(screen.getByRole('heading', { name: '硬性检查明细' })).toBeVisible();
     expect(screen.getByText('found expected marker')).toBeVisible();
+    expect(screen.getByLabelText('软性复核材料')).toHaveTextContent('8/10');
+    expect(screen.getByLabelText('软性复核材料')).toHaveTextContent('judge');
+    expect(screen.getByLabelText('软性复核材料')).toHaveTextContent('soft_evaluation_result.json');
     expect(screen.getByTestId('codex-usage-panel')).toBeInTheDocument();
     expect(screen.getByText('Codex CLI 硬指标（JSONL）')).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Codex 使用画像' })).toBeVisible();
@@ -997,6 +1069,7 @@ describe('App workflow shell', () => {
 
     fireEvent.change(screen.getByLabelText('反馈结论'), { target: { value: 'pass' } });
     fireEvent.change(screen.getByLabelText('反馈可信度'), { target: { value: 'high' } });
+    fireEvent.change(screen.getByLabelText('人工评分'), { target: { value: '5' } });
     fireEvent.change(screen.getByLabelText('反馈人'), { target: { value: 'manual' } });
     fireEvent.change(screen.getByLabelText('反馈备注'), { target: { value: 'Looks good.' } });
     fireEvent.click(screen.getByRole('button', { name: '保存人工反馈' }));
@@ -1006,6 +1079,13 @@ describe('App workflow shell', () => {
       expect.objectContaining({
         method: 'POST',
         body: expect.stringContaining('"decision":"pass"'),
+      }),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/manual-review',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('"rating":5'),
       }),
     );
   });

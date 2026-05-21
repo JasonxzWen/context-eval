@@ -1,6 +1,7 @@
 tasks:
   - id: "fix-greeting-punctuation"
     title: "Fix greeting punctuation"
+    case_type: "bugfix"
     prompt: |
       Fix the fixture greeting so it matches the existing tests.
       Keep the change minimal and do not rewrite unrelated files.

@@ -11,7 +11,9 @@ from context_eval.models import (
     ContextEvalConfig,
     ExpectedOutcomeConfig,
     HardEvaluationConfig,
+    ReferenceEvidenceConfig,
     SoftEvaluationConfig,
+    TaskCaseType,
     TaskFile,
 )
 
@@ -43,6 +45,7 @@ class EditableVariant(BaseModel):
 class EditableTask(BaseModel):
     id: str
     prompt: str
+    case_type: TaskCaseType | None = None
     repo_ref: str | None = None
     title: str | None = None
     category: str | None = None
@@ -50,6 +53,7 @@ class EditableTask(BaseModel):
     validation_timeout_seconds: int | None = None
     validation_commands: list[str] = Field(default_factory=list)
     expected_outcome: ExpectedOutcomeConfig | None = None
+    reference_evidence: ReferenceEvidenceConfig | None = None
     hard_evaluation: HardEvaluationConfig | None = None
     soft_evaluation: SoftEvaluationConfig | None = None
     extra_fields: dict[str, Any] = Field(default_factory=dict)
@@ -129,12 +133,14 @@ def build_editable_model(
                 id=task.id,
                 title=task.title,
                 prompt=task.prompt,
+                case_type=task.case_type,
                 repo_ref=task.repo_ref,
                 category=task.category,
                 difficulty=task.difficulty,
                 validation_timeout_seconds=task.validation.timeout_seconds,
                 validation_commands=list(task.validation.commands),
                 expected_outcome=task.expected_outcome,
+                reference_evidence=task.reference_evidence,
                 hard_evaluation=task.hard_evaluation,
                 soft_evaluation=task.soft_evaluation,
                 extra_fields=dict(task.model_extra or {}),
@@ -353,6 +359,14 @@ def validate_editable_model(model: EditableConfigModel) -> list[str]:
             issues.append(
                 f"task {task_index} validation.timeout_seconds must be a positive integer"
             )
+        if task.soft_evaluation is not None:
+            if task.soft_evaluation.runner_agent is not None:
+                known_agents = {agent.name for agent in _agent_export_models(model)}
+                if task.soft_evaluation.runner_agent not in known_agents:
+                    issues.append(
+                        f"task {task_index} soft_evaluation.runner_agent must match "
+                        "an agent profile"
+                    )
 
     return issues
 
@@ -362,6 +376,8 @@ def _task_to_yaml_data(task: EditableTask) -> dict[str, Any]:
     data["id"] = task.id
     if task.title is not None:
         data["title"] = task.title
+    if task.case_type is not None:
+        data["case_type"] = task.case_type
     data["prompt"] = task.prompt
     if task.repo_ref is not None:
         data["repo_ref"] = task.repo_ref
@@ -377,6 +393,11 @@ def _task_to_yaml_data(task: EditableTask) -> dict[str, Any]:
         data["validation"] = validation
     if task.expected_outcome is not None:
         data["expected_outcome"] = task.expected_outcome.model_dump(
+            mode="json",
+            exclude_none=True,
+        )
+    if task.reference_evidence is not None:
+        data["reference_evidence"] = task.reference_evidence.model_dump(
             mode="json",
             exclude_none=True,
         )

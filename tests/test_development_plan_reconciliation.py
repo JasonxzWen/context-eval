@@ -72,11 +72,12 @@ def test_development_plan_uses_larger_capability_epics() -> None:
         "## Capability Epic J: Local App Server And Run Orchestration",
         "## Capability Epic K: Full Web UI Workflow For Non-Technical Users",
         "## Capability Epic L: No-CLI Launcher And Packaging",
+        "## Capability Epic M: Real Project Evaluation Support",
     ]
     for heading in expected_headings:
         assert heading in text
 
-    assert text.count("## Capability Epic ") == 12
+    assert text.count("## Capability Epic ") == 13
     assert "## Active Backlog Order" not in text
     assert "## Phase 7:" not in text
 

@@ -24,12 +24,13 @@ results, but should not need to know the internal schema.
 They can:
 
 - configure a test case with a title, task instruction, expected result,
-  acceptance points, expected files, and validation commands;
+  acceptance points, expected files, task type, starting version, optional
+  reference evidence, and validation commands;
 - configure context packages as named schemes that copy local `AGENTS.md` files
   and `skills` folders into the run workspace;
 - select which tasks and context schemes to run;
 - review each result, inspect patch/log/evidence artifacts, and save manual
-  feedback.
+  feedback, including a simple one-to-five human assessment when needed.
 
 They do not need to:
 
@@ -45,15 +46,18 @@ The UI should prefer the following labels:
 | --- | --- | --- |
 | task | 测试用例 | One agent assignment to run under every selected context scheme. |
 | prompt | 任务说明 | The instruction passed to the coding agent. |
+| case_type | 用例类型 | Compile diagnosis, bug fix, incident fix, feature work, or custom case. |
+| repo_ref | 起始版本 | The Git version used to create this task's isolated workspace. |
 | expected_outcome | 期望结果 | What a successful result should look like. |
 | acceptance_points | 验收点 | Human-readable checks for manual review. |
+| reference_evidence | 参考答案 | True answer, real fix ref, important files, or maintainer notes for review. |
 | validation_commands | 自动验收命令 | Project tests or scripts run after the agent finishes. |
 | variant | 上下文方案 | A named context package to compare. |
 | overlay | 上下文资料 | Local files copied into the run workspace. |
 | `AGENTS.md` | Agent 工作说明 | Instructions the coding agent reads in the workspace. |
 | `skills` | 技能包 | Reusable task knowledge available to the coding agent. |
 | hard_evaluation | 硬性检查 | Deterministic local checks; not a full quality score. |
-| soft_evaluation | 复核材料 | Optional payload-only material for future review. |
+| soft_evaluation | 复核材料 | Optional review material, with an explicit local AI arbitration runner when enabled. |
 | manual_review | 人工反馈 | Human conclusion and notes saved with the result. |
 | telemetry | 执行指标 | Duration, tokens, tool calls, command calls, status, and evidence gaps. |
 
@@ -64,13 +68,20 @@ The UI should prefer the following labels:
 The test-case panel must explain that a case is the same assignment repeated
 under each selected context scheme. It should show the core fields first:
 
-- task ID and title;
-- category and difficulty;
+- case type and title;
 - task instruction;
 - expected result summary;
 - acceptance points;
+- starting version;
+- reference answer or real fix evidence;
 - expected changed files;
 - validation commands.
+
+For real project workflows, the built-in case types should be visible as
+templates: compile error diagnosis, known bug fix, incident diagnosis and fix,
+feature work, and custom case. The UI must make clear that reference evidence is
+for human review and optional soft arbitration payloads, not part of the prompt
+sent to the coding agent by default.
 
 Advanced deterministic checks and review rubrics stay visible, but the copy must
 state that they support evidence gathering and do not prove absolute task
@@ -99,8 +110,11 @@ show:
 
 - the case status, validation status, confidence, telemetry status, and hard
   check result;
+- Codex JSONL metrics and evidence gaps when the selected executor is Codex CLI;
+- the task type, starting version, and any reference evidence;
+- optional AI arbitration runner output, clearly labeled as soft evidence;
 - a feedback form with result conclusion, reviewer confidence, reviewer name,
-  and notes;
+  one-to-five human assessment, and notes;
 - a note template that asks reviewers to record whether the result met the task,
   what evidence they checked, and what issue remains.
 
@@ -114,11 +128,11 @@ The result view must preserve the product boundary:
 - local-only and artifact-based;
 - not a public benchmark;
 - not an agent leaderboard;
-- no automatic OpenAI, Claude, or other LLM judge;
+- no hidden OpenAI, Claude, or other LLM judge calls;
 - validation passing means configured checks passed, not that the task is
   absolutely correct;
-- any future AI arbitration is optional soft evidence, disabled by default, and
-  excluded from comprehensive ranking.
+- AI arbitration runner output is optional soft evidence and excluded from
+  comprehensive ranking.
 
 ## Acceptance Criteria
 
@@ -128,8 +142,8 @@ This slice is acceptable when:
    context quality through local coding-agent runs.
 2. The main workflow labels are 测试用例, 上下文方案, and 人工反馈.
 3. Test-case fields include hover or inline help for task instruction, expected
-   result, acceptance points, expected files, validation commands, hard checks,
-   and review rubrics.
+   result, acceptance points, starting version, reference evidence, expected
+   files, validation commands, hard checks, and review rubrics.
 4. Context schemes explain `AGENTS.md` and `skills`, and overlay rows display
    whether each row is Agent 工作说明, 技能包, or 其他上下文资料.
 5. Manual feedback explains what reviewers should record and keeps the saved
@@ -138,3 +152,5 @@ This slice is acceptable when:
    an agent leaderboard, and not an automatic LLM judge.
 7. Existing structured save behavior still preserves unknown YAML fields.
 8. Frontend unit tests, build, and browser acceptance pass.
+9. Real-project-style task templates remain local-only and do not expose private
+   repository URLs or secrets in generated documentation.

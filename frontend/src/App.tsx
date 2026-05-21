@@ -8,6 +8,7 @@ import { RunControls } from './components/RunControls';
 import { TaskEditor } from './components/TaskEditor';
 import { VariantEditor } from './components/VariantEditor';
 import { WorkflowBand } from './components/WorkflowBand';
+import { formatCaseType } from './caseTypes';
 import { localAppFixture, plannedCaseCount } from './fixture';
 import {
   agentsFrom,
@@ -87,6 +88,8 @@ const evaluationLabels: Record<string, string> = {
   failed: '失败',
   skipped: '跳过',
   payload_generated: '已生成待复核材料',
+  result_available: 'AI 仲裁结果已保存',
+  error: 'AI 仲裁失败',
   not_configured: '未配置',
 };
 
@@ -361,6 +364,7 @@ export function App() {
     case_id: '',
     decision: 'not_reviewed',
     confidence: 'unknown',
+    rating: null,
     reviewer: '',
     notes: '',
     updated_at: null,
@@ -707,6 +711,7 @@ export function App() {
         review: {
           decision: reviewDraft.decision,
           confidence: reviewDraft.confidence,
+          rating: reviewDraft.rating,
           reviewer: reviewDraft.reviewer,
           notes: reviewDraft.notes,
         },
@@ -951,6 +956,7 @@ export function App() {
         )}
         <TaskEditor
           tasks={loaded.editable.tasks}
+          agents={agents}
           selectedTaskIndex={selectedTaskIndex}
           saveStatus={saveStatus}
           serverMode={serverMode}
@@ -1111,7 +1117,7 @@ export function App() {
                     <strong>复核材料</strong>
                     <p>
                       {evaluationExplanation?.soft_evaluation.meaning ||
-                        '当前只生成 payload-only 复核材料，不自动调用 OpenAI、Claude 或其他 LLM judge。'}
+                        '默认只生成复核材料；显式选择 AI 仲裁执行器后，会保存软评分证据。'}
                     </p>
                   </article>
                   <article className="guide-card">
@@ -1288,13 +1294,26 @@ export function App() {
                         </td>
                         <td data-label="软性材料">
                           {labelFor(evaluationLabels, result.soft_evaluation_status || 'not_configured')}
-                          {result.soft_evaluation_payload_path && <small>payload-only</small>}
+                          {result.soft_evaluation_payload_path && (
+                            <small>
+                              {result.soft_evaluation_result_path ? '本地仲裁结果' : 'payload-only'}
+                            </small>
+                          )}
+                          {result.soft_evaluation_score != null && (
+                            <small>
+                              软评分 {result.soft_evaluation_score}/{result.soft_evaluation_max_score ?? '-'}
+                            </small>
+                          )}
+                          {result.soft_evaluation_runner_agent && (
+                            <small>仲裁执行器 {result.soft_evaluation_runner_agent}</small>
+                          )}
                         </td>
                         <td data-label="复核">
                           {labelFor(reviewDecisionLabels, result.manual_review?.decision || 'not_reviewed')}
                           {result.manual_review?.confidence && (
                             <small>{labelFor(confidenceLabels, result.manual_review.confidence)}</small>
                           )}
+                          {result.manual_review?.rating && <small>{result.manual_review.rating} 星</small>}
                         </td>
                         <td data-label="详情">
                           <button
@@ -1322,6 +1341,19 @@ export function App() {
                       <div>
                         <dt>用例 ID</dt>
                         <dd>{caseDetail.case.case_id}</dd>
+                      </div>
+                      <div>
+                        <dt>用例类型</dt>
+                        <dd>{formatCaseType(caseDetail.case.case_type)}</dd>
+                      </div>
+                      <div>
+                        <dt>参考答案</dt>
+                        <dd>
+                          {caseDetail.case.reference_evidence?.summary || '未填写'}
+                          {caseDetail.case.reference_evidence?.fix_ref && (
+                            <small>{caseDetail.case.reference_evidence.fix_ref}</small>
+                          )}
+                        </dd>
                       </div>
                       <div>
                         <dt>状态</dt>
@@ -1364,7 +1396,22 @@ export function App() {
                         <dt>软性材料</dt>
                         <dd>
                           {labelFor(evaluationLabels, caseDetail.case.soft_evaluation_status || 'not_configured')}
-                          {caseDetail.case.soft_evaluation_payload_path && <small>payload-only</small>}
+                          {caseDetail.case.soft_evaluation_payload_path && (
+                            <small>
+                              {caseDetail.case.soft_evaluation_result_path
+                                ? '本地仲裁结果'
+                                : 'payload-only'}
+                            </small>
+                          )}
+                          {caseDetail.case.soft_evaluation_score != null && (
+                            <small>
+                              软评分 {caseDetail.case.soft_evaluation_score}/
+                              {caseDetail.case.soft_evaluation_max_score ?? '-'}
+                            </small>
+                          )}
+                          {caseDetail.case.soft_evaluation_runner_agent && (
+                            <small>仲裁执行器 {caseDetail.case.soft_evaluation_runner_agent}</small>
+                          )}
                         </dd>
                       </div>
                       <div>
@@ -1418,6 +1465,27 @@ export function App() {
                           <option value="low">低</option>
                           <option value="medium">中</option>
                           <option value="high">高</option>
+                        </select>
+                      </label>
+                      <label htmlFor="review-rating">
+                        人工评分
+                        <select
+                          id="review-rating"
+                          aria-label="人工评分"
+                          value={reviewDraft.rating ?? ''}
+                          onChange={(event) =>
+                            setReviewDraft((current) => ({
+                              ...current,
+                              rating: event.target.value ? Number(event.target.value) : null,
+                            }))
+                          }
+                        >
+                          <option value="">未评分</option>
+                          <option value="1">1 星</option>
+                          <option value="2">2 星</option>
+                          <option value="3">3 星</option>
+                          <option value="4">4 星</option>
+                          <option value="5">5 星</option>
                         </select>
                       </label>
                       <label htmlFor="reviewer">
@@ -1578,7 +1646,7 @@ export function App() {
                     <section className="soft-detail-panel" aria-label="软性复核材料">
                       <h4>软性复核材料</h4>
                       <p>
-                        这里展示的是 payload-only 材料位置，context-eval 不会自动调用 OpenAI、Claude 或其他 LLM judge。
+                        这里展示本地复核材料和可选 AI 仲裁结果；仲裁分只作为软证据。
                       </p>
                       <dl className="compact-list">
                         <div>
@@ -1597,6 +1665,22 @@ export function App() {
                               '-'}
                           </dd>
                         </div>
+                        {caseDetail.soft_evaluation?.score != null && (
+                          <div>
+                            <dt>soft score</dt>
+                            <dd>
+                              {caseDetail.soft_evaluation.score}/
+                              {caseDetail.soft_evaluation.max_score ?? '-'} ·{' '}
+                              {caseDetail.soft_evaluation.verdict || 'needs_review'}
+                            </dd>
+                          </div>
+                        )}
+                        {caseDetail.soft_evaluation?.runner_agent && (
+                          <div>
+                            <dt>runner</dt>
+                            <dd>{caseDetail.soft_evaluation.runner_agent}</dd>
+                          </div>
+                        )}
                       </dl>
                     </section>
                   )}

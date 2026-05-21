@@ -226,11 +226,20 @@ variants:
         """
 tasks:
   - id: "task-1"
+    case_type: "bugfix"
     prompt: "Fix the bug."
+    repo_ref: "main"
     expected_outcome:
       summary: "README contains fixed."
       acceptance_points:
         - "Fixed marker is present."
+    reference_evidence:
+      summary: "Real fix changed README marker handling."
+      fix_ref: "real-fix-ref"
+      files:
+        - "README.md"
+      notes:
+        - "Used for review only."
     hard_evaluation:
       enabled: true
       required_paths:
@@ -241,7 +250,9 @@ tasks:
           expected: "fixed"
     soft_evaluation:
       enabled: true
-      mode: "payload-only"
+      mode: "runner"
+      runner_agent: "coco"
+      timeout_seconds: 30
       rubric:
         - name: "quality"
           weight: 1
@@ -258,14 +269,31 @@ tasks:
     task_data = yaml.safe_load(exported.tasks_yaml)
 
     task = model.tasks[0]
+    assert task.case_type == "bugfix"
+    assert task.repo_ref == "main"
+    assert task.reference_evidence is not None
+    assert task.reference_evidence.summary == "Real fix changed README marker handling."
+    assert task.reference_evidence.fix_ref == "real-fix-ref"
+    assert task.reference_evidence.files == ["README.md"]
     assert task.expected_outcome is not None
     assert task.expected_outcome.summary == "README contains fixed."
     assert task.hard_evaluation is not None
     assert task.hard_evaluation.required_paths == ["README.md"]
     assert task.hard_evaluation.command_checks[0].label == "readme-marker"
     assert task.soft_evaluation is not None
+    assert task.soft_evaluation.mode == "runner"
+    assert task.soft_evaluation.runner_agent == "coco"
+    assert task.soft_evaluation.timeout_seconds == 30
     assert task.soft_evaluation.rubric[0].name == "quality"
     assert task.extra_fields == {"x_task_unknown": {"keep": True}}
+    assert task_data["tasks"][0]["case_type"] == "bugfix"
+    assert task_data["tasks"][0]["repo_ref"] == "main"
+    assert task_data["tasks"][0]["reference_evidence"] == {
+        "summary": "Real fix changed README marker handling.",
+        "fix_ref": "real-fix-ref",
+        "files": ["README.md"],
+        "notes": ["Used for review only."],
+    }
     assert task_data["tasks"][0]["expected_outcome"]["summary"] == "README contains fixed."
     assert task_data["tasks"][0]["hard_evaluation"]["required_paths"] == ["README.md"]
     assert task_data["tasks"][0]["hard_evaluation"]["command_checks"] == [
@@ -276,7 +304,9 @@ tasks:
             "timeout_seconds": 60,
         }
     ]
-    assert task_data["tasks"][0]["soft_evaluation"]["mode"] == "payload-only"
+    assert task_data["tasks"][0]["soft_evaluation"]["mode"] == "runner"
+    assert task_data["tasks"][0]["soft_evaluation"]["runner_agent"] == "coco"
+    assert task_data["tasks"][0]["soft_evaluation"]["timeout_seconds"] == 30
     assert task_data["tasks"][0]["x_task_unknown"] == {"keep": True}
 
 

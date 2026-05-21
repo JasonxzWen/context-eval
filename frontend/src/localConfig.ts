@@ -19,8 +19,16 @@ export function fallbackConfig(): LoadedConfig {
   const fallbackTasks: EditableTask[] = localAppFixture.tasks.map((task) => ({
     id: task,
     title: task,
+    case_type: 'custom',
     prompt: `Run ${task}.`,
+    repo_ref: null,
     validation_commands: [],
+    reference_evidence: {
+      summary: '',
+      fix_ref: '',
+      files: [],
+      notes: [],
+    },
     expected_outcome: {
       summary: '示例任务会生成本地补丁证据。',
       acceptance_points: ['本地结果可审查。'],
@@ -37,6 +45,8 @@ export function fallbackConfig(): LoadedConfig {
     soft_evaluation: {
       enabled: true,
       mode: 'payload-only',
+      runner_agent: null,
+      timeout_seconds: null,
       max_score: 10,
       rubric: [{ name: 'quality', weight: 1, description: 'Patch is clear.' }],
     },
@@ -75,6 +85,7 @@ export function fallbackConfig(): LoadedConfig {
     ...fallbackTasks.flatMap((task) => [
       `  - id: ${task.id}`,
       `    title: ${task.title}`,
+      `    case_type: ${task.case_type}`,
       `    prompt: ${task.prompt}`,
       '    expected_outcome:',
       `      summary: ${task.expected_outcome?.summary}`,
@@ -243,6 +254,11 @@ export function validateEditableConfig(editable: EditableConfig) {
         issues.push(`${label}: 第 ${rubricIndex + 1} 条评分规则权重必须大于 0`);
       }
     });
+    if (task.soft_evaluation?.runner_agent) {
+      if (!agentNames.includes(task.soft_evaluation.runner_agent.trim())) {
+        issues.push(`${label}: 仲裁执行器必须匹配已有执行器`);
+      }
+    }
   });
   duplicates.forEach((id) => issues.push(`任务 ID 重复: ${id}`));
   return issues;
@@ -262,7 +278,9 @@ export function blankTask(tasks: EditableTask[]): EditableTask {
   return {
     id: uniqueTaskId('new-task', tasks),
     title: '新的测试用例',
+    case_type: 'bugfix',
     prompt: '',
+    repo_ref: null,
     category: 'bugfix',
     difficulty: 'easy',
     validation_commands: [],
@@ -270,6 +288,12 @@ export function blankTask(tasks: EditableTask[]): EditableTask {
       summary: '',
       acceptance_points: [],
       files: [],
+    },
+    reference_evidence: {
+      summary: '',
+      fix_ref: '',
+      files: [],
+      notes: [],
     },
     hard_evaluation: {
       enabled: true,
@@ -283,6 +307,8 @@ export function blankTask(tasks: EditableTask[]): EditableTask {
     soft_evaluation: {
       enabled: true,
       mode: 'payload-only',
+      runner_agent: null,
+      timeout_seconds: null,
       max_score: 10,
       rubric: [],
     },

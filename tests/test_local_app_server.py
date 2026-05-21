@@ -284,11 +284,13 @@ def test_local_app_reports_empty_workspace_and_bootstraps_demo(tmp_path: Path) -
         review={
             "decision": "pass",
             "confidence": "high",
+            "rating": 5,
             "reviewer": "manual",
             "notes": "Experiment carries the required marker and validation passed.",
         },
     )
     assert saved_review["review"]["decision"] == "pass"
+    assert saved_review["review"]["rating"] == 5
     assert (Path(run_status["run_dir"]) / "manual_reviews.json").exists()
 
     reviewed_results = service.results(run_dir=run_status["run_dir"])
@@ -310,6 +312,9 @@ def test_local_app_reports_empty_workspace_and_bootstraps_demo(tmp_path: Path) -
     assert exported_cases[by_variant["experiment"]["case_id"]]["manual_review"][
         "confidence"
     ] == "high"
+    assert exported_cases[by_variant["experiment"]["case_id"]]["manual_review"][
+        "rating"
+    ] == 5
 
 
 def test_local_app_results_compares_selected_baseline_against_other_variants(
@@ -867,10 +872,18 @@ def test_local_app_plan_and_results_include_hybrid_evaluation(tmp_path: Path) ->
                 "tasks": [
                     {
                         "id": "hybrid-task",
+                        "case_type": "bugfix",
                         "prompt": "Add the fixed marker.",
+                        "repo_ref": "main",
                         "expected_outcome": {
                             "summary": "README contains fixed marker.",
                             "acceptance_points": ["The fixed marker is present."],
+                        },
+                        "reference_evidence": {
+                            "summary": "Real fix appends the fixed marker to README.",
+                            "fix_ref": "real-fix-ref",
+                            "files": ["README.md"],
+                            "notes": ["Review evidence only."],
                         },
                         "hard_evaluation": {
                             "enabled": True,
@@ -942,9 +955,15 @@ def test_local_app_plan_and_results_include_hybrid_evaluation(tmp_path: Path) ->
     case = plan["cases"][0]
     assert case["agent_name"] == "coco"
     assert case["agent_kind"] == "coco"
+    assert case["case_type"] == "bugfix"
+    assert case["reference_evidence_summary"] == (
+        "Real fix appends the fixed marker to README."
+    )
     assert case["expected_outcome_summary"] == "README contains fixed marker."
     assert case["hard_evaluation_enabled"] is True
     assert case["soft_evaluation_enabled"] is True
+    assert case["soft_evaluation_mode"] == "payload-only"
+    assert case["soft_evaluation_runner_agent"] is None
 
     started = service.start_run(
         config_path="context-eval.yaml",
@@ -961,12 +980,15 @@ def test_local_app_plan_and_results_include_hybrid_evaluation(tmp_path: Path) ->
     results = service.results(run_dir=status["run_dir"])
     result_case = results["cases"][0]
     assert result_case["hard_evaluation_status"] == "passed"
+    assert result_case["case_type"] == "bugfix"
+    assert result_case["reference_evidence"]["fix_ref"] == "real-fix-ref"
     assert result_case["hard_evaluation_score"] == result_case["hard_evaluation_max_score"]
     assert result_case["soft_evaluation_status"] == "payload_generated"
     assert result_case["hard_evaluation"]["passed"] is True
     assert result_case["soft_evaluation"]["payload_path"].endswith(
         "soft_evaluation_payload.json"
     )
+    assert result_case["soft_evaluation"]["runner_agent"] is None
 
     hard_artifact = service.read_artifact(
         run_dir=status["run_dir"],

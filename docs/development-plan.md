@@ -115,12 +115,22 @@ loss of SDD/TDD discipline.
     reference.
 12. PR L: No-CLI Launcher And Packaging, after the local app workflow is stable
     and browser-verified.
+13. PR M: Real Project Evaluation Support, after the designer workflow can
+    save and reload local configuration. This makes private production
+    repository cases practical with task types, per-case start refs, reference
+    evidence, Codex JSONL metrics, optional AI arbitration runner output, and
+    planner-friendly review screens.
 
 Current active capability: `coco-visual-hybrid-evaluation`, after the local app
 server and frontend workflow are in place. This adds
 `docs/coco-visual-hybrid-evaluation.md`, `kind: "coco"`, structured task
 authoring, expected outcomes, deterministic hard checks, optional soft
 evaluation payload generation, and local artifact review.
+
+Current follow-up capability: `real-project-evaluation-support`, specified in
+`docs/plans/2026-05-21-real-project-evaluation-support.md`. This adds
+planner-facing real project cases for old-context vs new-context comparisons,
+without changing the local-only and artifact-based boundary.
 
 ## Capability Epic A: Config Diagnostics And Strict Validation Hardening
 
@@ -955,6 +965,93 @@ installation.
 The launcher is a product packaging layer over the local app. It should land
 only after the app workflow is stable, and it should be reviewed with its
 install, startup, diagnostics, and release-boundary docs together.
+
+## Capability Epic M: Real Project Evaluation Support
+
+### Goal
+
+Make context-eval usable for private production repositories where planners
+compare context packages such as an old `AGENTS.md` against a new `AGENTS.md`
+plus project wiki docs.
+
+### Scope
+
+- Add task metadata for real project case types: compile diagnosis, known bug
+  fix, incident diagnosis and fix, feature work, and custom cases.
+- Keep `task.repo_ref` as the per-case starting version, but present it in the
+  local app as "start from version" for non-technical users.
+- Add `reference_evidence` so maintainers can record the true answer, real fix
+  ref, important files, and review notes without sending that evidence to the
+  coding agent by default.
+- Include task type and reference evidence in config editing, run planning,
+  soft evaluation payloads, exports, and result detail screens.
+- Keep Codex metrics sourced from local structured JSONL artifacts. Missing
+  tokens, tool calls, command calls, model data, or final replies must remain
+  visible evidence gaps instead of guessed values.
+- Add an explicit AI arbitration runner that can default to the same executor as
+  the evaluated case while saving local stdout, stderr, exit status, duration,
+  and parsed JSON output as soft evidence.
+- Improve the planner UI around old-context vs new-context packages, task
+  templates, reference answers, hard metrics, soft arbitration payloads, and
+  manual one-to-five feedback.
+
+### Non-Goals
+
+- Do not clone private repositories or read remote code hosting services.
+- Do not read user credentials, global Codex logs, shell history, or provider
+  account data.
+- Do not make hidden OpenAI, Claude, or other hosted LLM judge calls.
+- Do not treat soft arbitration as the primary correctness source or as a
+  ranking score.
+- Do not commit, tag, release, or push target repository changes.
+- Do not infer token or tool metrics from unstructured logs.
+
+### Merge Acceptance Criteria
+
+- The capability PR includes spec, tests, implementation, docs, and browser
+  verification.
+- A planner can configure old-context vs new-context local packages without
+  editing YAML.
+- Each task can select a case type and optional per-case starting Git ref.
+- Reference evidence is saved, reloaded, exported, and shown for review, but
+  not appended to the agent prompt by default.
+- Soft evaluation can either stop after local evidence payload generation or run
+  an explicit local arbitration executor.
+- Codex JSONL metrics, missing evidence, changed files, validation, hard
+  checks, manual feedback, and optional AI arbitration evidence are visible in
+  results.
+
+### Suggested Ralph Stories
+
+- US-M1: Document the real project workflow, task fields, and non-goals.
+- US-M2: Add task schema, config-editor, and export support for case types and
+  reference evidence.
+- US-M3: Add local app UI templates for compile diagnosis, known bug fix,
+  incident fix, and feature work.
+- US-M4: Surface reference evidence and Codex metric gaps in run plans,
+  result details, soft payloads, and exports.
+- US-M5: Add explicit AI arbitration runner execution and artifacts.
+- US-M6: Add Playwright E2E coverage for a real-project-style setup and manual
+  feedback review.
+
+### Test Strategy
+
+- Spec tests for the real project plan, task format, and local-only boundaries.
+- Model and config-editor tests for schema validation and YAML round trips.
+- Runner/evaluator tests proving reference evidence is not sent to prompts but
+  is included in soft payloads and exports.
+- Frontend unit tests for task templates, starting version, reference evidence,
+  and validation messages.
+- Playwright E2E tests for configuring a private-project-style comparison,
+  saving/reloading, planning a run, reviewing results, and saving feedback.
+- Browser verification after UI changes on desktop and narrow viewports.
+
+### Why One Capability PR
+
+Real project evaluation crosses task schema, planner UI, local artifacts,
+telemetry, exports, and review. Landing those pieces together avoids a partial
+workflow where users can describe production cases but cannot review or export
+the evidence consistently.
 
 ## Cross-Epic Quality Gates
 

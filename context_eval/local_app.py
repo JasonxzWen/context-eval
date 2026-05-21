@@ -500,9 +500,15 @@ class LocalAppService:
                                 "agent_name": agent_profile.name,
                                 "agent_kind": agent_profile.kind,
                                 "task_id": task.id,
+                                "case_type": task.case_type,
                                 "variant": variant_name,
                                 "trial_index": trial_index,
                                 "repo_ref": repo_ref,
+                                "reference_evidence_summary": (
+                                    task.reference_evidence.summary
+                                    if task.reference_evidence is not None
+                                    else None
+                                ),
                                 "prompt_path": f"prompts/{case_id}.md",
                                 "command_preview": self._command_preview(
                                     config=config,
@@ -521,6 +527,16 @@ class LocalAppService:
                                 ),
                                 "soft_evaluation_enabled": bool(
                                     task.soft_evaluation and task.soft_evaluation.enabled
+                                ),
+                                "soft_evaluation_mode": (
+                                    task.soft_evaluation.mode
+                                    if task.soft_evaluation is not None
+                                    else None
+                                ),
+                                "soft_evaluation_runner_agent": (
+                                    task.soft_evaluation.runner_agent
+                                    if task.soft_evaluation is not None
+                                    else None
                                 ),
                             }
                         )
@@ -929,6 +945,7 @@ class LocalAppService:
                 {
                     "id": "fix-greeting-demo",
                     "title": "修复问候语标点",
+                    "case_type": "bugfix",
                     "prompt": (
                         "更新问候语实现，让它返回带标点的完整问候语。"
                         "请遵循当前 AGENTS.md 的说明。"
@@ -1339,6 +1356,7 @@ class LocalAppService:
             "case_id": case_id,
             "decision": "not_reviewed",
             "confidence": "unknown",
+            "rating": None,
             "reviewer": "",
             "notes": "",
             "updated_at": None,
@@ -1357,6 +1375,15 @@ class LocalAppService:
             raise LocalAppError(f"unsupported manual review decision: {decision}")
         if confidence not in MANUAL_REVIEW_CONFIDENCES:
             raise LocalAppError(f"unsupported manual review confidence: {confidence}")
+        raw_rating = review.get("rating")
+        rating = None
+        if raw_rating not in {None, ""}:
+            try:
+                rating = int(raw_rating)
+            except (TypeError, ValueError) as exc:
+                raise LocalAppError("manual review rating must be an integer from 1 to 5") from exc
+            if rating < 1 or rating > 5:
+                raise LocalAppError("manual review rating must be an integer from 1 to 5")
         updated_at = review.get("updated_at") if preserve_updated_at else None
         if not isinstance(updated_at, str) or not updated_at:
             updated_at = datetime.now().isoformat(timespec="seconds")
@@ -1364,6 +1391,7 @@ class LocalAppService:
             "case_id": case_id,
             "decision": decision,
             "confidence": confidence,
+            "rating": rating,
             "reviewer": str(review.get("reviewer", "")).strip(),
             "notes": str(review.get("notes", "")).strip(),
             "updated_at": updated_at,
@@ -1413,8 +1441,8 @@ class LocalAppService:
             "soft_evaluation": {
                 "mode": "payload-only",
                 "meaning": (
-                    "soft evaluation 当前只生成复核 payload，不自动调用 OpenAI、"
-                    "Claude 或其他 LLM judge。"
+                    "soft evaluation 默认只生成本地复核 payload；"
+                    "显式选择 runner 时会运行本地仲裁执行器，结果仍只是软证据。"
                 ),
             },
             "manual_review": {
@@ -1707,6 +1735,10 @@ class LocalAppService:
             "status": result.soft_evaluation_status,
             "payload_path": result.soft_evaluation_payload_path,
             "result_path": result.soft_evaluation_result_path,
+            "runner_agent": result.soft_evaluation_runner_agent,
+            "score": result.soft_evaluation_score,
+            "max_score": result.soft_evaluation_max_score,
+            "verdict": result.soft_evaluation_verdict,
         }
 
 

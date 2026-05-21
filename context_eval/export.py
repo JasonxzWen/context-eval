@@ -19,6 +19,7 @@ CASE_COLUMNS = [
     "case_id",
     "agent_name",
     "task_id",
+    "case_type",
     "variant",
     "trial_index",
     "status",
@@ -50,6 +51,14 @@ CASE_COLUMNS = [
     "hard_evaluation_passed_checks",
     "hard_evaluation_failed_checks",
     "soft_evaluation_status",
+    "soft_evaluation_result_path",
+    "soft_evaluation_runner_agent",
+    "soft_evaluation_score",
+    "soft_evaluation_max_score",
+    "soft_evaluation_verdict",
+    "reference_evidence_summary",
+    "reference_evidence_fix_ref",
+    "reference_evidence_files",
     "changed_files",
     "insertions",
     "deletions",
@@ -129,8 +138,8 @@ def _evaluation_explanation() -> dict[str, Any]:
         "soft_evaluation": {
             "mode": "payload-only",
             "meaning": (
-                "soft evaluation 目前只生成复核 payload，不自动调用 OpenAI、Claude 或其他 "
-                "LLM judge。"
+                "soft evaluation 默认只生成本地复核 payload；"
+                "显式选择 runner 时会运行本地仲裁执行器，结果仍只是软证据。"
             ),
         },
         "manual_review": {
@@ -246,6 +255,7 @@ def _case_csv_row(result: CaseResult) -> dict[str, str | int]:
         "case_id": result.case_id or "",
         "agent_name": result.agent_name,
         "task_id": result.task_id,
+        "case_type": result.case_type or "",
         "variant": result.variant,
         "trial_index": result.trial_index,
         "status": result.status,
@@ -261,6 +271,28 @@ def _case_csv_row(result: CaseResult) -> dict[str, str | int]:
             result.hard_evaluation_failed_checks
         ),
         "soft_evaluation_status": result.soft_evaluation_status,
+        "soft_evaluation_result_path": result.soft_evaluation_result_path or "",
+        "soft_evaluation_runner_agent": result.soft_evaluation_runner_agent or "",
+        "soft_evaluation_score": _format_optional_number(result.soft_evaluation_score),
+        "soft_evaluation_max_score": _format_optional_number(
+            result.soft_evaluation_max_score
+        ),
+        "soft_evaluation_verdict": result.soft_evaluation_verdict or "",
+        "reference_evidence_summary": (
+            result.reference_evidence.summary
+            if result.reference_evidence is not None and result.reference_evidence.summary
+            else ""
+        ),
+        "reference_evidence_fix_ref": (
+            result.reference_evidence.fix_ref
+            if result.reference_evidence is not None and result.reference_evidence.fix_ref
+            else ""
+        ),
+        "reference_evidence_files": (
+            _format_list_csv(result.reference_evidence.files)
+            if result.reference_evidence is not None
+            else ""
+        ),
         "changed_files": result.changed_files,
         "insertions": result.insertions,
         "deletions": result.deletions,
@@ -299,6 +331,7 @@ def _case_json_row(
         "case_id": result.case_id,
         "agent_name": result.agent_name,
         "task_id": result.task_id,
+        "case_type": result.case_type,
         "variant": result.variant,
         "trial_index": result.trial_index,
         "status": result.status,
@@ -313,6 +346,15 @@ def _case_json_row(
         "soft_evaluation_status": result.soft_evaluation_status,
         "soft_evaluation_payload_path": result.soft_evaluation_payload_path,
         "soft_evaluation_result_path": result.soft_evaluation_result_path,
+        "soft_evaluation_runner_agent": result.soft_evaluation_runner_agent,
+        "soft_evaluation_score": result.soft_evaluation_score,
+        "soft_evaluation_max_score": result.soft_evaluation_max_score,
+        "soft_evaluation_verdict": result.soft_evaluation_verdict,
+        "reference_evidence": (
+            result.reference_evidence.model_dump(mode="json")
+            if result.reference_evidence is not None
+            else None
+        ),
         "changed_files": result.changed_files,
         "insertions": result.insertions,
         "deletions": result.deletions,
@@ -343,6 +385,7 @@ def _case_json_row(
                 "case_id": case_id,
                 "decision": "not_reviewed",
                 "confidence": "unknown",
+                "rating": None,
                 "reviewer": "",
                 "notes": "",
                 "updated_at": None,

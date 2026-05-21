@@ -1,4 +1,5 @@
 import type { EditableAgent, EditableVariant, RunPlan, RunScope } from '../types';
+import { formatCaseType } from '../caseTypes';
 
 type RunPlanPanelProps = {
   agents: EditableAgent[];
@@ -52,8 +53,14 @@ export function RunPlanPanel({
             <strong>{caseItem.case_id}</strong>
             <span>{caseItem.expected_outcome_summary || '未配置验收 / 仲裁目标'}</span>
             <small>
+              {caseItem.case_type ? `类型 ${formatCaseType(caseItem.case_type)} / ` : ''}
+              {caseItem.reference_evidence_summary ? '参考答案已填写 / ' : ''}
               {caseItem.hard_evaluation_enabled ? '硬性检查开启' : '硬性检查关闭'} /{' '}
-              {caseItem.soft_evaluation_enabled ? 'AI 仲裁维度已配置' : '未配置 AI 仲裁维度'}
+              {caseItem.soft_evaluation_enabled
+                ? (caseItem.soft_evaluation_mode === 'runner'
+                    ? `AI 仲裁执行器 ${caseItem.soft_evaluation_runner_agent || '同评测执行器'}`
+                    : 'AI 仲裁材料已配置')
+                : '未配置 AI 仲裁维度'}
             </small>
           </li>
         ))}

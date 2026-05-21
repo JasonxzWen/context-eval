@@ -1,15 +1,20 @@
 import type {
   CommandCheck,
+  EditableAgent,
   EditableTask,
   ExpectedOutcome,
   HardEvaluation,
+  ReferenceEvidence,
   SoftEvaluation,
   SoftRubricItem,
+  TaskCaseType,
 } from '../types';
+import { caseTypeOptions } from '../caseTypes';
 import { HelpTip } from './HelpTip';
 
 type TaskEditorProps = {
   tasks: EditableTask[];
+  agents: EditableAgent[];
   selectedTaskIndex: number;
   saveStatus: string;
   serverMode: 'checking' | 'connected' | 'fixture';
@@ -27,6 +32,13 @@ const emptyExpectedOutcome: ExpectedOutcome = {
   acceptance_points: [],
   files: [],
   forbidden_paths: [],
+};
+
+const emptyReferenceEvidence: ReferenceEvidence = {
+  summary: '',
+  fix_ref: '',
+  files: [],
+  notes: [],
 };
 
 const emptyHardEvaluation: HardEvaluation = {
@@ -71,6 +83,7 @@ const changeTypeOptions = [
 
 export function TaskEditor({
   tasks,
+  agents,
   selectedTaskIndex,
   saveStatus,
   serverMode,
@@ -99,6 +112,7 @@ export function TaskEditor({
   }
 
   const expected = task.expected_outcome || emptyExpectedOutcome;
+  const referenceEvidence = task.reference_evidence || emptyReferenceEvidence;
   const hard = task.hard_evaluation || emptyHardEvaluation;
   const soft = task.soft_evaluation || emptySoftEvaluation;
 
@@ -108,6 +122,12 @@ export function TaskEditor({
 
   function updateExpected(patch: Partial<ExpectedOutcome>) {
     updateTask({ expected_outcome: { ...emptyExpectedOutcome, ...expected, ...patch } });
+  }
+
+  function updateReferenceEvidence(patch: Partial<ReferenceEvidence>) {
+    updateTask({
+      reference_evidence: { ...emptyReferenceEvidence, ...referenceEvidence, ...patch },
+    });
   }
 
   function updateHard(patch: Partial<HardEvaluation>) {
@@ -120,6 +140,8 @@ export function TaskEditor({
 
   const acceptancePoints = expected.acceptance_points || [];
   const expectedFiles = expected.files || [];
+  const referenceFiles = referenceEvidence.files || [];
+  const referenceNotes = referenceEvidence.notes || [];
   const validationCommands = task.validation_commands || [];
   const commandChecks = hard.command_checks || [];
   const rubric = soft.rubric || [];
@@ -130,7 +152,7 @@ export function TaskEditor({
         <h2>1 配测试用例</h2>
         <span>{tasks.length} 个用例</span>
       </div>
-      <p className="panel-note">只要先填：让 AI 做什么，以及怎样算完成。</p>
+      <p className="panel-note">先写清任务、起始版本、验收标准；参考答案只给人复核，不默认发给 AI。</p>
 
       <div className="task-editor-layout">
         <aside className="task-rail" aria-label="测试用例列表">
@@ -178,6 +200,12 @@ export function TaskEditor({
         >
           <fieldset>
             <legend>任务</legend>
+            <SegmentedField
+              label="用例类型"
+              value={task.case_type || 'custom'}
+              options={caseTypeOptions}
+              onChange={(value) => updateTask({ case_type: value as TaskCaseType })}
+            />
             <div className="form-grid simplified-grid">
               <label htmlFor="task-title">
                 用例标题
@@ -190,13 +218,23 @@ export function TaskEditor({
               </label>
             </div>
             <label htmlFor="task-prompt">
-              AI 要做什么
+              给 AI 的任务提示词
               <textarea
                 id="task-prompt"
                 aria-label="AI 要做什么"
                 placeholder="写给 coding agent 的任务。说明目标、限制和重点即可。"
                 value={task.prompt}
                 onChange={(event) => updateTask({ prompt: event.target.value })}
+              />
+            </label>
+            <label htmlFor="task-repo-ref" className="compact-label">
+              起始版本
+              <input
+                id="task-repo-ref"
+                aria-label="起始版本"
+                placeholder="留空则使用项目默认版本；例如 before-fix-commit"
+                value={task.repo_ref || ''}
+                onChange={(event) => updateTask({ repo_ref: event.target.value || null })}
               />
             </label>
           </fieldset>
@@ -219,6 +257,46 @@ export function TaskEditor({
               placeholder="例如：问候语包含正确标点"
               onChange={(values) => updateExpected({ acceptance_points: values })}
             />
+            <div className="reference-evidence-box" aria-label="参考答案">
+              <div className="subsection-heading">
+                <strong>参考答案（不给 AI）</strong>
+                <span className="inline-help">用于人工复核和可选 AI 仲裁材料</span>
+              </div>
+              <label htmlFor="reference-summary">
+                真实结果 / 修复说明
+                <textarea
+                  id="reference-summary"
+                  aria-label="真实结果 / 修复说明"
+                  placeholder="填写真实原因、真实修复思路或你期望对照的答案。"
+                  value={referenceEvidence.summary || ''}
+                  onChange={(event) => updateReferenceEvidence({ summary: event.target.value })}
+                />
+              </label>
+              <label htmlFor="reference-fix-ref" className="compact-label">
+                真实修复版本
+                <input
+                  id="reference-fix-ref"
+                  aria-label="真实修复版本"
+                  placeholder="可选，例如真实修复 commit、PR 或内部单号"
+                  value={referenceEvidence.fix_ref || ''}
+                  onChange={(event) => updateReferenceEvidence({ fix_ref: event.target.value })}
+                />
+              </label>
+              <div className="reference-evidence-grid">
+                <ListEditor
+                  title="相关文件"
+                  values={referenceFiles}
+                  placeholder="例如：src/login/session.py"
+                  onChange={(values) => updateReferenceEvidence({ files: values })}
+                />
+                <ListEditor
+                  title="复核备注"
+                  values={referenceNotes}
+                  placeholder="例如：重点看根因是否命中"
+                  onChange={(values) => updateReferenceEvidence({ notes: values })}
+                />
+              </div>
+            </div>
           </fieldset>
 
           <details className="advanced-inline">
@@ -298,13 +376,57 @@ export function TaskEditor({
             <fieldset>
               <legend>AI 仲裁维度</legend>
               <p className="field-help">
-                只生成仲裁材料，不自动调用 LLM judge。
+                默认只生成复核材料；选择运行 AI 仲裁后，会用下面的执行器读取材料并输出软评分。
               </p>
+              <label className="checkbox-label" htmlFor="soft-enabled">
+                <input
+                  id="soft-enabled"
+                  type="checkbox"
+                  checked={soft.enabled}
+                  onChange={(event) => updateSoft({ enabled: event.target.checked })}
+                />
+                启用 AI 仲裁材料
+              </label>
+              <label htmlFor="soft-mode">
+                仲裁方式
+                <select
+                  id="soft-mode"
+                  aria-label="仲裁方式"
+                  value={soft.mode}
+                  onChange={(event) => {
+                    const mode = event.target.value as SoftEvaluation['mode'];
+                    updateSoft({
+                      mode,
+                      runner_agent: mode === 'runner' ? soft.runner_agent || null : null,
+                    });
+                  }}
+                >
+                  <option value="payload-only">只生成材料</option>
+                  <option value="runner">运行 AI 仲裁</option>
+                </select>
+              </label>
+              <label htmlFor="soft-runner-agent">
+                仲裁执行器
+                <select
+                  id="soft-runner-agent"
+                  aria-label="仲裁执行器"
+                  value={soft.runner_agent || ''}
+                  onChange={(event) => updateSoft({ runner_agent: event.target.value || null })}
+                  disabled={soft.mode !== 'runner'}
+                >
+                  <option value="">同评测执行器</option>
+                  {agents.map((agent) => (
+                    <option key={agent.name} value={agent.name}>
+                      {agent.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <RubricEditor items={rubric} onChange={(items) => updateSoft({ rubric: items })} />
             </fieldset>
             <div className="arbitration-material-note" aria-label="AI 仲裁材料说明">
               <strong>AI 仲裁材料</strong>
-              <span>结果页会生成 soft_evaluation_payload.json，供人工或外部 AI 仲裁复核。</span>
+              <span>只生成材料时不会调用 AI；运行仲裁时保存结果 JSON，仍只是软证据。</span>
             </div>
           </details>
 

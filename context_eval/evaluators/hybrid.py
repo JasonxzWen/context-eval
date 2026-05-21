@@ -6,10 +6,13 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from context_eval.adapters.command import CommandTemplateAgent
 from context_eval.logging import run_command
 from context_eval.models import (
+    AgentConfig,
     CaseResult,
     CommandCheckConfig,
+    CommandResult,
     HardEvaluationConfig,
     SnippetCheckConfig,
     TaskConfig,
@@ -17,6 +20,7 @@ from context_eval.models import (
 
 HARD_EVALUATION_SCHEMA_VERSION = "1"
 SOFT_EVALUATION_PAYLOAD_SCHEMA_VERSION = "1"
+SOFT_EVALUATION_RESULT_SCHEMA_VERSION = "1"
 PATCH_EXCERPT_LIMIT = 12000
 
 
@@ -174,10 +178,16 @@ def write_soft_evaluation_payload(
         "task": {
             "title": task.title,
             "prompt": task.prompt,
+            "case_type": task.case_type,
             "category": task.category,
             "difficulty": task.difficulty,
             "repo_ref": result.repo_ref,
         },
+        "reference_evidence": (
+            task.reference_evidence.model_dump(mode="json")
+            if task.reference_evidence is not None
+            else None
+        ),
         "expected_outcome": (
             task.expected_outcome.model_dump(mode="json")
             if task.expected_outcome is not None
@@ -234,6 +244,195 @@ def write_soft_evaluation_payload(
     result.soft_evaluation_status = "payload_generated"
     result.soft_evaluation_payload_path = payload_path.relative_to(run_dir).as_posix()
     return payload_path
+
+
+def run_soft_evaluation_runner(
+    *,
+    result: CaseResult,
+    task: TaskConfig,
+    run_dir: Path,
+    payload_path: Path,
+    runner_agent: AgentConfig,
+) -> Path:
+    config = task.soft_evaluation
+    if config is None:
+        raise ValueError("soft evaluation runner requires soft_evaluation config")
+
+    case_id = result.case_id or f"{result.task_id}__{result.variant}"
+    artifact_dir = run_dir / "artifacts" / case_id
+    runner_dir = artifact_dir / "soft_evaluation_runner"
+    runner_dir.mkdir(parents=True, exist_ok=True)
+    prompt_path = artifact_dir / "soft_evaluation_prompt.md"
+    stdout_path = run_dir / "logs" / f"{case_id}.soft-evaluation.stdout.log"
+    stderr_path = run_dir / "logs" / f"{case_id}.soft-evaluation.stderr.log"
+    raw_result_path = artifact_dir / "soft_evaluation_raw_result.txt"
+    result_path = artifact_dir / "soft_evaluation_result.json"
+
+    prompt = _soft_evaluation_prompt(
+        payload=payload_path.read_text(encoding="utf-8"),
+        max_score=config.max_score,
+    )
+    prompt_path.write_text(prompt, encoding="utf-8")
+
+    runner = CommandTemplateAgent(runner_agent)
+    command_result = runner.run(
+        workspace=runner_dir,
+        prompt=prompt,
+        prompt_file=prompt_path,
+        task=task,
+        variant=result.variant,
+        output_dir=runner_dir,
+        timeout_seconds=config.timeout_seconds or runner_agent.timeout_minutes * 60,
+    )
+    stdout_path.write_text(command_result.stdout, encoding="utf-8")
+    stderr_path.write_text(command_result.stderr, encoding="utf-8")
+
+    telemetry_payload: dict[str, Any] | None = None
+    candidate_output = command_result.stdout
+    try:
+        telemetry = runner.collect_telemetry(
+            workspace=runner_dir,
+            prompt_file=prompt_path,
+            task=task,
+            variant=result.variant,
+            output_dir=runner_dir,
+            command_result=command_result,
+        )
+        telemetry_payload = telemetry.model_dump(mode="json")
+        final_message = _read_runner_final_message(telemetry_payload)
+        if final_message:
+            candidate_output = final_message
+    except Exception as exc:  # pragma: no cover - defensive telemetry capture
+        telemetry_payload = {"status": "error", "error": str(exc)}
+
+    raw_result_path.write_text(candidate_output, encoding="utf-8")
+    parsed_result, parse_error = _parse_soft_runner_result(candidate_output)
+    result.soft_evaluation_runner_agent = runner_agent.name
+    result.soft_evaluation_result_path = result_path.relative_to(run_dir).as_posix()
+    result.soft_evaluation_score = _number_field(parsed_result, "score")
+    result.soft_evaluation_max_score = (
+        _number_field(parsed_result, "max_score") or config.max_score
+        if parsed_result is not None
+        else None
+    )
+    result.soft_evaluation_verdict = _string_field(parsed_result, "verdict")
+    if command_result.timeout or command_result.exit_code != 0:
+        result.soft_evaluation_status = "error"
+    elif parse_error:
+        result.soft_evaluation_status = "error"
+    else:
+        result.soft_evaluation_status = "result_available"
+
+    artifact = {
+        "schema_version": SOFT_EVALUATION_RESULT_SCHEMA_VERSION,
+        "case_id": case_id,
+        "task_id": result.task_id,
+        "variant": result.variant,
+        "runner_agent": runner_agent.name,
+        "payload_path": payload_path.relative_to(run_dir).as_posix(),
+        "prompt_path": prompt_path.relative_to(run_dir).as_posix(),
+        "raw_result_path": raw_result_path.relative_to(run_dir).as_posix(),
+        "stdout_path": stdout_path.relative_to(run_dir).as_posix(),
+        "stderr_path": stderr_path.relative_to(run_dir).as_posix(),
+        "command": _command_artifact(command_result),
+        "telemetry": telemetry_payload,
+        "parsed_result": parsed_result,
+        "parse_error": parse_error,
+        "status": result.soft_evaluation_status,
+    }
+    result_path.write_text(
+        json.dumps(artifact, ensure_ascii=True, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return result_path
+
+
+def _soft_evaluation_prompt(*, payload: str, max_score: float) -> str:
+    return "\n".join(
+        [
+            "# context-eval optional AI arbitration",
+            "",
+            "You are an optional soft-evidence reviewer for a local context-eval run.",
+            "Use only the JSON payload below and any local artifact paths it names.",
+            "Do not treat validation success as absolute task correctness.",
+            "Do not rank agents globally. Score only this one case as review evidence.",
+            "",
+            "Return JSON only, with this shape:",
+            "{",
+            '  "score": number,',
+            f'  "max_score": {max_score},',
+            '  "verdict": "pass" | "fail" | "needs_review",',
+            '  "summary": "short review conclusion",',
+            '  "reasons": ["evidence-backed reason"]',
+            "}",
+            "",
+            "Payload:",
+            "```json",
+            payload,
+            "```",
+            "",
+        ]
+    )
+
+
+def _command_artifact(command_result: CommandResult) -> dict[str, Any]:
+    return {
+        "command": command_result.command,
+        "cwd": command_result.cwd,
+        "exit_code": command_result.exit_code,
+        "duration_seconds": command_result.duration_seconds,
+        "timeout": command_result.timeout,
+    }
+
+
+def _read_runner_final_message(telemetry_payload: dict[str, Any]) -> str | None:
+    path = telemetry_payload.get("codex_final_message_path")
+    if not isinstance(path, str) or not path:
+        return None
+    try:
+        return Path(path).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+
+
+def _parse_soft_runner_result(raw: str) -> tuple[dict[str, Any] | None, str | None]:
+    text = raw.strip()
+    if text.startswith("```"):
+        lines = text.splitlines()
+        if len(lines) >= 3 and lines[-1].strip() == "```":
+            text = "\n".join(lines[1:-1]).strip()
+    if not text:
+        return None, "soft evaluation runner produced empty output"
+    try:
+        payload = json.loads(text)
+    except json.JSONDecodeError as exc:
+        return None, f"soft evaluation runner output is not JSON: {exc}"
+    if not isinstance(payload, dict):
+        return None, "soft evaluation runner JSON root must be an object"
+    if _number_field(payload, "score") is None:
+        return payload, "soft evaluation runner JSON must include a numeric score"
+    if "max_score" in payload and _number_field(payload, "max_score") is None:
+        return payload, "soft evaluation runner JSON max_score must be numeric when present"
+    return payload, None
+
+
+def _number_field(payload: dict[str, Any] | None, field: str) -> float | None:
+    if payload is None:
+        return None
+    value = payload.get(field)
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return None
+    return float(value)
+
+
+def _string_field(payload: dict[str, Any] | None, field: str) -> str | None:
+    if payload is None:
+        return None
+    value = payload.get(field)
+    if not isinstance(value, str):
+        return None
+    stripped = value.strip()
+    return stripped or None
 
 
 def _agent_completion_check(result: CaseResult) -> HardEvaluationCheck:

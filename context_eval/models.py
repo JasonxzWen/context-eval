@@ -25,6 +25,7 @@ CleanupPolicy = Literal["never", "always", "successful", "failed"]
 TelemetryStatus = Literal["unavailable", "collected", "partial", "error"]
 TelemetryCollectorKind = Literal["none", "json-file", "codex-jsonl"]
 AgentProfileKind = Literal["codex-cli", "claude-code", "traecli", "coco", "custom"]
+TaskCaseType = Literal["compile_diagnosis", "bugfix", "incident", "feature", "custom"]
 HardEvaluationStatus = Literal["not_configured", "passed", "failed", "skipped"]
 SoftEvaluationStatus = Literal[
     "not_configured",
@@ -317,6 +318,18 @@ class ExpectedOutcomeConfig(BaseModel):
         return _validate_repo_relative_paths(value)
 
 
+class ReferenceEvidenceConfig(BaseModel):
+    summary: str | None = None
+    fix_ref: str | None = None
+    files: list[str] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+    @field_validator("files")
+    @classmethod
+    def validate_files(cls, value: list[str]) -> list[str]:
+        return _validate_repo_relative_paths(value)
+
+
 class SnippetCheckConfig(BaseModel):
     path: str
     snippets: list[str] = Field(default_factory=list)
@@ -394,9 +407,19 @@ class SoftRubricItem(BaseModel):
 
 class SoftEvaluationConfig(BaseModel):
     enabled: bool = True
-    mode: Literal["payload-only"] = "payload-only"
+    mode: Literal["payload-only", "runner"] = "payload-only"
+    runner_agent: str | None = None
+    timeout_seconds: int | None = Field(default=None, ge=1)
     max_score: float = Field(default=10, gt=0)
     rubric: list[SoftRubricItem] = Field(default_factory=list)
+
+    @field_validator("runner_agent")
+    @classmethod
+    def validate_runner_agent(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        stripped = value.strip()
+        return stripped or None
 
 
 class TaskConfig(BaseModel):
@@ -404,12 +427,14 @@ class TaskConfig(BaseModel):
 
     id: str
     prompt: str
+    case_type: TaskCaseType | None = None
     repo_ref: str | None = None
     title: str | None = None
     category: str | None = None
     difficulty: str | None = None
     validation: ValidationConfig = Field(default_factory=ValidationConfig)
     expected_outcome: ExpectedOutcomeConfig | None = None
+    reference_evidence: ReferenceEvidenceConfig | None = None
     hard_evaluation: HardEvaluationConfig | None = None
     soft_evaluation: SoftEvaluationConfig | None = None
 
@@ -469,6 +494,7 @@ class CaseResult(BaseModel):
     case_id: str | None = None
     trial_index: int = 1
     task_id: str
+    case_type: TaskCaseType | None = None
     variant: str
     repo_ref: str
     agent_name: str
@@ -519,6 +545,11 @@ class CaseResult(BaseModel):
     soft_evaluation_status: SoftEvaluationStatus = "not_configured"
     soft_evaluation_payload_path: str | None = None
     soft_evaluation_result_path: str | None = None
+    soft_evaluation_runner_agent: str | None = None
+    soft_evaluation_score: float | None = Field(default=None, ge=0)
+    soft_evaluation_max_score: float | None = Field(default=None, ge=0)
+    soft_evaluation_verdict: str | None = None
+    reference_evidence: ReferenceEvidenceConfig | None = None
     errors: list[str] = Field(default_factory=list)
 
     @field_validator("tool_calls_by_name")

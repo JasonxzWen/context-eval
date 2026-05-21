@@ -15,7 +15,11 @@ from context_eval.config import load_tasks
 from context_eval.contexts.overlay import OverlayError, apply_overlays
 from context_eval.evaluators.command import run_validation_commands
 from context_eval.evaluators.diff import collect_git_diff, create_diff_baseline
-from context_eval.evaluators.hybrid import run_hard_evaluation, write_soft_evaluation_payload
+from context_eval.evaluators.hybrid import (
+    run_hard_evaluation,
+    run_soft_evaluation_runner,
+    write_soft_evaluation_payload,
+)
 from context_eval.hashing import stable_hash
 from context_eval.models import (
     RESULT_SCHEMA_VERSION,
@@ -233,9 +237,15 @@ class ContextEvalRunner:
                 {
                     "id": task.id,
                     "title": task.title,
+                    "case_type": task.case_type,
                     "category": task.category,
                     "difficulty": task.difficulty,
                     "repo_ref": task.repo_ref or self.config.repo.base_ref,
+                    "reference_evidence": (
+                        task.reference_evidence.model_dump(mode="json", exclude_none=True)
+                        if task.reference_evidence is not None
+                        else None
+                    ),
                     "task_hash": self._task_hash(task),
                 }
                 for task in tasks
@@ -262,9 +272,15 @@ class ContextEvalRunner:
                     ),
                     "agent_name": agent_profile.name,
                     "task_id": task.id,
+                    "case_type": task.case_type,
                     "variant": variant_name,
                     "trial_index": trial_index,
                     "repo_ref": task.repo_ref or self.config.repo.base_ref,
+                    "reference_evidence": (
+                        task.reference_evidence.model_dump(mode="json", exclude_none=True)
+                        if task.reference_evidence is not None
+                        else None
+                    ),
                     "task_hash": self._task_hash(task),
                     "variant_hash": self._variant_hash(variant_name),
                 }
@@ -325,10 +341,12 @@ class ContextEvalRunner:
             case_id=case_name,
             trial_index=trial_index,
             task_id=task.id,
+            case_type=task.case_type,
             variant=variant_name,
             repo_ref=repo_ref,
             agent_name=agent_profile.name,
             network=agent_profile.network,
+            reference_evidence=task.reference_evidence,
             status="internal_error",
         )
 
@@ -445,6 +463,8 @@ class ContextEvalRunner:
                 task=task,
                 run_dir=run_dir,
                 workspace=workspace,
+                case_agent_profile=agent_profile,
+                errors=errors,
             )
             return self._finish_result(result, run_dir, started, errors)
         except WorkspaceError as exc:
@@ -581,6 +601,8 @@ class ContextEvalRunner:
         task: TaskConfig,
         run_dir: Path,
         workspace: Path | None,
+        case_agent_profile: AgentConfig,
+        errors: list[str],
     ) -> None:
         hard_evaluation = run_hard_evaluation(
             result=result,
@@ -588,12 +610,46 @@ class ContextEvalRunner:
             run_dir=run_dir,
             workspace=workspace,
         )
-        write_soft_evaluation_payload(
+        payload_path = write_soft_evaluation_payload(
             result=result,
             task=task,
             run_dir=run_dir,
             hard_evaluation=hard_evaluation,
         )
+        config = task.soft_evaluation
+        if (
+            payload_path is None
+            or config is None
+            or not config.enabled
+            or config.mode != "runner"
+        ):
+            return
+
+        try:
+            runner_agent = self._soft_evaluation_runner_agent(task, case_agent_profile)
+            run_soft_evaluation_runner(
+                result=result,
+                task=task,
+                run_dir=run_dir,
+                payload_path=payload_path,
+                runner_agent=runner_agent,
+            )
+        except Exception as exc:
+            result.soft_evaluation_status = "error"
+            errors.append(f"soft evaluation runner failed: {exc}")
+
+    def _soft_evaluation_runner_agent(
+        self,
+        task: TaskConfig,
+        case_agent_profile: AgentConfig,
+    ) -> AgentConfig:
+        config = task.soft_evaluation
+        if config is None or not config.runner_agent:
+            return case_agent_profile
+        profiles = self.config.agent_profiles()
+        if config.runner_agent not in profiles:
+            raise ValueError(f"unknown soft evaluation runner agent: {config.runner_agent}")
+        return profiles[config.runner_agent]
 
     def _record_cleanup(
         self,

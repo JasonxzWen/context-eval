@@ -367,7 +367,14 @@ def test_runner_writes_hard_and_soft_evaluation_sidecars(tmp_path: Path) -> None
             "tasks": [
                 {
                     "id": "hybrid-pass",
+                    "case_type": "bugfix",
                     "prompt": "Add fixed marker.",
+                    "reference_evidence": {
+                        "summary": "Real fix appends fixed marker.",
+                        "fix_ref": "real-fix-ref",
+                        "files": ["README.md"],
+                        "notes": ["Review evidence only."],
+                    },
                     "expected_outcome": {
                         "summary": "README contains fixed marker.",
                         "acceptance_points": ["The marker is present."],
@@ -427,6 +434,8 @@ def test_runner_writes_hard_and_soft_evaluation_sidecars(tmp_path: Path) -> None
 
     assert result["hard_evaluation_status"] == "passed"
     assert result["hard_evaluation_score"] == result["hard_evaluation_max_score"]
+    assert result["case_type"] == "bugfix"
+    assert result["reference_evidence"]["summary"] == "Real fix appends fixed marker."
     assert result["hard_evaluation_failed_checks"] == 0
     assert result["soft_evaluation_status"] == "payload_generated"
     hard = json.loads((run_dir / result["hard_evaluation_path"]).read_text(encoding="utf-8"))
@@ -442,9 +451,112 @@ def test_runner_writes_hard_and_soft_evaluation_sidecars(tmp_path: Path) -> None
         "command:readme-marker",
     }
     assert soft["task"]["prompt"] == "Add fixed marker."
+    assert soft["task"]["case_type"] == "bugfix"
+    assert soft["reference_evidence"]["fix_ref"] == "real-fix-ref"
     assert soft["expected_outcome"]["summary"] == "README contains fixed marker."
     assert soft["hard_evaluation"]["status"] == "passed"
     assert "fixed marker" in soft["patch_excerpt"]
+
+
+def test_runner_executes_explicit_soft_evaluation_runner(tmp_path: Path) -> None:
+    repo = _create_repo(tmp_path)
+    overlay_source = tmp_path / "ctx" / "AGENTS.md"
+    overlay_source.parent.mkdir()
+    overlay_source.write_text("# Instructions\n", encoding="utf-8")
+
+    agent_script = tmp_path / "agent.py"
+    agent_script.write_text(
+        "from pathlib import Path\n"
+        "p = Path('README.md')\n"
+        "p.write_text(p.read_text(encoding='utf-8') + 'fixed marker\\n', encoding='utf-8')\n",
+        encoding="utf-8",
+    )
+    judge_script = tmp_path / "judge.py"
+    judge_script.write_text(
+        "import json, sys\n"
+        "from pathlib import Path\n"
+        "prompt = Path(sys.argv[1]).read_text(encoding='utf-8')\n"
+        "assert 'reference_evidence' in prompt\n"
+        "print(json.dumps({\n"
+        "    'score': 8,\n"
+        "    'max_score': 10,\n"
+        "    'verdict': 'pass',\n"
+        "    'summary': 'matches the known fix',\n"
+        "    'reasons': ['patch touches README'],\n"
+        "}))\n",
+        encoding="utf-8",
+    )
+    task_file = TaskFile.model_validate(
+        {
+            "tasks": [
+                {
+                    "id": "soft-runner",
+                    "prompt": "Add fixed marker.",
+                    "reference_evidence": {"summary": "Real fix appends marker."},
+                    "expected_outcome": {"summary": "README contains fixed marker."},
+                    "soft_evaluation": {
+                        "enabled": True,
+                        "mode": "runner",
+                        "runner_agent": "judge",
+                        "max_score": 10,
+                    },
+                }
+            ]
+        }
+    )
+    config = ContextEvalConfig(
+        repo=RepoConfig(path=repo, base_ref="HEAD"),
+        agents={
+            "coder": AgentProfileConfig(
+                kind="custom",
+                command=f'"{sys.executable}" "{agent_script}"',
+                timeout_minutes=1,
+            ),
+            "judge": AgentProfileConfig(
+                kind="custom",
+                command=f'"{sys.executable}" "{judge_script}" "{{prompt_file}}"',
+                timeout_minutes=1,
+            ),
+        },
+        variants={
+            "baseline": VariantConfig(
+                description="Baseline",
+                overlays=[OverlayConfig(source=overlay_source, target="AGENTS.md")],
+            )
+        },
+        output_dir=tmp_path / "runs",
+    )
+
+    run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        agents=["coder"],
+        cleanup_policy="never",
+        console=_quiet_console(),
+    ).run()
+    result = json.loads((run_dir / "results.jsonl").read_text(encoding="utf-8"))
+
+    assert result["agent_name"] == "coder"
+    assert result["soft_evaluation_status"] == "result_available"
+    assert result["soft_evaluation_runner_agent"] == "judge"
+    assert result["soft_evaluation_score"] == 8
+    assert result["soft_evaluation_max_score"] == 10
+    assert result["soft_evaluation_verdict"] == "pass"
+
+    artifact = json.loads(
+        (run_dir / result["soft_evaluation_result_path"]).read_text(encoding="utf-8")
+    )
+    assert artifact["runner_agent"] == "judge"
+    assert artifact["parsed_result"]["summary"] == "matches the known fix"
+    assert artifact["raw_result_path"].endswith("soft_evaluation_raw_result.txt")
+    assert '"score": 8' in (run_dir / artifact["raw_result_path"]).read_text(
+        encoding="utf-8"
+    )
+    assert artifact["stdout_path"].endswith(".soft-evaluation.stdout.log")
+    assert (run_dir / artifact["stdout_path"]).exists()
+    assert "reference_evidence" in (run_dir / artifact["prompt_path"]).read_text(
+        encoding="utf-8"
+    )
 
 
 def test_runner_hard_evaluation_deduplicates_repeated_snippet_checks(
