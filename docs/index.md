@@ -50,6 +50,9 @@ context variant and review the recorded artifacts.
   build, test, and browser acceptance gate.
 - [Development plan](development-plan.md) tracks the staged capability roadmap
   and release/development boundaries.
+- [Real project evaluation support plan](plans/2026-05-21-real-project-evaluation-support.md)
+  defines the next local workflow for private production repositories, task
+  types, reference evidence, Codex metrics, and review boundaries.
 - [Release checklist](release-checklist.md) documents release preparation and
   manual publish boundaries.
 

@@ -276,6 +276,11 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
     expect((contextBoxAfterJump?.y ?? 0) - ((navBoxAfterJump?.y ?? 0) + (navBoxAfterJump?.height ?? 0))).toBeGreaterThan(8);
     await expect(page.getByRole('heading', { name: '2 配资料包' })).toBeVisible();
     await expect(page.getByText(/给 AI 准备两套资料/)).toBeVisible();
+    await page.locator('.top-nav a[href="#task-config"]').click();
+    await expect(page.getByRole('radiogroup', { name: '用例类型' })).toBeVisible();
+    await expect(page.getByLabel('起始版本')).toBeVisible();
+    await page.getByLabel('真实结果 / 修复说明').fill('Real fix evidence for browser acceptance.');
+    await page.getByLabel('真实修复版本').fill('real-fix-ref');
     await page.locator('summary', { hasText: '更多设置：自动检查 / AI 仲裁' }).click();
     await expect(page.getByRole('radiogroup', { name: '任务分类' })).toBeVisible();
     await expect(page.getByRole('radio', { name: '缺陷修复' })).toHaveAttribute('aria-checked', 'true');
@@ -284,6 +289,7 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
     await page.getByRole('button', { name: '保存测试用例' }).click();
     await expect(page.getByTestId('task-save-status')).toContainText('已保存测试用例并刷新执行计划');
     await expect(page.locator('.matrix-panel')).toContainText('Visual editor saved summary.');
+    await expect(page.locator('.matrix-panel')).toContainText('参考答案已填写');
 
     await page.getByLabel('选择资料包 experiment').click();
     await page.getByLabel('资料包名称').fill('Edited experiment instructions');
@@ -314,6 +320,7 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
 
     await page.getByLabel('反馈结论').selectOption('pass');
     await page.getByLabel('反馈可信度').selectOption('high');
+    await page.getByLabel('人工评分').selectOption('5');
     await page.getByLabel('反馈人').fill('manual');
     await page.getByLabel('反馈备注').fill('Experiment result accepted.');
     await page.locator('.review-form button[type="submit"]').click();
@@ -435,7 +442,11 @@ test('renders the fixture-backed Coco hybrid shell', async ({ page }) => {
   await expect(page.getByRole('heading', { name: '硬性检查' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'AI 仲裁维度' })).toBeVisible();
   await expect(page.getByLabel('测试用例配置').getByText('AI 仲裁材料', { exact: true })).toBeVisible();
-  await expect(page.getByText(/soft_evaluation_payload\.json/)).toBeVisible();
+  await expect(page.locator('#soft-mode')).toHaveValue('payload-only');
+  await expect(page.locator('#soft-runner-agent')).toBeDisabled();
+  await page.locator('#soft-mode').selectOption('runner');
+  await expect(page.locator('#soft-runner-agent')).toBeEnabled();
+  await expect(page.locator('#soft-runner-agent')).toHaveValue('');
   await expect(page.getByRole('button', { name: '加载配置' })).toBeVisible();
   await expect(page.getByRole('button', { name: '保存并重载' })).toBeVisible();
 
@@ -540,7 +551,7 @@ test('explains scoring gaps, baseline changes, and API errors in results UI', as
     },
     soft_evaluation: {
       mode: 'payload-only',
-      meaning: 'soft evaluation 只生成 payload-only 复核材料，不自动调用 LLM judge。',
+      meaning: 'soft evaluation 默认只生成本地复核 payload；显式选择 runner 时会运行本地仲裁执行器。',
     },
     manual_review: { meaning: 'manual review 是人工复核证据和结论，不是自动评分。' },
     evidence_limits: ['无 validation、hard skipped 或 telemetry missing 时只能提示证据不足。'],
@@ -795,7 +806,8 @@ test('explains scoring gaps, baseline changes, and API errors in results UI', as
   await expect(page.getByText('结果已生成')).toBeVisible();
   await expect(page.getByLabel('评分依据')).toContainText('验证可信度');
   await expect(page.getByLabel('评分依据')).toContainText('通过检查数 / 可评分检查数');
-  await expect(page.getByLabel('评分依据')).toContainText('payload-only');
+  await expect(page.getByLabel('评分依据')).toContainText('本地复核 payload');
+  await expect(page.getByLabel('评分依据')).toContainText('本地仲裁执行器');
   await expect(page.getByLabel('对照组方案')).toHaveValue('baseline');
   await expect(page.getByLabel('对比摘要')).toContainText('对照组没有 validation commands');
 
@@ -809,7 +821,7 @@ test('explains scoring gaps, baseline changes, and API errors in results UI', as
   await expect(page.getByRole('heading', { name: '为什么不能高置信判断' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '硬性检查明细' })).toBeVisible();
   await expect(page.getByText('workspace missing and patch evidence was insufficient')).toBeVisible();
-  await expect(page.getByLabel('软性复核材料')).toContainText('payload-only');
+  await expect(page.getByLabel('软性复核材料')).toContainText('soft_evaluation_payload.json');
 
   await page.getByLabel('反馈人').fill('manual');
   await page.getByRole('button', { name: '保存人工反馈' }).click();
@@ -1019,7 +1031,7 @@ test('completes the local server workflow with fake Coco and hybrid evaluation',
 
     await baselineRow.getByRole('button', { name: '查看详情' }).click();
     await expect(page.getByRole('heading', { name: '硬性检查明细' })).toBeVisible();
-    await expect(page.getByLabel('软性复核材料')).toContainText('payload-only');
+    await expect(page.getByLabel('软性复核材料')).toContainText('soft_evaluation_payload.json');
 
     await page.getByRole('button', { name: '导出 JSON' }).click();
     await expect(page.getByTestId('export-output')).toContainText('"case_count": 2');

@@ -108,9 +108,9 @@ def test_designer_usability_spec_documents_planner_workflow() -> None:
         "local-only and artifact-based",
         "not a public benchmark",
         "not an agent leaderboard",
-        "no automatic OpenAI, Claude, or other LLM judge",
+        "no hidden OpenAI, Claude, or other LLM judge calls",
         "validation passing means configured checks passed",
-        "AI arbitration is optional soft evidence",
+        "AI arbitration runner output is optional soft evidence",
     ]:
         assert term in text
 

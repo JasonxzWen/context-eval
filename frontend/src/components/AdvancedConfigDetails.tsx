@@ -45,6 +45,7 @@ const agentKindLabels: Record<string, string> = {
 
 const softModeLabels: Record<string, string> = {
   'payload-only': '仅生成复核材料',
+  runner: '运行 AI 仲裁',
 };
 
 function labelFor(labels: Record<string, string>, value: string | null | undefined) {
@@ -228,6 +229,11 @@ export function AdvancedConfigDetails({
             <h2>AI 仲裁维度</h2>
             <span>{labelFor(softModeLabels, task?.soft_evaluation?.mode)}</span>
           </div>
+          {task?.soft_evaluation?.mode === 'runner' && (
+            <p className="panel-note">
+              仲裁执行器：{task.soft_evaluation.runner_agent || '同评测执行器'}
+            </p>
+          )}
           <ul className="check-list">
             {(task?.soft_evaluation?.rubric || []).map((rubric) => (
               <li key={rubric.name}>

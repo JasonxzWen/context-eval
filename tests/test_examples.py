@@ -22,6 +22,7 @@ def test_basic_example_targets_fixture_repo() -> None:
     assert config.repo.path == Path("examples/fixture-repo").resolve()
     assert config.repo.base_ref == "main"
     assert task_file.tasks[0].id == "fix-greeting-punctuation"
+    assert task_file.tasks[0].case_type == "bugfix"
 
 
 def test_agent_matrix_example_validates_profiles_and_cli_filter() -> None:
@@ -32,6 +33,7 @@ def test_agent_matrix_example_validates_profiles_and_cli_filter() -> None:
     assert config.agents["trae"].kind == "traecli"
     assert config.agents["trae"].command == 'traecli -p "{prompt}"'
     assert task_file.tasks[0].id == "fix-greeting-punctuation"
+    assert task_file.tasks[0].case_type == "bugfix"
 
     result = _run(
         [
@@ -66,6 +68,7 @@ def test_coco_visual_example_validates_hybrid_task_shape() -> None:
         == 'coco -y --query-timeout 10m --bash-tool-timeout 5m -p "{prompt}"'
     )
     task = task_file.tasks[0]
+    assert task.case_type == "bugfix"
     assert task.expected_outcome.summary
     assert task.hard_evaluation.enabled is True
     assert task.soft_evaluation.mode == "payload-only"

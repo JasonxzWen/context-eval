@@ -1234,6 +1234,26 @@ legend {
   white-space: pre-wrap;
 }
 
+.compact-label input {
+  max-width: 360px;
+}
+
+.reference-evidence-box {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px;
+  background: #f9fbfa;
+}
+
+.reference-evidence-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .list-editor textarea {
   min-height: 42px;
   white-space: pre-wrap;
@@ -1850,6 +1870,7 @@ legend {
   .metric-guide-grid,
   .designer-guide,
   .designer-guide-steps,
+  .reference-evidence-grid,
   .baseline-control {
     grid-template-columns: 1fr;
   }

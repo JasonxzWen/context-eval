@@ -58,7 +58,9 @@ def run_matrix_overview(results: list[CaseResult]) -> dict[str, int]:
             1 for result in results if result.hard_evaluation_status == "failed"
         ),
         "soft_evaluation_payload_count": sum(
-            1 for result in results if result.soft_evaluation_status == "payload_generated"
+            1
+            for result in results
+            if result.soft_evaluation_status in {"payload_generated", "result_available"}
         ),
     }
 

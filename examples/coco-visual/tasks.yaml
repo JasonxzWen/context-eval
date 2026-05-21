@@ -1,6 +1,7 @@
 tasks:
   - id: "fix-greeting-punctuation"
     title: "Fix greeting punctuation"
+    case_type: "bugfix"
     prompt: |
       Fix the fixture greeting punctuation.
       Keep the change focused and follow existing module conventions.

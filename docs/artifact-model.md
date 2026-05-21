@@ -41,6 +41,9 @@ The Coco-first hybrid evaluation workflow adds case-local sidecars:
 
 - `artifacts/<case_id>/hard_evaluation.json`
 - `artifacts/<case_id>/soft_evaluation_payload.json`
+- `artifacts/<case_id>/soft_evaluation_result.json` when an explicit local AI
+  arbitration runner is enabled
+- `artifacts/<case_id>/soft_evaluation_raw_result.txt` when a runner is enabled
 
 `hard_evaluation.json` records deterministic check results, score, max score,
 pass/fail status, evidence, and summary. Checks can cover validation success,
@@ -50,6 +53,12 @@ forbidden snippets, diff-stat bounds, and agent completion.
 `soft_evaluation_payload.json` records review input for later human or local
 judge use. It is not a hosted API call and does not make soft scores mandatory
 for pass/fail.
+
+`soft_evaluation_result.json` records the local arbitration executor, command
+exit status, duration, stdout/stderr paths, raw result path, telemetry, parsed
+JSON result, parse error, and final soft-evaluation status. context-eval only
+records a soft score from machine-readable runner JSON; it does not infer a
+score from prose.
 
 `results.jsonl` keeps compact summary fields for stable exports and UI review:
 
@@ -62,6 +71,10 @@ for pass/fail.
 - `soft_evaluation_status`
 - `soft_evaluation_payload_path`
 - `soft_evaluation_result_path`
+- `soft_evaluation_runner_agent`
+- `soft_evaluation_score`
+- `soft_evaluation_max_score`
+- `soft_evaluation_verdict`
 
 Older rows that lack these fields remain valid and render unavailable defaults.
 

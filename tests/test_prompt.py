@@ -33,6 +33,29 @@ def test_prompt_contains_task_prompt_and_no_commit_instruction() -> None:
     assert "Context Variant: baseline" in prompt
 
 
+def test_prompt_does_not_include_reference_evidence_by_default() -> None:
+    task = TaskConfig.model_validate(
+        {
+            "id": "bug-1",
+            "case_type": "bugfix",
+            "prompt": "Fix the cache invalidation bug.",
+            "reference_evidence": {
+                "summary": "Real fix touched cache.py.",
+                "fix_ref": "abc123",
+                "files": ["src/cache.py"],
+                "notes": ["Do not leak this into the prompt."],
+            },
+        }
+    )
+
+    prompt = render_prompt(task, "experiment")
+
+    assert "Fix the cache invalidation bug." in prompt
+    assert "Real fix touched cache.py" not in prompt
+    assert "abc123" not in prompt
+    assert "Do not leak this into the prompt" not in prompt
+
+
 def test_prompt_template_renders_task_variables(tmp_path) -> None:
     template = tmp_path / "prompt.md"
     template.write_text(

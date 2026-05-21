@@ -192,6 +192,8 @@ def test_old_task_model_remains_valid_without_hybrid_evaluation() -> None:
 
     task = task_file.tasks[0]
 
+    assert task.case_type is None
+    assert task.reference_evidence is None
     assert task.expected_outcome is None
     assert task.hard_evaluation is None
     assert task.soft_evaluation is None
@@ -239,7 +241,9 @@ def test_task_model_accepts_expected_outcome_hard_and_soft_evaluation() -> None:
             },
             "soft_evaluation": {
                 "enabled": True,
-                "mode": "payload-only",
+                "mode": "runner",
+                "runner_agent": "judge-agent",
+                "timeout_seconds": 45,
                 "max_score": 10,
                 "rubric": [
                     {
@@ -263,9 +267,47 @@ def test_task_model_accepts_expected_outcome_hard_and_soft_evaluation() -> None:
     assert task.hard_evaluation.command_checks[0].timeout_seconds == 60
     assert task.soft_evaluation is not None
     assert isinstance(task.soft_evaluation, SoftEvaluationConfig)
-    assert task.soft_evaluation.mode == "payload-only"
+    assert task.soft_evaluation.mode == "runner"
+    assert task.soft_evaluation.runner_agent == "judge-agent"
+    assert task.soft_evaluation.timeout_seconds == 45
     assert task.soft_evaluation.max_score == 10
     assert task.soft_evaluation.rubric[0].name == "requirement_match"
+
+
+def test_task_model_accepts_real_project_reference_evidence() -> None:
+    task = TaskConfig.model_validate(
+        {
+            "id": "incident-login-timeout",
+            "title": "Login timeout incident",
+            "case_type": "incident",
+            "repo_ref": "before-real-fix",
+            "prompt": "Diagnose the login timeout and fix the bug.",
+            "reference_evidence": {
+                "summary": "The real fix moved timeout cleanup before retry scheduling.",
+                "fix_ref": "real-fix-commit",
+                "files": ["src/login/session.py", "tests/test_login.py"],
+                "notes": ["Used for human review, not agent prompt."],
+            },
+        }
+    )
+
+    assert task.case_type == "incident"
+    assert task.reference_evidence is not None
+    assert task.reference_evidence.summary.startswith("The real fix")
+    assert task.reference_evidence.fix_ref == "real-fix-commit"
+    assert task.reference_evidence.files == ["src/login/session.py", "tests/test_login.py"]
+    assert task.reference_evidence.notes == ["Used for human review, not agent prompt."]
+
+
+def test_task_model_rejects_unknown_real_project_case_type() -> None:
+    with pytest.raises(ValidationError):
+        TaskConfig.model_validate(
+            {
+                "id": "task-1",
+                "prompt": "Fix the bug.",
+                "case_type": "benchmark_rank",
+            }
+        )
 
 
 @pytest.mark.parametrize(
@@ -275,6 +317,7 @@ def test_task_model_accepts_expected_outcome_hard_and_soft_evaluation() -> None:
         {"expected_outcome": {"forbidden_paths": ["C:/repo/README.md"]}},
         {"hard_evaluation": {"required_paths": ["/abs/path.py"]}},
         {"hard_evaluation": {"expected_snippets": [{"path": "../x.py", "snippets": ["x"]}]}},
+        {"reference_evidence": {"files": ["../secret.txt"]}},
     ],
 )
 def test_task_model_rejects_unsafe_expected_paths(payload: dict[str, object]) -> None:

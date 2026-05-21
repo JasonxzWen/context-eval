@@ -31,6 +31,15 @@ export type ExpectedOutcome = {
   }[];
 };
 
+export type TaskCaseType = 'compile_diagnosis' | 'bugfix' | 'incident' | 'feature' | 'custom';
+
+export type ReferenceEvidence = {
+  summary?: string | null;
+  fix_ref?: string | null;
+  files?: string[];
+  notes?: string[];
+};
+
 export type HardEvaluation = {
   enabled: boolean;
   require_validation_pass?: boolean;
@@ -50,7 +59,9 @@ export type SoftRubricItem = {
 
 export type SoftEvaluation = {
   enabled: boolean;
-  mode: 'payload-only';
+  mode: 'payload-only' | 'runner';
+  runner_agent?: string | null;
+  timeout_seconds?: number | null;
   max_score?: number;
   rubric?: SoftRubricItem[];
 };
@@ -59,11 +70,13 @@ export type EditableTask = {
   id: string;
   title?: string | null;
   prompt: string;
+  case_type?: TaskCaseType | null;
   category?: string | null;
   difficulty?: string | null;
   repo_ref?: string | null;
   validation_commands: string[];
   expected_outcome?: ExpectedOutcome | null;
+  reference_evidence?: ReferenceEvidence | null;
   hard_evaluation?: HardEvaluation | null;
   soft_evaluation?: SoftEvaluation | null;
   extra_fields?: Record<string, unknown>;
@@ -137,13 +150,17 @@ export type RunPlan = {
     agent_name: string;
     agent_kind: string;
     task_id: string;
+    case_type?: TaskCaseType | null;
     variant: string;
     trial_index: number;
     repo_ref: string;
+    reference_evidence_summary?: string | null;
     command_preview: string;
     expected_outcome_summary?: string | null;
     hard_evaluation_enabled?: boolean;
     soft_evaluation_enabled?: boolean;
+    soft_evaluation_mode?: 'payload-only' | 'runner' | null;
+    soft_evaluation_runner_agent?: string | null;
   }[];
 };
 
@@ -166,6 +183,7 @@ export type ManualReview = {
   case_id: string;
   decision: string;
   confidence: string;
+  rating?: number | null;
   reviewer: string;
   notes: string;
   updated_at?: string | null;
@@ -193,12 +211,18 @@ export type SoftEvaluationPayload = {
   status: string;
   payload_path?: string | null;
   result_path?: string | null;
+  runner_agent?: string | null;
+  score?: number | null;
+  max_score?: number | null;
+  verdict?: string | null;
 };
 
 export type ResultCase = {
   case_id: string;
   agent_name: string;
   task_id: string;
+  case_type?: TaskCaseType | null;
+  reference_evidence?: ReferenceEvidence | null;
   variant: string;
   status: string;
   validation_status: string;
@@ -231,6 +255,10 @@ export type ResultCase = {
   soft_evaluation_status?: string;
   soft_evaluation_payload_path?: string | null;
   soft_evaluation_result_path?: string | null;
+  soft_evaluation_runner_agent?: string | null;
+  soft_evaluation_score?: number | null;
+  soft_evaluation_max_score?: number | null;
+  soft_evaluation_verdict?: string | null;
   soft_evaluation?: SoftEvaluationPayload | null;
   patch_path?: string | null;
   stdout_path?: string | null;
@@ -250,7 +278,7 @@ export type EvaluationExplanation = {
     skipped_meaning: string;
   };
   soft_evaluation: {
-    mode: 'payload-only';
+    mode: 'payload-only' | 'runner';
     meaning: string;
   };
   manual_review: {

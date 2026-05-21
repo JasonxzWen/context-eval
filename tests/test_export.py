@@ -52,6 +52,7 @@ def test_export_run_csv_is_deterministic_and_preserves_missing_telemetry(
                 run_id="run-1",
                 case_id="task-a__baseline__trial-1",
                 task_id="task-a",
+                case_type="bugfix",
                 variant="baseline",
                 trial_index=1,
                 repo_ref="main",
@@ -78,6 +79,12 @@ def test_export_run_csv_is_deterministic_and_preserves_missing_telemetry(
                 codex_final_message_path=(
                     "artifacts/task-a__baseline__trial-1/codex-final-message.md"
                 ),
+                reference_evidence={
+                    "summary": "Real fix changed README.",
+                    "fix_ref": "real-fix-ref",
+                    "files": ["README.md"],
+                    "notes": ["Review only."],
+                },
             ),
         ],
     )
@@ -86,7 +93,7 @@ def test_export_run_csv_is_deterministic_and_preserves_missing_telemetry(
 
     lines = csv_text.splitlines()
     assert lines[0] == (
-        "run_id,case_id,agent_name,task_id,variant,trial_index,status,"
+        "run_id,case_id,agent_name,task_id,case_type,variant,trial_index,status,"
         "validation_status,confidence,telemetry_status,telemetry_source,telemetry_error,"
         "duration_seconds,agent_duration_seconds,"
         "prompt_tokens,cached_input_tokens,completion_tokens,total_tokens,reasoning_tokens,"
@@ -95,7 +102,10 @@ def test_export_run_csv_is_deterministic_and_preserves_missing_telemetry(
         "codex_final_message_path,codex_error_reason,"
         "hard_evaluation_status,hard_evaluation_score,hard_evaluation_max_score,"
         "hard_evaluation_passed_checks,hard_evaluation_failed_checks,"
-        "soft_evaluation_status,changed_files,insertions,deletions,touched_paths"
+        "soft_evaluation_status,soft_evaluation_result_path,soft_evaluation_runner_agent,"
+        "soft_evaluation_score,soft_evaluation_max_score,soft_evaluation_verdict,"
+        "reference_evidence_summary,reference_evidence_fix_ref,reference_evidence_files,"
+        "changed_files,insertions,deletions,touched_paths"
     )
     rows = list(csv.DictReader(StringIO(csv_text)))
     assert [row["case_id"] for row in rows] == [
@@ -103,6 +113,10 @@ def test_export_run_csv_is_deterministic_and_preserves_missing_telemetry(
         "task-b__experiment__trial-2",
     ]
     assert rows[0]["telemetry_source"] == "codex-jsonl"
+    assert rows[0]["case_type"] == "bugfix"
+    assert rows[0]["reference_evidence_summary"] == "Real fix changed README."
+    assert rows[0]["reference_evidence_fix_ref"] == "real-fix-ref"
+    assert rows[0]["reference_evidence_files"] == '["README.md"]'
     assert rows[0]["cached_input_tokens"] == "5"
     assert rows[0]["command_call_count"] == "1"
     assert rows[0]["model_name"] == "gpt-5.4"
@@ -114,6 +128,9 @@ def test_export_run_csv_is_deterministic_and_preserves_missing_telemetry(
         == "artifacts/task-a__baseline__trial-1/codex-final-message.md"
     )
     assert rows[0]["codex_error_reason"] == ""
+    assert rows[0]["soft_evaluation_result_path"] == ""
+    assert rows[0]["soft_evaluation_runner_agent"] == ""
+    assert rows[0]["soft_evaluation_score"] == ""
     assert rows[1]["cached_input_tokens"] == ""
     assert rows[1]["command_call_count"] == ""
     assert rows[1]["model_name"] == ""
@@ -150,6 +167,7 @@ def test_export_run_json_contains_sorted_cases_and_agent_summaries(tmp_path: Pat
                 run_id="run-1",
                 case_id="task-a__baseline__trial-1",
                 task_id="task-a",
+                case_type="compile_diagnosis",
                 variant="baseline",
                 trial_index=1,
                 repo_ref="main",
@@ -168,6 +186,12 @@ def test_export_run_json_contains_sorted_cases_and_agent_summaries(tmp_path: Pat
                 command_call_count=1,
                 tool_calls_by_name={"edit": 1},
                 model_name="gpt-5.4",
+                reference_evidence={
+                    "summary": "Compiler error was caused by a stale generated file.",
+                    "fix_ref": "compile-fix",
+                    "files": ["src/generated.py"],
+                    "notes": ["Review only."],
+                },
             ),
             CaseResult(
                 run_id="run-1",
@@ -212,6 +236,8 @@ def test_export_run_json_contains_sorted_cases_and_agent_summaries(tmp_path: Pat
         "agent-b",
     ]
     assert payload["cases"][0]["trial_index"] == 1
+    assert payload["cases"][0]["case_type"] == "compile_diagnosis"
+    assert payload["cases"][0]["reference_evidence"]["fix_ref"] == "compile-fix"
     assert payload["cases"][0]["agent_duration_seconds"] == 1.5
     assert payload["cases"][0]["cached_input_tokens"] == 4
     assert payload["cases"][0]["command_call_count"] == 1
@@ -285,10 +311,17 @@ def test_export_run_json_contains_hard_and_soft_evaluation_fields(tmp_path: Path
                 hard_evaluation_passed_checks=4,
                 hard_evaluation_failed_checks=0,
                 hard_evaluation_path="artifacts/task-a__baseline/hard_evaluation.json",
-                soft_evaluation_status="payload_generated",
+                soft_evaluation_status="result_available",
                 soft_evaluation_payload_path=(
                     "artifacts/task-a__baseline/soft_evaluation_payload.json"
                 ),
+                soft_evaluation_result_path=(
+                    "artifacts/task-a__baseline/soft_evaluation_result.json"
+                ),
+                soft_evaluation_runner_agent="judge",
+                soft_evaluation_score=8,
+                soft_evaluation_max_score=10,
+                soft_evaluation_verdict="pass",
                 changed_files=1,
                 touched_paths=["README.md"],
                 reasoning_step_count=12,
@@ -308,8 +341,13 @@ def test_export_run_json_contains_hard_and_soft_evaluation_fields(tmp_path: Path
     assert case["hard_evaluation_score"] == 4
     assert case["hard_evaluation_max_score"] == 4
     assert case["hard_evaluation_path"].endswith("hard_evaluation.json")
-    assert case["soft_evaluation_status"] == "payload_generated"
+    assert case["soft_evaluation_status"] == "result_available"
     assert case["soft_evaluation_payload_path"].endswith("soft_evaluation_payload.json")
+    assert case["soft_evaluation_result_path"].endswith("soft_evaluation_result.json")
+    assert case["soft_evaluation_runner_agent"] == "judge"
+    assert case["soft_evaluation_score"] == 8
+    assert case["soft_evaluation_max_score"] == 10
+    assert case["soft_evaluation_verdict"] == "pass"
     assert case["changed_files"] == 1
     assert case["touched_paths"] == ["README.md"]
     assert case["reasoning_step_count"] == 12
@@ -343,6 +381,7 @@ def test_export_run_json_includes_manual_reviews(tmp_path: Path) -> None:
                         "case_id": "task-a__baseline",
                         "decision": "pass",
                         "confidence": "high",
+                        "rating": 5,
                         "reviewer": "manual",
                         "notes": "Accepted.",
                         "updated_at": "2026-05-19T16:30:00Z",
@@ -370,6 +409,7 @@ def test_export_run_json_includes_manual_reviews(tmp_path: Path) -> None:
         "case_id": "task-a__baseline",
         "decision": "pass",
         "confidence": "high",
+        "rating": 5,
         "reviewer": "manual",
         "notes": "Accepted.",
         "updated_at": "2026-05-19T16:30:00Z",
