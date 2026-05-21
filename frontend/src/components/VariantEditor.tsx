@@ -34,20 +34,20 @@ function overlayKind(source: string, target: string) {
   if (combined.includes('agents.md')) {
     return {
       label: 'Agent 工作说明',
-      description: '会作为仓库里的 AGENTS.md 提供给 coding agent。',
+      description: 'AGENTS.md',
       className: 'agent-instructions',
     };
   }
   if (combined.includes('skills')) {
     return {
       label: '技能包',
-      description: '会把本地 skills 目录或文件复制到运行工作区。',
+      description: 'skills',
       className: 'skills-package',
     };
   }
   return {
     label: '其他上下文资料',
-    description: '会按目标路径复制到运行工作区，用作本次方案的一部分。',
+    description: '本地文件',
     className: 'context-material',
   };
 }
@@ -107,13 +107,10 @@ export function VariantEditor({
   return (
     <section className="panel variant-editor-panel" aria-label="上下文方案配置">
       <div className="panel-heading">
-        <h2>上下文方案</h2>
+        <h2>2 配上下文方案</h2>
         <span>{variants.length} 个方案</span>
       </div>
-      <p className="panel-note">
-        上下文方案是一组会复制进临时工作区的本地资料。第一版重点比较 `AGENTS.md` 工作说明和
-        skills 技能包对同一批测试用例的影响。
-      </p>
+      <p className="panel-note">主要比较 AGENTS.md 工作说明和 skills 技能包。</p>
       {variant ? (
         <div className="editor-split">
           <aside className="task-rail" aria-label="上下文方案列表">
@@ -154,7 +151,7 @@ export function VariantEditor({
               onSave();
             }}
           >
-            <div className="form-grid">
+            <div className="form-grid simplified-grid">
               <label htmlFor="variant-name">
                 <span className="label-with-help">
                   方案名称
@@ -213,24 +210,27 @@ export function VariantEditor({
                         onChange={(event) => updateOverlay(index, { source: event.target.value })}
                       />
                     </label>
-                    <label htmlFor={`overlay-target-${index}`}>
-                      放入项目中的位置
-                      <input
-                        id={`overlay-target-${index}`}
-                        aria-label={`上下文资料目标路径 ${index + 1}`}
-                        value={overlay.target}
-                        onChange={(event) => updateOverlay(index, { target: event.target.value })}
-                      />
-                    </label>
-                    <button
-                      type="button"
-                      className="secondary danger-button"
-                      onClick={() => updateVariant({
-                        overlays: variant.overlays.filter((_, overlayIndex) => overlayIndex !== index),
-                      })}
-                    >
-                      删除
-                    </button>
+                    <details className="overlay-advanced">
+                      <summary>路径设置</summary>
+                      <label htmlFor={`overlay-target-${index}`}>
+                        放入项目中的位置
+                        <input
+                          id={`overlay-target-${index}`}
+                          aria-label={`上下文资料目标路径 ${index + 1}`}
+                          value={overlay.target}
+                          onChange={(event) => updateOverlay(index, { target: event.target.value })}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        className="secondary danger-button"
+                        onClick={() => updateVariant({
+                          overlays: variant.overlays.filter((_, overlayIndex) => overlayIndex !== index),
+                        })}
+                      >
+                        删除
+                      </button>
+                    </details>
                   </div>
                 );
               })}

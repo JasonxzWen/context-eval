@@ -264,7 +264,8 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
     await expect(page.getByLabel('仓库路径')).toHaveValue('./demo-repo');
 
     await expect(page.locator('.run-brief-panel')).toContainText('baseline vs experiment');
-    await expect(page.getByRole('heading', { name: '测试用例' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '1 配测试用例' })).toBeVisible();
+    await page.getByText('高级验收设置').click();
     await expect(page.getByRole('radiogroup', { name: '任务分类' })).toBeVisible();
     await expect(page.getByRole('radio', { name: '缺陷修复' })).toHaveAttribute('aria-checked', 'true');
     await expect(page.getByRole('radio', { name: '简单' })).toHaveAttribute('aria-checked', 'true');
@@ -275,6 +276,7 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
 
     await page.getByLabel('选择上下文方案 experiment').click();
     await page.getByLabel('方案说明').fill('Edited experiment instructions');
+    await page.getByText('执行器设置').click();
     await page.getByLabel('执行器超时分钟').fill('3');
     await page.getByRole('button', { name: '保存执行器配置' }).click();
     await expect(page.getByTestId('agent-save-status')).toContainText('已保存配置并刷新执行计划');
@@ -335,7 +337,7 @@ test('empty workspace can open a real local project and surfaces bad project pat
 
     await page.getByLabel('项目路径').fill(fixture);
     await page.getByRole('button', { name: '创建工作区' }).click();
-    await expect(page.getByRole('heading', { name: '测试用例' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '1 配测试用例' })).toBeVisible();
     await page.getByText('配置与任务细节').click();
     await expect(page.getByLabel('仓库路径')).toHaveValue(toPosix(fixture));
     await expect(page.getByLabel('配置路径')).toHaveValue(/context-eval\.yaml$/);
@@ -357,11 +359,12 @@ test('structured editors copy, delete, save, and reject unsafe overlay paths', a
   try {
     await page.goto(server.url);
     await page.getByRole('button', { name: '试用示例' }).click();
-    await expect(page.getByRole('heading', { name: '测试用例' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '1 配测试用例' })).toBeVisible();
 
     const variantPanel = page.getByLabel('上下文方案配置');
     await variantPanel.getByRole('button', { name: '复制' }).click();
     await expect(variantPanel.getByLabel('方案名称')).toHaveValue('baseline-copy');
+    await variantPanel.getByText('路径设置').first().click();
     await variantPanel.getByLabel('上下文资料目标路径 1').fill('../AGENTS.md');
     await variantPanel.getByRole('button', { name: '保存上下文方案' }).click();
     const unsafeTargetError =
@@ -377,6 +380,7 @@ test('structured editors copy, delete, save, and reject unsafe overlay paths', a
     await variantPanel.getByLabel('上下文方案列表').getByRole('button', { name: '删除' }).click();
     await expect(variantPanel.getByLabel('方案名称')).toHaveValue('experiment');
 
+    await page.getByText('执行器设置').click();
     const agentPanel = page.getByLabel('执行器配置');
     await agentPanel.getByRole('button', { name: '复制' }).click();
     await expect(agentPanel.getByLabel('执行器名称')).toHaveValue('demo-agent-copy');
@@ -414,6 +418,7 @@ test('renders the fixture-backed Coco hybrid shell', async ({ page }) => {
 
   await expect(page.getByRole('heading', { name: 'context-eval 本地工作台' })).toBeVisible();
   await expect(page.getByTestId('matrix-count')).toHaveText('8');
+  await page.getByText('高级验收设置').click();
   await page.getByText('配置与任务细节').click();
   await expect(page.getByRole('heading', { name: '执行器', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: '期望结果' })).toBeVisible();

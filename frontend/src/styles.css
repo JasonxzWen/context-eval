@@ -133,7 +133,7 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 1px;
-  margin: 18px 0;
+  margin: 12px 0;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -169,12 +169,13 @@ button:disabled {
 
 .designer-guide {
   display: grid;
-  grid-template-columns: minmax(260px, 0.95fr) minmax(0, 1.6fr);
-  gap: 12px;
-  margin: 0 0 18px;
+  grid-template-columns: minmax(300px, 1fr) minmax(360px, 1.15fr) auto;
+  gap: 10px;
+  align-items: center;
+  margin: 0 0 12px;
   border: 1px solid #9eb6c8;
   border-radius: 8px;
-  padding: 14px;
+  padding: 10px 12px;
   background: #f7fbfd;
 }
 
@@ -184,13 +185,8 @@ button:disabled {
   min-width: 0;
 }
 
-.designer-guide-intro strong {
-  color: var(--blue);
-  font-size: 18px;
-}
-
 .designer-guide-intro span,
-.designer-guide-steps span {
+.designer-guide small {
   color: var(--muted);
   font-size: 13px;
   line-height: 1.45;
@@ -199,24 +195,27 @@ button:disabled {
 .designer-guide-steps {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .designer-guide-steps li {
-  display: grid;
-  gap: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-width: 0;
-  border-left: 3px solid var(--amber);
-  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 10px;
   background: #ffffff;
 }
 
 .designer-guide-steps strong {
   color: var(--ink);
-  font-size: 13px;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .content-grid {
@@ -430,33 +429,34 @@ button:disabled {
   order: 10;
 }
 
-.content-grid > .run-brief-panel,
-.content-grid > .matrix-panel {
-  grid-column: span 6;
-}
-
-.content-grid > .run-brief-panel {
-  order: 1;
-}
-
-.content-grid > .matrix-panel {
-  order: 2;
-}
-
 .content-grid > .scope-notice {
   grid-column: span 12;
-  order: 3;
-}
-
-.content-grid > .variant-editor-panel,
-.content-grid > .agent-editor-panel {
-  grid-column: span 12;
-  order: 4;
+  order: 1;
 }
 
 .content-grid > .task-editor-panel {
   grid-column: span 12;
+  order: 2;
+}
+
+.content-grid > .variant-editor-panel {
+  grid-column: span 12;
+  order: 3;
+}
+
+.content-grid > .run-brief-panel {
+  grid-column: span 7;
+  order: 4;
+}
+
+.content-grid > .matrix-panel {
+  grid-column: span 5;
   order: 5;
+}
+
+.content-grid > .advanced-editor-shell {
+  grid-column: span 12;
+  order: 6;
 }
 
 .content-grid > .results-panel {
@@ -471,12 +471,12 @@ button:disabled {
 }
 
 .content-grid > .project-panel {
-  order: 6;
+  order: 9;
 }
 
 .content-grid > .advanced-workbench {
   grid-column: span 12;
-  order: 6;
+  order: 9;
 }
 
 .content-grid > .yaml-panel {
@@ -517,6 +517,10 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.simplified-grid {
+  grid-template-columns: minmax(180px, 0.45fr) minmax(0, 1fr);
 }
 
 label {
@@ -1031,6 +1035,46 @@ fieldset {
   outline-offset: 2px;
 }
 
+.advanced-inline,
+.overlay-advanced,
+.execution-metrics-details {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.advanced-inline > summary,
+.overlay-advanced > summary,
+.execution-metrics-details > summary {
+  padding: 9px 10px;
+  color: var(--blue);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.advanced-inline[open] > summary,
+.overlay-advanced[open] > summary,
+.execution-metrics-details[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.advanced-inline {
+  display: grid;
+}
+
+.advanced-inline > fieldset {
+  margin: 10px;
+}
+
+.advanced-editor-shell > .agent-editor-panel {
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 8px 8px;
+  background: #ffffff;
+}
+
 .field-block {
   display: grid;
   gap: 6px;
@@ -1141,7 +1185,7 @@ legend {
 
 .overlay-row {
   display: grid;
-  grid-template-columns: minmax(150px, 0.7fr) minmax(220px, 1fr) minmax(160px, 0.75fr) auto;
+  grid-template-columns: minmax(140px, 0.5fr) minmax(260px, 1fr) minmax(150px, 0.5fr);
   gap: 8px;
   align-items: end;
   min-width: 0;
@@ -1159,6 +1203,19 @@ legend {
   border-radius: 6px;
   padding: 8px;
   background: #eef4f7;
+}
+
+.overlay-advanced {
+  align-self: stretch;
+}
+
+.overlay-advanced > label,
+.overlay-advanced > button {
+  margin: 10px;
+}
+
+.execution-metrics-details {
+  margin-top: 12px;
 }
 
 .overlay-kind strong {

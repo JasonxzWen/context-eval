@@ -238,26 +238,22 @@ function DesignerGuide() {
   return (
     <section className="designer-guide" aria-label="策划工作流说明">
       <div className="designer-guide-intro">
-        <strong>用于比较上下文质量</strong>
         <span>
-          同一批测试用例会在不同上下文方案下运行，依据本地产物、执行指标和人工反馈判断哪套
-          `AGENTS.md`/skills 更适合任务。这里不是公开 benchmark，也不是 agent 排行榜。
+          用同一批测试用例，对比不同 AGENTS.md / skills 上下文方案对 coding agent 执行效果的影响。
         </span>
       </div>
       <ol className="designer-guide-steps">
         <li>
-          <strong>1. 配测试用例</strong>
-          <span>写清任务说明、期望结果、验收点和自动验收命令。</span>
+          <strong>1 配测试用例</strong>
         </li>
         <li>
-          <strong>2. 选上下文方案</strong>
-          <span>主要比较 AGENTS.md 工作说明和 skills 技能包。</span>
+          <strong>2 配上下文方案</strong>
         </li>
         <li>
-          <strong>3. 做人工反馈</strong>
-          <span>查看 patch、日志、验证结果和证据缺口，再保存人工反馈。</span>
+          <strong>3 看结果并反馈</strong>
         </li>
       </ol>
+      <small>本地 artifact 证据，不是公开 benchmark 或 agent 排行榜。</small>
     </section>
   );
 }
@@ -851,15 +847,6 @@ export function App() {
 
       {!isFirstRun && (
       <section className="content-grid">
-        <RunPlanPanel
-          agents={agents}
-          taskCount={loaded.editable.tasks.length}
-          variants={loaded.editable.variants}
-          visibleCaseCount={visibleCaseCount}
-          plan={plan}
-          defaultTrials={localAppFixture.trials}
-          runScope={runScope}
-        />
         {(taskValidationErrors.length > 0 || scopeNotice) && (
           <div className="notice validation-notice scope-notice" role="alert">
             {scopeNotice && <div>{scopeNotice}</div>}
@@ -868,24 +855,6 @@ export function App() {
             ))}
           </div>
         )}
-        <VariantEditor
-          variants={loaded.editable.variants}
-          selectedVariantIndex={selectedVariantIndex}
-          saveStatus={saveStatus}
-          serverMode={serverMode}
-          onSelectVariant={setSelectedVariantIndex}
-          onUpdateVariants={updateVariants}
-          onSave={() => guarded(() => saveEditableConfig('已保存配置并刷新执行计划'))}
-        />
-        <AgentEditor
-          agents={agents}
-          selectedAgentIndex={selectedAgentIndex}
-          saveStatus={saveStatus}
-          serverMode={serverMode}
-          onSelectAgent={setSelectedAgentIndex}
-          onUpdateAgents={updateAgents}
-          onSave={() => guarded(() => saveEditableConfig('已保存配置并刷新执行计划'))}
-        />
         <TaskEditor
           tasks={loaded.editable.tasks}
           variants={loaded.editable.variants}
@@ -900,23 +869,15 @@ export function App() {
           onDeleteTask={deleteTask}
           onSave={() => guarded(() => saveEditableConfig('已保存测试用例并刷新执行计划'))}
         />
-        <AdvancedConfigDetails
-          agents={agents}
-          configPath={configPath}
-          configYaml={configYaml}
-          loaded={loaded}
-          modeLabel={modeLabel}
+        <VariantEditor
+          variants={loaded.editable.variants}
+          selectedVariantIndex={selectedVariantIndex}
           saveStatus={saveStatus}
           serverMode={serverMode}
-          task={task}
-          tasksYaml={tasksYaml}
-          onConfigPathChange={setConfigPath}
-          onConfigYamlChange={setConfigYaml}
-          onLoadConfig={() => guarded(async () => { await loadConfig(); })}
-          onSaveConfig={() => guarded(saveConfig)}
-          onTasksYamlChange={setTasksYaml}
+          onSelectVariant={setSelectedVariantIndex}
+          onUpdateVariants={updateVariants}
+          onSave={() => guarded(() => saveEditableConfig('已保存配置并刷新执行计划'))}
         />
-
         <RunControls
           cleanupPolicy={cleanupPolicy}
           isRunActive={isRunActive}
@@ -941,6 +902,46 @@ export function App() {
           onStop={() => guarded(stopRun)}
           onToggleScope={toggleRunScope}
           labelForCheck={(check) => labelFor(checkLabels, check)}
+        />
+        <RunPlanPanel
+          agents={agents}
+          taskCount={loaded.editable.tasks.length}
+          variants={loaded.editable.variants}
+          visibleCaseCount={visibleCaseCount}
+          plan={plan}
+          defaultTrials={localAppFixture.trials}
+          runScope={runScope}
+        />
+        <details className="advanced-workbench advanced-editor-shell">
+          <summary>
+            <span>执行器设置</span>
+            <small>通常保持默认；需要换 Codex/Coco/自定义命令时再打开</small>
+          </summary>
+          <AgentEditor
+            agents={agents}
+            selectedAgentIndex={selectedAgentIndex}
+            saveStatus={saveStatus}
+            serverMode={serverMode}
+            onSelectAgent={setSelectedAgentIndex}
+            onUpdateAgents={updateAgents}
+            onSave={() => guarded(() => saveEditableConfig('已保存配置并刷新执行计划'))}
+          />
+        </details>
+        <AdvancedConfigDetails
+          agents={agents}
+          configPath={configPath}
+          configYaml={configYaml}
+          loaded={loaded}
+          modeLabel={modeLabel}
+          saveStatus={saveStatus}
+          serverMode={serverMode}
+          task={task}
+          tasksYaml={tasksYaml}
+          onConfigPathChange={setConfigPath}
+          onConfigYamlChange={setConfigYaml}
+          onLoadConfig={() => guarded(async () => { await loadConfig(); })}
+          onSaveConfig={() => guarded(saveConfig)}
+          onTasksYamlChange={setTasksYaml}
         />
 
         <section className="panel run-panel">
@@ -1153,8 +1154,6 @@ export function App() {
                     <th>验证</th>
                     <th>可信度</th>
                     <th>遥测</th>
-                    <th>令牌</th>
-                    <th>工具</th>
                     <th>硬性检查</th>
                     <th>软性材料</th>
                     <th>复核</th>
@@ -1183,16 +1182,6 @@ export function App() {
                             <small>{result.agent_duration_seconds.toFixed(1)}s</small>
                           )}
                           {result.telemetry_error && <small>{result.telemetry_error}</small>}
-                        </td>
-                        <td data-label="令牌">
-                          {result.total_tokens ?? '-'}
-                          {result.reasoning_tokens != null && <small>推理 {result.reasoning_tokens}</small>}
-                        </td>
-                        <td data-label="工具">
-                          {result.tool_call_count ?? '-'}
-                          {result.reasoning_step_count != null && <small>轮次 {result.reasoning_step_count}</small>}
-                          {result.command_call_count != null && <small>命令 {result.command_call_count}</small>}
-                          {result.model_name && <small>{result.model_name}</small>}
                         </td>
                         <td data-label="硬性检查">
                           {labelFor(evaluationLabels, result.hard_evaluation_status || 'not_configured')}{' '}
@@ -1352,11 +1341,9 @@ export function App() {
                     </form>
                   </div>
                   {isCodexUsageCase(caseDetail.case) && (
-                    <section
-                      className="codex-usage-panel"
-                      data-testid="codex-usage-panel"
-                      aria-label="Codex 使用画像"
-                    >
+                    <details className="execution-metrics-details" data-testid="codex-usage-panel">
+                      <summary>执行指标详情</summary>
+                      <section className="codex-usage-panel" aria-label="Codex 使用画像">
                       <div className="panel-heading compact-heading">
                         <h4>Codex 使用画像</h4>
                         <span>{caseDetail.case.telemetry_source || 'codex-jsonl'}</span>
@@ -1431,7 +1418,8 @@ export function App() {
                           <span>未发现结构化缺口</span>
                         )}
                       </div>
-                    </section>
+                      </section>
+                    </details>
                   )}
                   {detailEvidenceNotes.length > 0 && (
                     <section className="evidence-note-panel" aria-label="证据不足解释">
