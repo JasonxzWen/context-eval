@@ -467,8 +467,10 @@ describe('App workflow shell', () => {
     fireEvent.change(screen.getByLabelText('命令 1'), { target: { value: ' ' } });
     fireEvent.click(screen.getByRole('button', { name: '保存测试用例' }));
 
-    expect(await screen.findByText('fix-greeting-punctuation: 给 AI 的任务提示词不能为空')).toBeVisible();
-    expect(screen.getByText('fix-greeting-punctuation: 第 1 条验证命令不能为空')).toBeVisible();
+    const taskPanel = screen.getByRole('region', { name: '测试用例配置' });
+    expect(await within(taskPanel).findByText('fix-greeting-punctuation: 给 AI 的任务提示词不能为空')).toBeVisible();
+    expect(within(taskPanel).getByText('fix-greeting-punctuation: 第 1 条验证命令不能为空')).toBeVisible();
+    expect(document.querySelector('.scope-notice')).toBeNull();
     expect(fetchMock).not.toHaveBeenCalledWith(
       '/api/config/save-editable',
       expect.anything(),
@@ -499,10 +501,13 @@ describe('App workflow shell', () => {
     await waitFor(() => expect(screen.getByLabelText('执行器超时分钟')).toHaveValue(0));
     fireEvent.click(screen.getByRole('button', { name: '保存执行器配置' }));
 
-    expect(await screen.findByText('第 1 个上下文方案名称不能为空')).toBeVisible();
-    expect(screen.getByText('第 1 个上下文方案的第 1 个上下文资料来源路径不能为空')).toBeVisible();
-    expect(screen.getByText('第 1 个执行器命令模板不能为空')).toBeVisible();
-    expect(screen.getByText('第 1 个执行器超时必须大于 0')).toBeVisible();
+    const variantPanel = screen.getByRole('region', { name: '上下文方案配置' });
+    const agentPanel = screen.getByRole('region', { name: '执行器配置' });
+    expect(await within(variantPanel).findByText('第 1 个上下文方案名称不能为空')).toBeVisible();
+    expect(within(variantPanel).getByText('第 1 个上下文方案的第 1 个上下文资料来源路径不能为空')).toBeVisible();
+    expect(within(agentPanel).getByText('第 1 个执行器命令模板不能为空')).toBeVisible();
+    expect(within(agentPanel).getByText('第 1 个执行器超时必须大于 0')).toBeVisible();
+    expect(document.querySelector('.scope-notice')).toBeNull();
     expect(fetchMock).not.toHaveBeenCalledWith(
       '/api/config/save-editable',
       expect.anything(),

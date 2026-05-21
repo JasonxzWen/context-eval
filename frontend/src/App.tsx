@@ -201,6 +201,20 @@ function resultVariants(results: ResultsPayload | null) {
     : Array.from(new Set((results?.cases || []).map((item) => item.variant))).sort();
 }
 
+function taskIssueLabel(task: EditableTask, index: number) {
+  return `${task.id.trim() || `第 ${index + 1} 个测试用例`}:`;
+}
+
+function validationIssueBuckets(editable: EditableConfig, issues: string[]) {
+  const taskLabels = editable.tasks.map(taskIssueLabel);
+  const taskIssues = issues.filter((issue) => (
+    taskLabels.some((label) => issue.startsWith(label)) || issue.startsWith('任务 ID 重复')
+  ));
+  const variantIssues = issues.filter((issue) => issue.includes('上下文方案'));
+  const agentIssues = issues.filter((issue) => issue.includes('执行器'));
+  return { taskIssues, variantIssues, agentIssues };
+}
+
 function confidenceReason(value: string | undefined | null) {
   if (value === 'high') return '已配置 validation commands，且全部通过。';
   if (value === 'medium') return 'validation commands 存在，但至少一个失败或超时。';
@@ -457,6 +471,7 @@ export function App() {
     const issues = validateEditableConfig(currentLoaded.editable);
     setTaskValidationErrors(issues);
     if (issues.length > 0) {
+      revealFirstValidationIssue(currentLoaded.editable, issues);
       return;
     }
     const saved = await apiRequest<SaveResponse>('/api/config/save-editable', {
@@ -476,6 +491,25 @@ export function App() {
       await planRun(saved.config_path, nextScope);
     }
     setSaveStatus(`${message}: ${saved.config_path} / ${saved.tasks_path}`);
+  }
+
+  function revealFirstValidationIssue(editable: EditableConfig, issues: string[]) {
+    const taskIssueIndex = editable.tasks.findIndex((taskItem, index) =>
+      issues.some((issue) => issue.startsWith(taskIssueLabel(taskItem, index))),
+    );
+    if (taskIssueIndex >= 0) {
+      setSelectedTaskIndex(taskIssueIndex);
+    }
+    const variantIssueMatch = issues.find((issue) => issue.includes('上下文方案'));
+    const variantIndex = variantIssueMatch?.match(/^第 (\d+) 个上下文方案/)?.[1];
+    if (variantIndex) {
+      setSelectedVariantIndex(Math.max(0, Number(variantIndex) - 1));
+    }
+    const agentIssueMatch = issues.find((issue) => issue.includes('执行器'));
+    const agentIndex = agentIssueMatch?.match(/^第 (\d+) 个执行器/)?.[1];
+    if (agentIndex) {
+      setSelectedAgentIndex(Math.max(0, Number(agentIndex) - 1));
+    }
   }
 
   function updateEditable(updater: (editable: EditableConfig) => EditableConfig) {
@@ -875,6 +909,7 @@ export function App() {
   const evaluationExplanation = results?.evaluation_explanation;
   const detailHardEvaluation = hardEvaluationFrom(caseDetail);
   const detailEvidenceNotes = caseDetail ? caseEvidenceNotes(caseDetail.case) : [];
+  const validationBuckets = validationIssueBuckets(loaded.editable, taskValidationErrors);
 
   const isFirstRun = serverMode === 'connected' && workspaceState?.state === 'empty' && !configLoaded;
 
@@ -917,12 +952,9 @@ export function App() {
 
       {!isFirstRun && (
       <section className="content-grid">
-        {(taskValidationErrors.length > 0 || scopeNotice) && (
+        {scopeNotice && (
           <div className="notice validation-notice scope-notice" role="alert">
-            {scopeNotice && <div>{scopeNotice}</div>}
-            {taskValidationErrors.map((issue) => (
-              <div key={issue}>{issue}</div>
-            ))}
+            <div>{scopeNotice}</div>
           </div>
         )}
         <TaskEditor
@@ -930,7 +962,7 @@ export function App() {
           selectedTaskIndex={selectedTaskIndex}
           saveStatus={saveStatus}
           serverMode={serverMode}
-          validationErrors={[]}
+          validationErrors={validationBuckets.taskIssues}
           onSelectTask={setSelectedTaskIndex}
           onUpdateTask={updateTask}
           onAddTask={addTask}
@@ -943,6 +975,7 @@ export function App() {
           selectedVariantIndex={selectedVariantIndex}
           saveStatus={saveStatus}
           serverMode={serverMode}
+          validationErrors={validationBuckets.variantIssues}
           onSelectVariant={setSelectedVariantIndex}
           onUpdateVariants={updateVariants}
           onSave={() => guarded(() => saveEditableConfig('已保存配置并刷新执行计划'))}
@@ -952,6 +985,7 @@ export function App() {
           selectedAgentIndex={selectedAgentIndex}
           saveStatus={saveStatus}
           serverMode={serverMode}
+          validationErrors={validationBuckets.agentIssues}
           onSelectAgent={setSelectedAgentIndex}
           onUpdateAgents={updateAgents}
           onSave={() => guarded(() => saveEditableConfig('已保存配置并刷新执行计划'))}

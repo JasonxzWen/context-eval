@@ -6,6 +6,7 @@ type VariantEditorProps = {
   selectedVariantIndex: number;
   saveStatus: string;
   serverMode: 'checking' | 'connected' | 'fixture';
+  validationErrors: string[];
   onSelectVariant: (index: number) => void;
   onUpdateVariants: (variants: EditableVariant[]) => void;
   onSave: () => void;
@@ -61,6 +62,7 @@ export function VariantEditor({
   selectedVariantIndex,
   saveStatus,
   serverMode,
+  validationErrors,
   onSelectVariant,
   onUpdateVariants,
   onSave,
@@ -240,6 +242,13 @@ export function VariantEditor({
               })}
               {variant.overlays.length === 0 && <p className="status-line">未配置上下文资料。</p>}
             </div>
+            {validationErrors.length > 0 && (
+              <div className="notice validation-notice" role="alert">
+                {validationErrors.map((issue) => (
+                  <div key={issue}>{issue}</div>
+                ))}
+              </div>
+            )}
             <div className="button-row editor-actions">
               <button type="submit" disabled={serverMode !== 'connected'}>
                 保存上下文方案

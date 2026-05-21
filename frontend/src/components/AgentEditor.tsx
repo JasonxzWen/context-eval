@@ -6,6 +6,7 @@ type AgentEditorProps = {
   selectedAgentIndex: number;
   saveStatus: string;
   serverMode: 'checking' | 'connected' | 'fixture';
+  validationErrors: string[];
   onSelectAgent: (index: number) => void;
   onUpdateAgents: (agents: EditableAgent[]) => void;
   onSave: () => void;
@@ -48,6 +49,7 @@ export function AgentEditor({
   selectedAgentIndex,
   saveStatus,
   serverMode,
+  validationErrors,
   onSelectAgent,
   onUpdateAgents,
   onSave,
@@ -208,6 +210,13 @@ export function AgentEditor({
                 spellCheck={false}
               />
             </label>
+            {validationErrors.length > 0 && (
+              <div className="notice validation-notice" role="alert">
+                {validationErrors.map((issue) => (
+                  <div key={issue}>{issue}</div>
+                ))}
+              </div>
+            )}
             <div className="button-row editor-actions">
               <button type="submit" disabled={serverMode !== 'connected'}>
                 保存执行器配置
