@@ -1,10 +1,12 @@
 import type { EditableAgent } from '../types';
+import { HelpTip } from './HelpTip';
 
 type AgentEditorProps = {
   agents: EditableAgent[];
   selectedAgentIndex: number;
   saveStatus: string;
   serverMode: 'checking' | 'connected' | 'fixture';
+  validationErrors: string[];
   onSelectAgent: (index: number) => void;
   onUpdateAgents: (agents: EditableAgent[]) => void;
   onSave: () => void;
@@ -47,6 +49,7 @@ export function AgentEditor({
   selectedAgentIndex,
   saveStatus,
   serverMode,
+  validationErrors,
   onSelectAgent,
   onUpdateAgents,
   onSave,
@@ -84,11 +87,15 @@ export function AgentEditor({
   }
 
   return (
-    <section className="panel agent-editor-panel" aria-label="执行器配置">
+    <section className="panel agent-editor-panel" id="agent-config" aria-label="执行器配置">
       <div className="panel-heading">
-        <h2>执行器配置</h2>
-        <span>{agents.length}</span>
+        <h2>3 配执行器</h2>
+        <span>{agents.length} 个执行器</span>
       </div>
+      <p className="panel-note">
+        执行器就是实际跑任务的 coding agent 命令。选择 Codex CLI 时，命令模板建议使用结构化输出：
+        <code>codex exec --json</code>。
+      </p>
       {agent ? (
         <div className="editor-split">
           <aside className="task-rail" aria-label="执行器列表">
@@ -131,7 +138,10 @@ export function AgentEditor({
           >
             <div className="form-grid">
               <label htmlFor="agent-name">
-                配置名称
+                <span className="label-with-help">
+                  执行器名称
+                  <HelpTip text="给这条本地命令起一个短名称，结果列表会按它区分不同 agent。" />
+                </span>
                 <input
                   id="agent-name"
                   aria-label="执行器名称"
@@ -140,7 +150,10 @@ export function AgentEditor({
                 />
               </label>
               <label htmlFor="agent-kind">
-                类型
+                <span className="label-with-help">
+                  执行器类型
+                  <HelpTip text="用于选择解析方式。Codex CLI 会优先读取 codex exec --json 产生的事件 JSONL。" />
+                </span>
                 <select
                   id="agent-kind"
                   aria-label="执行器类型"
@@ -155,7 +168,10 @@ export function AgentEditor({
                 </select>
               </label>
               <label htmlFor="agent-timeout">
-                超时（分钟）
+                <span className="label-with-help">
+                  超时（分钟）
+                  <HelpTip text="单个评测用例最多允许运行多久，超时会记录为本地产物里的失败原因。" />
+                </span>
                 <input
                   id="agent-timeout"
                   aria-label="执行器超时分钟"
@@ -166,7 +182,10 @@ export function AgentEditor({
                 />
               </label>
               <label htmlFor="agent-network">
-                联网权限
+                <span className="label-with-help">
+                  联网权限
+                  <HelpTip text="这里只记录你希望执行器如何运行；context-eval 本身不读取认证信息。" />
+                </span>
                 <select
                   id="agent-network"
                   aria-label="执行器联网权限"
@@ -179,7 +198,10 @@ export function AgentEditor({
               </label>
             </div>
             <label htmlFor="agent-command">
-              命令模板
+              <span className="label-with-help">
+                启动命令模板
+                <HelpTip text="{prompt_file} 是生成给 AI 的任务提示词文件；Codex CLI 推荐 codex exec --json ... < {prompt_file}。" />
+              </span>
               <textarea
                 id="agent-command"
                 aria-label="执行器命令模板"
@@ -188,6 +210,13 @@ export function AgentEditor({
                 spellCheck={false}
               />
             </label>
+            {validationErrors.length > 0 && (
+              <div className="notice validation-notice" role="alert">
+                {validationErrors.map((issue) => (
+                  <div key={issue}>{issue}</div>
+                ))}
+              </div>
+            )}
             <div className="button-row editor-actions">
               <button type="submit" disabled={serverMode !== 'connected'}>
                 保存执行器配置

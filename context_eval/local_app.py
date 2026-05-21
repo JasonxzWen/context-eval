@@ -901,7 +901,7 @@ class LocalAppService:
             "output_dir": "./runs",
             "variants": {
                 "baseline": {
-                    "description": "基线说明",
+                    "description": "当前默认 AGENTS.md",
                     "overlays": [
                         {
                             "source": "./contexts/baseline/AGENTS.md",
@@ -910,7 +910,7 @@ class LocalAppService:
                     ],
                 },
                 "experiment": {
-                    "description": "带标记要求的实验说明",
+                    "description": "增加 context-eval-demo 要求的实验方案",
                     "overlays": [
                         {
                             "source": "./contexts/experiment/AGENTS.md",
@@ -1386,7 +1386,7 @@ class LocalAppService:
         if requested:
             return (
                 fallback,
-                f"已清理不存在的比较基线 {requested}，改用 {fallback}。",
+                f"已清理不存在的对照组方案 {requested}，改用 {fallback}。",
             )
         return fallback, None
 
@@ -1562,7 +1562,7 @@ class LocalAppService:
             return "对比对象的本地评测信号更好。"
         if verdict == "comparison_regressed":
             return "对比对象的本地评测信号回退。"
-        return "比较基线与对比对象没有明确评测变化。"
+        return "对照组与对比对象没有明确评测变化。"
 
     def _compare_evidence_gaps(
         self,
@@ -1583,7 +1583,7 @@ class LocalAppService:
                     "variant": comparison.variant,
                     "case_id": comparison.case_id,
                     "message": (
-                        "比较基线和对比对象的 hard score 分母不同，不能直接解读为同一组检查的差值。"
+                        "对照组和对比对象的 hard score 分母不同，不能直接解读为同一组检查的差值。"
                     ),
                     "next_step": "确认两组 variant 使用相同 hard_evaluation 配置后再比较。",
                 }
@@ -1596,7 +1596,7 @@ class LocalAppService:
         *,
         role: str,
     ) -> list[dict[str, Any]]:
-        role_label = "比较基线" if role == "baseline" else "对比对象"
+        role_label = "对照组" if role == "baseline" else "对比对象"
         gaps: list[dict[str, Any]] = []
         if result.validation_status == "skipped":
             gaps.append(
@@ -2000,11 +2000,11 @@ def _fallback_html() -> str:
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>context-eval 本地工作台</title>
+  <title>AGENTS.md / skills 效果对比</title>
 </head>
 <body>
   <main>
-    <h1>context-eval 本地工作台</h1>
+    <h1>AGENTS.md / skills 效果对比</h1>
     <p>未找到前端构建产物。请先运行前端验证流程。</p>
   </main>
 </body>

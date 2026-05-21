@@ -256,7 +256,7 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
     await page.goto(server.url);
     await page.waitForLoadState('networkidle');
 
-    await expect(page.getByRole('heading', { name: 'context-eval 本地工作台' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'AGENTS.md / skills 效果对比' })).toBeVisible();
     await expect(page.getByRole('heading', { name: '开始使用' })).toBeVisible();
     await expect(page.getByText('./fixture-repo')).toHaveCount(0);
 
@@ -265,18 +265,17 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
 
     await expect(page.locator('.run-brief-panel')).toContainText('baseline vs experiment');
     await expect(page.getByRole('heading', { name: '1 配测试用例' })).toBeVisible();
-    await page.getByText('高级验收设置').click();
+    await page.locator('summary', { hasText: '高级验收设置' }).click();
     await expect(page.getByRole('radiogroup', { name: '任务分类' })).toBeVisible();
     await expect(page.getByRole('radio', { name: '缺陷修复' })).toHaveAttribute('aria-checked', 'true');
     await expect(page.getByRole('radio', { name: '简单' })).toHaveAttribute('aria-checked', 'true');
-    await page.getByLabel('期望结果摘要').fill('Visual editor saved summary.');
+    await page.getByLabel('人工验收目标').fill('Visual editor saved summary.');
     await page.getByRole('button', { name: '保存测试用例' }).click();
     await expect(page.getByTestId('task-save-status')).toContainText('已保存测试用例并刷新执行计划');
     await expect(page.locator('.matrix-panel')).toContainText('Visual editor saved summary.');
 
     await page.getByLabel('选择上下文方案 experiment').click();
     await page.getByLabel('方案说明').fill('Edited experiment instructions');
-    await page.getByText('执行器设置').click();
     await page.getByLabel('执行器超时分钟').fill('3');
     await page.getByRole('button', { name: '保存执行器配置' }).click();
     await expect(page.getByTestId('agent-save-status')).toContainText('已保存配置并刷新执行计划');
@@ -380,7 +379,6 @@ test('structured editors copy, delete, save, and reject unsafe overlay paths', a
     await variantPanel.getByLabel('上下文方案列表').getByRole('button', { name: '删除' }).click();
     await expect(variantPanel.getByLabel('方案名称')).toHaveValue('experiment');
 
-    await page.getByText('执行器设置').click();
     const agentPanel = page.getByLabel('执行器配置');
     await agentPanel.getByRole('button', { name: '复制' }).click();
     await expect(agentPanel.getByLabel('执行器名称')).toHaveValue('demo-agent-copy');
@@ -416,9 +414,9 @@ async function stopLocalApp(child: ChildProcessWithoutNullStreams) {
 test('renders the fixture-backed Coco hybrid shell', async ({ page }) => {
   await page.goto('/');
 
-  await expect(page.getByRole('heading', { name: 'context-eval 本地工作台' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'AGENTS.md / skills 效果对比' })).toBeVisible();
   await expect(page.getByTestId('matrix-count')).toHaveText('8');
-  await page.getByText('高级验收设置').click();
+  await page.locator('summary', { hasText: '高级验收设置' }).click();
   await page.getByText('配置与任务细节').click();
   await expect(page.getByRole('heading', { name: '执行器', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: '期望结果' })).toBeVisible();
@@ -587,7 +585,7 @@ test('explains scoring gaps, baseline changes, and API errors in results UI', as
     stderr_path: 'logs/fix-greeting__experiment__demo-agent.stderr.log',
   };
   const evidenceGaps = (role: 'baseline' | 'comparison', variant: string) => {
-    const roleLabel = role === 'baseline' ? '比较基线' : '对比对象';
+    const roleLabel = role === 'baseline' ? '对照组' : '对比对象';
     return [
       {
         code: `${role}_validation_missing`,
@@ -784,14 +782,14 @@ test('explains scoring gaps, baseline changes, and API errors in results UI', as
   await expect(page.getByLabel('评分依据')).toContainText('验证可信度');
   await expect(page.getByLabel('评分依据')).toContainText('通过检查数 / 可评分检查数');
   await expect(page.getByLabel('评分依据')).toContainText('payload-only');
-  await expect(page.getByLabel('比较基线')).toHaveValue('baseline');
-  await expect(page.getByLabel('对比摘要')).toContainText('比较基线没有 validation commands');
+  await expect(page.getByLabel('对照组方案')).toHaveValue('baseline');
+  await expect(page.getByLabel('对比摘要')).toContainText('对照组没有 validation commands');
 
-  await page.getByLabel('比较基线').selectOption('experiment');
-  await expect(page.getByLabel('比较基线')).toHaveValue('experiment');
+  await page.getByLabel('对照组方案').selectOption('experiment');
+  await expect(page.getByLabel('对照组方案')).toHaveValue('experiment');
   await expect(page.getByLabel('对比摘要')).toContainText('对比对象没有 validation commands');
 
-  await page.getByLabel('比较基线').selectOption('baseline');
+  await page.getByLabel('对照组方案').selectOption('baseline');
   const baselineRow = page.locator('tbody tr', { hasText: 'baseline' }).first();
   await baselineRow.getByRole('button', { name: '查看详情' }).click();
   await expect(page.getByRole('heading', { name: '为什么不能高置信判断' })).toBeVisible();
@@ -979,7 +977,7 @@ test('completes the local server workflow with fake Coco and hybrid evaluation',
   try {
     await page.goto(server.url);
 
-    await expect(page.getByRole('heading', { name: 'context-eval 本地工作台' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'AGENTS.md / skills 效果对比' })).toBeVisible();
     await page.getByText('配置与任务细节').click();
     await page.getByRole('button', { name: '加载配置' }).click();
     await expect(page.getByLabel('仓库路径')).toHaveValue(toPosix(fixture));
@@ -999,10 +997,10 @@ test('completes the local server workflow with fake Coco and hybrid evaluation',
     await expect(baselineRow).toContainText('通过 3/3');
     await expect(baselineRow).toContainText('通过检查数 / 可评分检查数');
     await expect(baselineRow).toContainText('已生成待复核材料');
-    await expect(page.getByLabel('比较基线')).toHaveValue('baseline');
+    await expect(page.getByLabel('对照组方案')).toHaveValue('baseline');
     await expect(page.getByLabel('对比摘要')).toContainText('对比对象');
-    await page.getByLabel('比较基线').selectOption('experiment');
-    await expect(page.getByLabel('比较基线')).toHaveValue('experiment');
+    await page.getByLabel('对照组方案').selectOption('experiment');
+    await expect(page.getByLabel('对照组方案')).toHaveValue('experiment');
     await expect(page.getByLabel('对比摘要')).toContainText('baseline');
 
     await baselineRow.getByRole('button', { name: '查看详情' }).click();

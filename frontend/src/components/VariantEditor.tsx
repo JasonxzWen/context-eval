@@ -6,6 +6,7 @@ type VariantEditorProps = {
   selectedVariantIndex: number;
   saveStatus: string;
   serverMode: 'checking' | 'connected' | 'fixture';
+  validationErrors: string[];
   onSelectVariant: (index: number) => void;
   onUpdateVariants: (variants: EditableVariant[]) => void;
   onSave: () => void;
@@ -27,6 +28,10 @@ function blankVariant(variants: EditableVariant[]): EditableVariant {
     description: '',
     overlays: [{ source: './contexts/new-variant/AGENTS.md', target: 'AGENTS.md' }],
   };
+}
+
+function displayVariantName(name: string) {
+  return name === 'baseline' ? 'baseline（当前默认上下文）' : name;
 }
 
 function overlayKind(source: string, target: string) {
@@ -57,6 +62,7 @@ export function VariantEditor({
   selectedVariantIndex,
   saveStatus,
   serverMode,
+  validationErrors,
   onSelectVariant,
   onUpdateVariants,
   onSave,
@@ -105,7 +111,7 @@ export function VariantEditor({
   }
 
   return (
-    <section className="panel variant-editor-panel" aria-label="上下文方案配置">
+    <section className="panel variant-editor-panel" id="context-config" aria-label="上下文方案配置">
       <div className="panel-heading">
         <h2>2 配上下文方案</h2>
         <span>{variants.length} 个方案</span>
@@ -122,7 +128,7 @@ export function VariantEditor({
                 aria-label={`选择上下文方案 ${item.name || index + 1}`}
                 onClick={() => onSelectVariant(index)}
               >
-                <strong>{item.name || `variant-${index + 1}`}</strong>
+                <strong>{displayVariantName(item.name) || `variant-${index + 1}`}</strong>
                 <span>{item.description || `${item.overlays.length} 个上下文资料`}</span>
               </button>
             ))}
@@ -155,7 +161,7 @@ export function VariantEditor({
               <label htmlFor="variant-name">
                 <span className="label-with-help">
                   方案名称
-                  <HelpTip text="用于结果对比的短名称，例如 baseline、agents-v2、skills-added。" />
+                  <HelpTip text="用于结果对比的短名称。baseline 通常表示“当前默认上下文”，也可以改成 current-agents、skills-added。" />
                 </span>
                 <input
                   id="variant-name"
@@ -167,7 +173,7 @@ export function VariantEditor({
               <label htmlFor="variant-description">
                 <span className="label-with-help">
                   方案说明
-                  <HelpTip text="给人看的说明：这套 AGENTS.md 或 skills 相比基线改了什么。" />
+                  <HelpTip text="给人看的说明：这套 AGENTS.md 或 skills 是当前默认方案，还是一次实验改动。" />
                 </span>
                 <textarea
                   id="variant-description"
@@ -236,6 +242,13 @@ export function VariantEditor({
               })}
               {variant.overlays.length === 0 && <p className="status-line">未配置上下文资料。</p>}
             </div>
+            {validationErrors.length > 0 && (
+              <div className="notice validation-notice" role="alert">
+                {validationErrors.map((issue) => (
+                  <div key={issue}>{issue}</div>
+                ))}
+              </div>
+            )}
             <div className="button-row editor-actions">
               <button type="submit" disabled={serverMode !== 'connected'}>
                 保存上下文方案

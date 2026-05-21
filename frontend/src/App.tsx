@@ -167,6 +167,15 @@ function metricValue(value: number | string | null | undefined, suffix = '') {
   return `${value}${suffix}`;
 }
 
+function displayVariantName(name: string | null | undefined) {
+  if (!name) return '-';
+  return name === 'baseline' ? 'baseline（当前默认上下文）' : name;
+}
+
+function formatDuration(seconds: number | null | undefined) {
+  return seconds == null ? '-' : `${seconds.toFixed(1)}s`;
+}
+
 function isCodexUsageCase(result: ResultCase | undefined | null) {
   if (!result) return false;
   return (
@@ -181,10 +190,29 @@ function evidenceGapText(code: string) {
   return telemetryEvidenceGapLabels[code] || code;
 }
 
+function codexEvidenceGapSummary(result: ResultCase) {
+  const gaps = result.telemetry_evidence_gaps || [];
+  return gaps.length > 0 ? `证据缺口 ${gaps.length}` : '证据完整';
+}
+
 function resultVariants(results: ResultsPayload | null) {
   return results?.available_baseline_variants?.length
     ? results.available_baseline_variants
     : Array.from(new Set((results?.cases || []).map((item) => item.variant))).sort();
+}
+
+function taskIssueLabel(task: EditableTask, index: number) {
+  return `${task.id.trim() || `第 ${index + 1} 个测试用例`}:`;
+}
+
+function validationIssueBuckets(editable: EditableConfig, issues: string[]) {
+  const taskLabels = editable.tasks.map(taskIssueLabel);
+  const taskIssues = issues.filter((issue) => (
+    taskLabels.some((label) => issue.startsWith(label)) || issue.startsWith('任务 ID 重复')
+  ));
+  const variantIssues = issues.filter((issue) => issue.includes('上下文方案'));
+  const agentIssues = issues.filter((issue) => issue.includes('执行器'));
+  return { taskIssues, variantIssues, agentIssues };
 }
 
 function confidenceReason(value: string | undefined | null) {
@@ -237,23 +265,77 @@ function caseEvidenceNotes(result: ResultCase) {
 function DesignerGuide() {
   return (
     <section className="designer-guide" aria-label="策划工作流说明">
-      <div className="designer-guide-intro">
+      <article className="designer-guide-card">
+        <strong>作用</strong>
         <span>
-          用同一批测试用例，对比不同 AGENTS.md / skills 上下文方案对 coding agent 执行效果的影响。
+          比较不同 AGENTS.md / skills 上下文，看看哪套更能让 coding agent 完成同一个任务。
         </span>
+      </article>
+      <article className="designer-guide-card guide-start">
+        <strong>如何开始</strong>
+        <ol className="designer-guide-steps">
+          <li>写测试用例</li>
+          <li>添加上下文方案</li>
+          <li>运行后做人工反馈</li>
+        </ol>
+      </article>
+    </section>
+  );
+}
+
+function TopNav({ hasResults }: { hasResults: boolean }) {
+  const links = [
+    ['#task-config', '测试用例'],
+    ['#context-config', '上下文方案'],
+    ['#agent-config', '执行器'],
+    ['#metric-config', '指标与反馈'],
+    ['#run-config', '运行'],
+    ['#results', hasResults ? '结果' : '结果待生成'],
+  ];
+  return (
+    <nav className="top-nav" aria-label="工作台导航">
+      {links.map(([href, label]) => (
+        <a href={href} key={href}>
+          {label}
+        </a>
+      ))}
+    </nav>
+  );
+}
+
+function EvaluationSetupPanel() {
+  return (
+    <section className="panel metric-guide-panel" id="metric-config" aria-label="指标与反馈配置">
+      <div className="panel-heading">
+        <h2>4 配指标与反馈</h2>
+        <span>硬指标 + 人工反馈</span>
       </div>
-      <ol className="designer-guide-steps">
-        <li>
-          <strong>1 配测试用例</strong>
-        </li>
-        <li>
-          <strong>2 配上下文方案</strong>
-        </li>
-        <li>
-          <strong>3 看结果并反馈</strong>
-        </li>
-      </ol>
-      <small>本地 artifact 证据，不是公开 benchmark 或 agent 排行榜。</small>
+      <p className="panel-note">
+        这里说明本次评测会看哪些证据。自动验收和硬性检查在“测试用例”的高级验收里配置；
+        Codex CLI 硬指标来自 <code>codex exec --json</code> 事件 JSONL。
+      </p>
+      <div className="metric-guide-grid">
+        <article>
+          <strong>自动验收命令</strong>
+          <span>在测试用例里填写项目自己的测试、构建或检查命令。通过只代表这些命令通过。</span>
+        </article>
+        <article>
+          <strong>硬性检查</strong>
+          <span>在高级验收设置里配置文件、片段和命令检查，用来补充机器可判定证据。</span>
+        </article>
+        <article>
+          <strong>人工反馈维度</strong>
+          <span>在高级验收设置里配置反馈维度；结果详情里保存人工结论、可信度和备注。</span>
+        </article>
+        <article>
+          <strong>Codex CLI 硬指标</strong>
+          <span>执行器类型选 Codex CLI，命令模板使用 JSON 输出后，可展示耗时、Token、Tool calls、命令 calls、模型、错误原因和证据缺口。</span>
+        </article>
+        <article>
+          <strong>改动范围</strong>
+          <span>结果会展示变更文件数和 patch 路径，方便人工判断改动是否过大或跑偏。</span>
+        </article>
+      </div>
     </section>
   );
 }
@@ -389,6 +471,7 @@ export function App() {
     const issues = validateEditableConfig(currentLoaded.editable);
     setTaskValidationErrors(issues);
     if (issues.length > 0) {
+      revealFirstValidationIssue(currentLoaded.editable, issues);
       return;
     }
     const saved = await apiRequest<SaveResponse>('/api/config/save-editable', {
@@ -408,6 +491,25 @@ export function App() {
       await planRun(saved.config_path, nextScope);
     }
     setSaveStatus(`${message}: ${saved.config_path} / ${saved.tasks_path}`);
+  }
+
+  function revealFirstValidationIssue(editable: EditableConfig, issues: string[]) {
+    const taskIssueIndex = editable.tasks.findIndex((taskItem, index) =>
+      issues.some((issue) => issue.startsWith(taskIssueLabel(taskItem, index))),
+    );
+    if (taskIssueIndex >= 0) {
+      setSelectedTaskIndex(taskIssueIndex);
+    }
+    const variantIssueMatch = issues.find((issue) => issue.includes('上下文方案'));
+    const variantIndex = variantIssueMatch?.match(/^第 (\d+) 个上下文方案/)?.[1];
+    if (variantIndex) {
+      setSelectedVariantIndex(Math.max(0, Number(variantIndex) - 1));
+    }
+    const agentIssueMatch = issues.find((issue) => issue.includes('执行器'));
+    const agentIndex = agentIssueMatch?.match(/^第 (\d+) 个执行器/)?.[1];
+    if (agentIndex) {
+      setSelectedAgentIndex(Math.max(0, Number(agentIndex) - 1));
+    }
   }
 
   function updateEditable(updater: (editable: EditableConfig) => EditableConfig) {
@@ -777,9 +879,9 @@ export function App() {
   }
 
   const modeLabel = {
-    checking: '检测中',
-    connected: '本地回环服务',
-    fixture: '示例模式',
+    checking: '正在连接本地服务',
+    connected: '本地服务已连接',
+    fixture: '示例数据预览',
   }[serverMode];
   const runLabel = run ? labelFor(runStatusLabels, run.status) : '待运行';
   const isRunActive = Boolean(run && ['queued', 'running', 'stop_requested'].includes(run.status));
@@ -807,6 +909,7 @@ export function App() {
   const evaluationExplanation = results?.evaluation_explanation;
   const detailHardEvaluation = hardEvaluationFrom(caseDetail);
   const detailEvidenceNotes = caseDetail ? caseEvidenceNotes(caseDetail.case) : [];
+  const validationBuckets = validationIssueBuckets(loaded.editable, taskValidationErrors);
 
   const isFirstRun = serverMode === 'connected' && workspaceState?.state === 'empty' && !configLoaded;
 
@@ -814,13 +917,15 @@ export function App() {
     <main className="app-shell" data-testid="local-app-shell">
       <header className="topbar">
         <div>
-          <p className="eyebrow">仅使用本地产物</p>
-          <h1>context-eval 本地工作台</h1>
+          <p className="eyebrow">context-eval · 只看本地产物</p>
+          <h1>AGENTS.md / skills 效果对比</h1>
+          <p className="topbar-subtitle">用同一批测试用例，比较不同上下文方案对 coding agent 执行效果的影响。</p>
         </div>
-        <div className="status-pill" aria-label="本地应用模式">
+        <div className="status-pill" aria-label="服务状态">
           {modeLabel}
         </div>
       </header>
+      <TopNav hasResults={Boolean(results)} />
 
       {error && <div className="notice error">错误: {error}</div>}
 
@@ -847,21 +952,17 @@ export function App() {
 
       {!isFirstRun && (
       <section className="content-grid">
-        {(taskValidationErrors.length > 0 || scopeNotice) && (
+        {scopeNotice && (
           <div className="notice validation-notice scope-notice" role="alert">
-            {scopeNotice && <div>{scopeNotice}</div>}
-            {taskValidationErrors.map((issue) => (
-              <div key={issue}>{issue}</div>
-            ))}
+            <div>{scopeNotice}</div>
           </div>
         )}
         <TaskEditor
           tasks={loaded.editable.tasks}
-          variants={loaded.editable.variants}
           selectedTaskIndex={selectedTaskIndex}
           saveStatus={saveStatus}
           serverMode={serverMode}
-          validationErrors={[]}
+          validationErrors={validationBuckets.taskIssues}
           onSelectTask={setSelectedTaskIndex}
           onUpdateTask={updateTask}
           onAddTask={addTask}
@@ -874,10 +975,22 @@ export function App() {
           selectedVariantIndex={selectedVariantIndex}
           saveStatus={saveStatus}
           serverMode={serverMode}
+          validationErrors={validationBuckets.variantIssues}
           onSelectVariant={setSelectedVariantIndex}
           onUpdateVariants={updateVariants}
           onSave={() => guarded(() => saveEditableConfig('已保存配置并刷新执行计划'))}
         />
+        <AgentEditor
+          agents={agents}
+          selectedAgentIndex={selectedAgentIndex}
+          saveStatus={saveStatus}
+          serverMode={serverMode}
+          validationErrors={validationBuckets.agentIssues}
+          onSelectAgent={setSelectedAgentIndex}
+          onUpdateAgents={updateAgents}
+          onSave={() => guarded(() => saveEditableConfig('已保存配置并刷新执行计划'))}
+        />
+        <EvaluationSetupPanel />
         <RunControls
           cleanupPolicy={cleanupPolicy}
           isRunActive={isRunActive}
@@ -890,7 +1003,7 @@ export function App() {
           runScope={runScope}
           selectedCaseCount={visibleCaseCount}
           serverMode={serverMode}
-          taskSummary={task?.expected_outcome?.summary || '未配置期望结果摘要'}
+          taskSummary={task?.expected_outcome?.summary || '未配置人工验收目标'}
           taskTitle={taskTitle}
           tasks={loaded.editable.tasks}
           variants={loaded.editable.variants}
@@ -912,21 +1025,6 @@ export function App() {
           defaultTrials={localAppFixture.trials}
           runScope={runScope}
         />
-        <details className="advanced-workbench advanced-editor-shell">
-          <summary>
-            <span>执行器设置</span>
-            <small>通常保持默认；需要换 Codex/Coco/自定义命令时再打开</small>
-          </summary>
-          <AgentEditor
-            agents={agents}
-            selectedAgentIndex={selectedAgentIndex}
-            saveStatus={saveStatus}
-            serverMode={serverMode}
-            onSelectAgent={setSelectedAgentIndex}
-            onUpdateAgents={updateAgents}
-            onSave={() => guarded(() => saveEditableConfig('已保存配置并刷新执行计划'))}
-          />
-        </details>
         <AdvancedConfigDetails
           agents={agents}
           configPath={configPath}
@@ -944,7 +1042,7 @@ export function App() {
           onTasksYamlChange={setTasksYaml}
         />
 
-        <section className="panel run-panel">
+        <section className="panel run-panel" id="run-progress">
           <div className="panel-heading">
             <h2>运行进度</h2>
           </div>
@@ -967,9 +1065,9 @@ export function App() {
           </div>
         </section>
 
-        <section className="panel results-panel" ref={resultsPanelRef}>
+        <section className="panel results-panel" id="results" ref={resultsPanelRef}>
           <div className="panel-heading">
-            <h2>评测结果</h2>
+            <h2>6 看结果和反馈</h2>
             <span>{results?.overview.case_count ?? 0}</span>
           </div>
           {results ? (
@@ -1054,7 +1152,7 @@ export function App() {
                   <dd>{results.overview.low_confidence_count}</dd>
                 </div>
                 <div>
-                  <dt>遥测缺口</dt>
+                  <dt>证据缺口</dt>
                   <dd>{results.overview.telemetry_gap_count}</dd>
                 </div>
               </dl>
@@ -1066,10 +1164,10 @@ export function App() {
                   </div>
                   <div className="baseline-control">
                     <label htmlFor="compare-baseline">
-                      比较基线
+                      对照组方案
                       <select
                         id="compare-baseline"
-                        aria-label="比较基线"
+                        aria-label="对照组方案"
                         value={selectedBaselineValue}
                         onChange={(event) => {
                           const nextBaseline = event.target.value;
@@ -1078,12 +1176,14 @@ export function App() {
                       >
                         {availableBaselineVariants.map((variant) => (
                           <option key={variant} value={variant}>
-                            {variant}
+                            {displayVariantName(variant)}
                           </option>
                         ))}
                       </select>
                     </label>
-                    <p className="status-line">除当前基线外的上下文方案会与当前基线比较。</p>
+                    <p className="status-line">
+                      对照组是你认为“当前默认”的上下文方案，其他方案会和它比较；baseline 通常指当前 AGENTS.md / skills。
+                    </p>
                   </div>
                   {results.baseline_selection_notice && (
                     <div className="notice validation-notice">{results.baseline_selection_notice}</div>
@@ -1102,12 +1202,12 @@ export function App() {
                               <dd>{group.task_id}</dd>
                             </div>
                             <div>
-                              <dt>比较基线</dt>
-                              <dd>{group.baseline_variant}</dd>
+                              <dt>对照组</dt>
+                              <dd>{displayVariantName(group.baseline_variant)}</dd>
                             </div>
                             <div>
                               <dt>对比对象</dt>
-                              <dd>{group.comparison_variant}</dd>
+                              <dd>{displayVariantName(group.comparison_variant)}</dd>
                             </div>
                             <div>
                               <dt>Validation delta</dt>
@@ -1141,7 +1241,7 @@ export function App() {
                       ))}
                     </div>
                   ) : (
-                    <p className="status-line">当前基线没有可对比对象，至少选择两个 variant 后会生成摘要。</p>
+                    <p className="status-line">当前对照组没有可对比对象，至少选择两个上下文方案后会生成摘要。</p>
                   )}
                 </section>
               )}
@@ -1153,7 +1253,7 @@ export function App() {
                     <th>状态</th>
                     <th>验证</th>
                     <th>可信度</th>
-                    <th>遥测</th>
+                    <th>硬指标</th>
                     <th>硬性检查</th>
                     <th>软性材料</th>
                     <th>复核</th>
@@ -1167,7 +1267,7 @@ export function App() {
                       <tr key={result.case_id} className={selectedCaseId === result.case_id ? 'selected-row' : ''}>
                         <td data-label="用例">
                           {result.task_id}
-                          <small>{result.variant}</small>
+                          <small>{displayVariantName(result.variant)}</small>
                         </td>
                         <td data-label="执行器">{result.agent_name}</td>
                         <td data-label="状态">{labelFor(resultStatusLabels, result.status)}</td>
@@ -1176,11 +1276,15 @@ export function App() {
                           {labelFor(confidenceLabels, result.confidence)}
                           <small>{confidenceReason(result.confidence)}</small>
                         </td>
-                        <td data-label="遥测">
+                        <td data-label="硬指标">
                           {labelFor(telemetryLabels, result.telemetry_status || 'unavailable')}
-                          {result.agent_duration_seconds != null && (
-                            <small>{result.agent_duration_seconds.toFixed(1)}s</small>
-                          )}
+                          <small>耗时 {formatDuration(result.agent_duration_seconds)}</small>
+                          <small>Token {metricValue(result.total_tokens)}</small>
+                          <small>
+                            Tool {metricValue(result.tool_call_count)} / 命令 {metricValue(result.command_call_count)}
+                          </small>
+                          <small>改动文件 {metricValue(result.changed_files)}</small>
+                          <small>{codexEvidenceGapSummary(result)}</small>
                           {result.telemetry_error && <small>{result.telemetry_error}</small>}
                         </td>
                         <td data-label="硬性检查">
@@ -1219,7 +1323,7 @@ export function App() {
                 <section className="case-detail-panel">
                   <div className="panel-heading compact-heading">
                     <h3>用例详情</h3>
-                    <span>{caseDetail.case.variant}</span>
+                    <span>{displayVariantName(caseDetail.case.variant)}</span>
                   </div>
                   <div className="detail-grid">
                     <dl className="compact-list">
@@ -1243,9 +1347,15 @@ export function App() {
                         </dd>
                       </div>
                       <div>
-                        <dt>遥测</dt>
+                        <dt>硬指标</dt>
                         <dd>
                           {labelFor(telemetryLabels, caseDetail.case.telemetry_status || 'unavailable')}
+                          <small>耗时 {formatDuration(caseDetail.case.agent_duration_seconds)}</small>
+                          <small>Token {metricValue(caseDetail.case.total_tokens)}</small>
+                          <small>
+                            Tool {metricValue(caseDetail.case.tool_call_count)} / 命令{' '}
+                            {metricValue(caseDetail.case.command_call_count)}
+                          </small>
                           {caseDetail.case.telemetry_error && <small>{caseDetail.case.telemetry_error}</small>}
                         </dd>
                       </div>
@@ -1263,6 +1373,13 @@ export function App() {
                         <dd>
                           {labelFor(evaluationLabels, caseDetail.case.soft_evaluation_status || 'not_configured')}
                           {caseDetail.case.soft_evaluation_payload_path && <small>payload-only</small>}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>改动范围</dt>
+                        <dd>
+                          改动文件 {metricValue(caseDetail.case.changed_files)}
+                          {caseDetail.case.patch_path && <small>{caseDetail.case.patch_path}</small>}
                         </dd>
                       </div>
                     </dl>
@@ -1341,8 +1458,8 @@ export function App() {
                     </form>
                   </div>
                   {isCodexUsageCase(caseDetail.case) && (
-                    <details className="execution-metrics-details" data-testid="codex-usage-panel">
-                      <summary>执行指标详情</summary>
+                    <details className="execution-metrics-details" data-testid="codex-usage-panel" open>
+                      <summary>Codex CLI 硬指标（JSONL）</summary>
                       <section className="codex-usage-panel" aria-label="Codex 使用画像">
                       <div className="panel-heading compact-heading">
                         <h4>Codex 使用画像</h4>
@@ -1357,7 +1474,7 @@ export function App() {
                           </dd>
                         </div>
                         <div>
-                          <dt>遥测状态</dt>
+                          <dt>结构化采集状态</dt>
                           <dd>
                             {labelFor(telemetryLabels, caseDetail.case.telemetry_status || 'unavailable')}
                             {caseDetail.case.telemetry_error && <small>{caseDetail.case.telemetry_error}</small>}
@@ -1388,6 +1505,10 @@ export function App() {
                         <div>
                           <dt>模型</dt>
                           <dd>{metricValue(caseDetail.case.model_name)}</dd>
+                        </div>
+                        <div>
+                          <dt>改动范围</dt>
+                          <dd>改动文件 {metricValue(caseDetail.case.changed_files)}</dd>
                         </div>
                       </dl>
                       <dl className="codex-path-list">

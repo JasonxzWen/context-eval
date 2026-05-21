@@ -60,9 +60,9 @@ export function RunControls({
   const plannedCount = plan?.case_count ?? selectedCaseCount;
 
   return (
-    <section className="panel run-brief-panel">
+    <section className="panel run-brief-panel" id="run-config">
       <div className="panel-heading">
-        <h2>本次运行</h2>
+        <h2>5 本次运行</h2>
         <span>{results ? '已出结果' : isRunActive ? '运行中' : '待运行'}</span>
       </div>
       <div className="brief-layout">
@@ -162,7 +162,7 @@ export function RunControls({
             <span>
               {results.overview.case_count} 个用例，验证失败{' '}
               {resultSummary?.validationFailed ?? 0}，硬性检查失败{' '}
-              {resultSummary?.hardFailed ?? 0}，遥测缺口{' '}
+              {resultSummary?.hardFailed ?? 0}，证据缺口{' '}
               {results.overview.telemetry_gap_count}
             </span>
           </div>
