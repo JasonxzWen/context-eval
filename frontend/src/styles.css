@@ -1101,18 +1101,23 @@ fieldset {
 
 .label-with-help {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px 8px;
+  flex-wrap: nowrap;
+  gap: 6px;
   align-items: baseline;
   max-width: 100%;
+  min-width: 0;
 }
 
 .inline-help {
+  flex: 1 1 auto;
+  min-width: 0;
   color: var(--muted);
-  font-size: 12px;
-  font-weight: 650;
-  line-height: 1.35;
-  overflow-wrap: anywhere;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .advanced-inline,

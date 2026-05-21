@@ -176,7 +176,7 @@ export function TaskEditor({
               <label htmlFor="task-title">
                 <span className="label-with-help">
                   用例标题
-                  <HelpTip text="给人看的短标题，方便在结果列表里识别。" />
+                  <HelpTip text="结果列表用。" />
                 </span>
                 <input
                   id="task-title"
@@ -188,7 +188,7 @@ export function TaskEditor({
             <label htmlFor="task-prompt">
               <span className="label-with-help">
                 给 AI 的任务提示词
-                <HelpTip text="这段会写进 prompt 文件并交给 coding agent。写清目标、限制和验收重点。" />
+                <HelpTip text="写入 prompt，交给 agent。" />
               </span>
               <textarea
                 id="task-prompt"
@@ -204,7 +204,7 @@ export function TaskEditor({
             <label htmlFor="expected-summary">
               <span className="label-with-help">
                 人工验收目标
-                <HelpTip text="给人复核看的成功标准，会出现在执行计划和结果里；默认不作为 AI 提示词。" />
+                <HelpTip text="给复核人看的成功标准。" />
               </span>
               <textarea
                 id="expected-summary"
@@ -217,7 +217,7 @@ export function TaskEditor({
               title="验收点"
               values={acceptancePoints}
               placeholder="例如：验证脚本确认问候语已经更新"
-              helpText="给人工反馈使用的逐条检查项。验证通过不代表任务绝对正确。"
+              helpText="人工逐条检查；通过不等于绝对正确。"
               onChange={(values) => updateExpected({ acceptance_points: values })}
             />
           </fieldset>
@@ -231,7 +231,7 @@ export function TaskEditor({
               title="命令"
               values={validationCommands}
               placeholder="python -m pytest"
-              helpText="建议使用项目已有的单测、构建或校验脚本。命令在本地运行，不会调用远程 judge。"
+              helpText="用项目已有测试；本地运行。"
               onChange={(values) => updateTask({ validation_commands: values })}
             />
           </fieldset>
@@ -244,7 +244,7 @@ export function TaskEditor({
                 <label htmlFor="task-id">
                   <span className="label-with-help">
                     用例 ID
-                    <HelpTip text="稳定的本地标识，用于结果文件名和导出。" />
+                    <HelpTip text="用于文件名和导出。" />
                   </span>
                   <input
                     id="task-id"
@@ -420,7 +420,7 @@ function ExpectedFileEditor({ files, onChange }: ExpectedFileEditorProps) {
       <div className="subsection-heading">
         <strong className="label-with-help">
           期望变更文件
-          <HelpTip text="用于提示哪些文件应该被新增、修改或删除。它帮助人工反馈，不会单独证明任务正确。" />
+          <HelpTip text="提示应改哪些文件。" />
         </strong>
         <button
           type="button"
@@ -493,7 +493,7 @@ function CommandCheckEditor({ checks, onChange }: CommandCheckEditorProps) {
       <div className="subsection-heading">
         <strong className="label-with-help">
           命令检查
-          <HelpTip text="更细的确定性检查：运行命令并匹配期望输出，适合补充自动验收命令覆盖不到的证据。" />
+          <HelpTip text="运行命令并匹配输出。" />
         </strong>
         <button
           type="button"
@@ -560,7 +560,7 @@ function RubricEditor({ items, onChange }: RubricEditorProps) {
       <div className="subsection-heading">
         <strong className="label-with-help">
           反馈维度
-          <HelpTip text="给人工反馈使用的维度说明；未来可选 soft judge 也会复用这些维度。" />
+          <HelpTip text="人工反馈维度。" />
         </strong>
         <button
           type="button"

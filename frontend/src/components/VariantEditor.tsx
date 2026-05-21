@@ -161,7 +161,7 @@ export function VariantEditor({
               <label htmlFor="variant-name">
                 <span className="label-with-help">
                   方案名称
-                  <HelpTip text="用于结果对比的短名称。baseline 通常表示“当前默认上下文”，也可以改成 current-agents、skills-added。" />
+                  <HelpTip text="结果对比用。" />
                 </span>
                 <input
                   id="variant-name"
@@ -173,7 +173,7 @@ export function VariantEditor({
               <label htmlFor="variant-description">
                 <span className="label-with-help">
                   方案说明
-                  <HelpTip text="给人看的说明：这套 AGENTS.md 或 skills 是当前默认方案，还是一次实验改动。" />
+                  <HelpTip text="说明默认方案或实验改动。" />
                 </span>
                 <textarea
                   id="variant-description"
@@ -187,7 +187,7 @@ export function VariantEditor({
               <div className="subsection-heading">
                 <strong className="label-with-help">
                   上下文资料
-                  <HelpTip text="从本地读取并复制到运行工作区。常见资料是 AGENTS.md 和 skills，不会读取全局敏感日志或认证信息。" />
+                  <HelpTip text="本地资料，常用 AGENTS.md / skills。" />
                 </strong>
                 <button
                   type="button"

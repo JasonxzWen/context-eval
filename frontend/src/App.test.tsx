@@ -134,7 +134,7 @@ describe('App workflow shell', () => {
     expect(screen.getByRole('heading', { name: '期望结果' })).toBeVisible();
     expect(screen.getByRole('heading', { name: '硬性检查' })).toBeVisible();
     expect(screen.getByRole('heading', { name: '人工反馈规则' })).toBeVisible();
-    expect(screen.getByText(/这段会写进 prompt 文件并交给 coding agent/)).toBeVisible();
+    expect(screen.getByText('写入 prompt，交给 agent。')).toBeVisible();
   });
 
   it('loads Coco hybrid evaluation data from the local server API', async () => {

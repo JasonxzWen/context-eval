@@ -140,7 +140,7 @@ export function AgentEditor({
               <label htmlFor="agent-name">
                 <span className="label-with-help">
                   执行器名称
-                  <HelpTip text="给这条本地命令起一个短名称，结果列表会按它区分不同 agent。" />
+                  <HelpTip text="结果列表按此区分 agent。" />
                 </span>
                 <input
                   id="agent-name"
@@ -152,7 +152,7 @@ export function AgentEditor({
               <label htmlFor="agent-kind">
                 <span className="label-with-help">
                   执行器类型
-                  <HelpTip text="用于选择解析方式。Codex CLI 会优先读取 codex exec --json 产生的事件 JSONL。" />
+                  <HelpTip text="决定解析方式；Codex 读 JSONL。" />
                 </span>
                 <select
                   id="agent-kind"
@@ -170,7 +170,7 @@ export function AgentEditor({
               <label htmlFor="agent-timeout">
                 <span className="label-with-help">
                   超时（分钟）
-                  <HelpTip text="单个评测用例最多允许运行多久，超时会记录为本地产物里的失败原因。" />
+                  <HelpTip text="超时会记为失败原因。" />
                 </span>
                 <input
                   id="agent-timeout"
@@ -184,7 +184,7 @@ export function AgentEditor({
               <label htmlFor="agent-network">
                 <span className="label-with-help">
                   联网权限
-                  <HelpTip text="这里只记录你希望执行器如何运行；context-eval 本身不读取认证信息。" />
+                  <HelpTip text="只记录期望；不读取认证。" />
                 </span>
                 <select
                   id="agent-network"
@@ -200,7 +200,7 @@ export function AgentEditor({
             <label htmlFor="agent-command">
               <span className="label-with-help">
                 启动命令模板
-                <HelpTip text="{prompt_file} 是生成给 AI 的任务提示词文件；Codex CLI 推荐 codex exec --json ... < {prompt_file}。" />
+                <HelpTip text="{prompt_file} 是任务提示词文件。" />
               </span>
               <textarea
                 id="agent-command"
