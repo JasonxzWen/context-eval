@@ -470,6 +470,9 @@ describe('App workflow shell', () => {
     const taskPanel = screen.getByRole('region', { name: '测试用例配置' });
     expect(await within(taskPanel).findByText('fix-greeting-punctuation: 给 AI 的任务提示词不能为空')).toBeVisible();
     expect(within(taskPanel).getByText('fix-greeting-punctuation: 第 1 条验证命令不能为空')).toBeVisible();
+    expect(within(taskPanel).getByTestId('task-save-status')).toHaveTextContent(
+      '有配置问题，请按红色提示修改后再保存',
+    );
     expect(document.querySelector('.scope-notice')).toBeNull();
     expect(fetchMock).not.toHaveBeenCalledWith(
       '/api/config/save-editable',
@@ -507,6 +510,9 @@ describe('App workflow shell', () => {
     expect(within(variantPanel).getByText('第 1 个上下文方案的第 1 个上下文资料来源路径不能为空')).toBeVisible();
     expect(within(agentPanel).getByText('第 1 个执行器命令模板不能为空')).toBeVisible();
     expect(within(agentPanel).getByText('第 1 个执行器超时必须大于 0')).toBeVisible();
+    expect(within(agentPanel).getByTestId('agent-save-status')).toHaveTextContent(
+      '有配置问题，请按红色提示修改后再保存',
+    );
     expect(document.querySelector('.scope-notice')).toBeNull();
     expect(fetchMock).not.toHaveBeenCalledWith(
       '/api/config/save-editable',
