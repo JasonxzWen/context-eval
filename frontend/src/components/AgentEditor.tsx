@@ -1,5 +1,4 @@
 import type { EditableAgent } from '../types';
-import { HelpTip } from './HelpTip';
 
 type AgentEditorProps = {
   agents: EditableAgent[];
@@ -92,10 +91,7 @@ export function AgentEditor({
         <h2>3 配执行器</h2>
         <span>{agents.length} 个执行器</span>
       </div>
-      <p className="panel-note">
-        执行器就是实际跑任务的 coding agent 命令。选择 Codex CLI 时，命令模板建议使用结构化输出：
-        <code>codex exec --json</code>。
-      </p>
+      <p className="panel-note">选择实际跑任务的 agent 命令。</p>
       {agent ? (
         <div className="editor-split">
           <aside className="task-rail" aria-label="执行器列表">
@@ -138,22 +134,17 @@ export function AgentEditor({
           >
             <div className="form-grid">
               <label htmlFor="agent-name">
-                <span className="label-with-help">
-                  执行器名称
-                  <HelpTip text="给这条本地命令起一个短名称，结果列表会按它区分不同 agent。" />
-                </span>
+                名称
                 <input
                   id="agent-name"
                   aria-label="执行器名称"
+                  placeholder="例如：codex-cli"
                   value={agent.name}
                   onChange={(event) => updateAgent({ name: event.target.value })}
                 />
               </label>
               <label htmlFor="agent-kind">
-                <span className="label-with-help">
-                  执行器类型
-                  <HelpTip text="用于选择解析方式。Codex CLI 会优先读取 codex exec --json 产生的事件 JSONL。" />
-                </span>
+                类型
                 <select
                   id="agent-kind"
                   aria-label="执行器类型"
@@ -168,10 +159,7 @@ export function AgentEditor({
                 </select>
               </label>
               <label htmlFor="agent-timeout">
-                <span className="label-with-help">
-                  超时（分钟）
-                  <HelpTip text="单个评测用例最多允许运行多久，超时会记录为本地产物里的失败原因。" />
-                </span>
+                超时（分钟）
                 <input
                   id="agent-timeout"
                   aria-label="执行器超时分钟"
@@ -182,10 +170,7 @@ export function AgentEditor({
                 />
               </label>
               <label htmlFor="agent-network">
-                <span className="label-with-help">
-                  联网权限
-                  <HelpTip text="这里只记录你希望执行器如何运行；context-eval 本身不读取认证信息。" />
-                </span>
+                联网权限
                 <select
                   id="agent-network"
                   aria-label="执行器联网权限"
@@ -198,13 +183,11 @@ export function AgentEditor({
               </label>
             </div>
             <label htmlFor="agent-command">
-              <span className="label-with-help">
-                启动命令模板
-                <HelpTip text="{prompt_file} 是生成给 AI 的任务提示词文件；Codex CLI 推荐 codex exec --json ... < {prompt_file}。" />
-              </span>
+              启动命令
               <textarea
                 id="agent-command"
                 aria-label="执行器命令模板"
+                placeholder='例如：codex exec --json --output-last-message final.txt < "{prompt_file}"'
                 value={agent.command}
                 onChange={(event) => updateAgent({ command: event.target.value })}
                 spellCheck={false}

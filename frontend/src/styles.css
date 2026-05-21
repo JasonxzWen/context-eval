@@ -130,6 +130,9 @@ button:disabled {
 }
 
 .top-nav {
+  position: sticky;
+  top: 0;
+  z-index: 30;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -138,6 +141,8 @@ button:disabled {
   border-radius: 8px;
   padding: 8px;
   background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 8px 22px rgba(32, 48, 40, 0.08);
+  backdrop-filter: blur(8px);
 }
 
 .top-nav a {
@@ -155,6 +160,15 @@ button:disabled {
   border-color: var(--line);
   background: #f3faf6;
   outline: none;
+}
+
+#task-config,
+#context-config,
+#agent-config,
+#metric-config,
+#run-config,
+#results {
+  scroll-margin-top: 72px;
 }
 
 .notice {
@@ -206,20 +220,21 @@ button:disabled {
 
 .designer-guide {
   display: grid;
-  grid-template-columns: minmax(280px, 0.85fr) minmax(360px, 1.15fr);
-  gap: 10px;
+  grid-template-columns: 1fr;
+  gap: 8px;
   align-items: stretch;
-  margin: 0 0 12px;
+  margin: 0 0 10px;
   border: 1px solid #9eb6c8;
   border-radius: 8px;
-  padding: 10px 12px;
+  padding: 8px 10px;
   background: #f7fbfd;
 }
 
 .designer-guide-card {
-  display: grid;
-  align-content: start;
-  gap: 5px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
   min-width: 0;
 }
 
@@ -230,8 +245,8 @@ button:disabled {
 
 .designer-guide-card span {
   color: var(--muted);
-  font-size: 13px;
-  line-height: 1.45;
+  font-size: 12px;
+  line-height: 1.25;
 }
 
 .designer-guide-steps {
@@ -250,7 +265,7 @@ button:disabled {
   min-width: 0;
   border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 6px 10px;
+  padding: 5px 9px;
   background: #ffffff;
   color: var(--ink);
   font-size: 12px;
@@ -631,10 +646,10 @@ textarea {
 }
 
 .panel-note {
-  margin: 12px 0 0;
+  margin: 8px 0 0;
   color: var(--muted);
-  font-size: 13px;
-  line-height: 1.45;
+  font-size: 12px;
+  line-height: 1.3;
 }
 
 .metric-guide-grid {
@@ -646,11 +661,11 @@ textarea {
 
 .metric-guide-grid article {
   display: grid;
-  gap: 6px;
+  gap: 3px;
   min-width: 0;
   border: 1px solid var(--line);
   border-radius: 6px;
-  padding: 10px;
+  padding: 8px;
   background: #ffffff;
 }
 
@@ -662,7 +677,7 @@ textarea {
 .metric-guide-grid span {
   color: var(--muted);
   font-size: 12px;
-  line-height: 1.45;
+  line-height: 1.25;
 }
 
 .run-prep-summary {
@@ -1038,8 +1053,8 @@ td {
 
 .task-tab span {
   color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 500;
 }
 
 .rail-actions {
@@ -1049,13 +1064,13 @@ td {
 
 .task-editor-form {
   display: grid;
-  gap: 14px;
+  gap: 10px;
   min-width: 0;
 }
 
 .config-editor-form {
   display: grid;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
 }
 
@@ -1074,7 +1089,7 @@ fieldset {
   min-width: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 12px;
+  padding: 10px;
   background: #fbfcfb;
 }
 
@@ -1085,20 +1100,47 @@ fieldset {
   line-height: 1.45;
 }
 
+.arbitration-material-note {
+  display: grid;
+  gap: 2px;
+  margin-top: 10px;
+  padding: 9px 10px;
+  border: 1px solid #b8cfc7;
+  border-radius: 6px;
+  background: #f4faf7;
+  color: var(--ink);
+}
+
+.arbitration-material-note strong {
+  color: var(--blue);
+  font-size: 13px;
+}
+
+.arbitration-material-note span {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .label-with-help {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px 8px;
+  flex-wrap: nowrap;
+  gap: 6px;
   align-items: baseline;
   max-width: 100%;
+  min-width: 0;
 }
 
 .inline-help {
+  flex: 1 1 auto;
+  min-width: 0;
   color: var(--muted);
-  font-size: 12px;
-  font-weight: 650;
-  line-height: 1.35;
-  overflow-wrap: anywhere;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .advanced-inline,
@@ -1131,7 +1173,11 @@ fieldset {
 }
 
 .advanced-inline > fieldset {
-  margin: 10px;
+  margin: 8px;
+}
+
+.advanced-field-grid {
+  margin: 8px;
 }
 
 .advanced-editor-shell > .agent-editor-panel {
@@ -1227,7 +1273,7 @@ legend {
 .list-editor {
   display: grid;
   gap: 8px;
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .subsection-heading {
@@ -1251,7 +1297,7 @@ legend {
 
 .overlay-row {
   display: grid;
-  grid-template-columns: minmax(140px, 0.5fr) minmax(260px, 1fr) minmax(150px, 0.5fr);
+  grid-template-columns: minmax(112px, 0.35fr) minmax(260px, 1fr) minmax(92px, auto);
   gap: 8px;
   align-items: end;
   min-width: 0;
@@ -1810,6 +1856,15 @@ legend {
 
   .topbar h1 {
     font-size: 30px;
+  }
+
+  #task-config,
+  #context-config,
+  #agent-config,
+  #metric-config,
+  #run-config,
+  #results {
+    scroll-margin-top: 112px;
   }
 
   .content-grid {

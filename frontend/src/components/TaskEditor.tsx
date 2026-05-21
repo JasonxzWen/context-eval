@@ -130,21 +130,27 @@ export function TaskEditor({
         <h2>1 配测试用例</h2>
         <span>{tasks.length} 个用例</span>
       </div>
-      <p className="panel-note">写清任务、成功标准和自动验收命令。</p>
+      <p className="panel-note">只要先填：让 AI 做什么，以及怎样算完成。</p>
 
       <div className="task-editor-layout">
         <aside className="task-rail" aria-label="测试用例列表">
-          {tasks.map((item, index) => (
-            <button
-              type="button"
-              className={index === selectedTaskIndex ? 'task-tab active' : 'task-tab'}
-              key={`${item.id}:${index}`}
-              onClick={() => onSelectTask(index)}
-            >
-              <strong>{item.id || `task-${index + 1}`}</strong>
-              <span>{item.title || item.category || '未命名任务'}</span>
-            </button>
-          ))}
+          {tasks.map((item, index) => {
+            const title = item.title?.trim() || item.id?.trim() || `第 ${index + 1} 个用例`;
+            const taskId = item.id?.trim();
+            const detail = taskId && taskId !== title ? `ID: ${taskId}` : item.category || '';
+
+            return (
+              <button
+                type="button"
+                className={index === selectedTaskIndex ? 'task-tab active' : 'task-tab'}
+                key={`${item.id}:${index}`}
+                onClick={() => onSelectTask(index)}
+              >
+                <strong>{title}</strong>
+                {detail ? <span>{detail}</span> : null}
+              </button>
+            );
+          })}
           <div className="button-row rail-actions">
             <button type="button" className="secondary" onClick={onAddTask}>
               新建
@@ -174,25 +180,21 @@ export function TaskEditor({
             <legend>任务</legend>
             <div className="form-grid simplified-grid">
               <label htmlFor="task-title">
-                <span className="label-with-help">
-                  用例标题
-                  <HelpTip text="给人看的短标题，方便在结果列表里识别。" />
-                </span>
+                用例标题
                 <input
                   id="task-title"
+                  placeholder="例如：修复问候语标点"
                   value={task.title || ''}
                   onChange={(event) => updateTask({ title: event.target.value })}
                 />
               </label>
             </div>
             <label htmlFor="task-prompt">
-              <span className="label-with-help">
-                给 AI 的任务提示词
-                <HelpTip text="这段会写进 prompt 文件并交给 coding agent。写清目标、限制和验收重点。" />
-              </span>
+              AI 要做什么
               <textarea
                 id="task-prompt"
-                aria-label="给 AI 的任务提示词"
+                aria-label="AI 要做什么"
+                placeholder="写给 coding agent 的任务。说明目标、限制和重点即可。"
                 value={task.prompt}
                 onChange={(event) => updateTask({ prompt: event.target.value })}
               />
@@ -200,51 +202,43 @@ export function TaskEditor({
           </fieldset>
 
           <fieldset>
-            <legend>期望结果</legend>
+            <legend>验收标准</legend>
             <label htmlFor="expected-summary">
-              <span className="label-with-help">
-                人工验收目标
-                <HelpTip text="给人复核看的成功标准，会出现在执行计划和结果里；默认不作为 AI 提示词。" />
-              </span>
+              怎样算完成
               <textarea
                 id="expected-summary"
-                aria-label="人工验收目标"
+                aria-label="怎样算完成"
+                placeholder="给人和 AI 仲裁看的成功标准。"
                 value={expected.summary || ''}
                 onChange={(event) => updateExpected({ summary: event.target.value })}
               />
             </label>
             <ListEditor
-              title="验收点"
+              title="检查项"
               values={acceptancePoints}
-              placeholder="例如：验证脚本确认问候语已经更新"
-              helpText="给人工反馈使用的逐条检查项。验证通过不代表任务绝对正确。"
+              placeholder="例如：问候语包含正确标点"
               onChange={(values) => updateExpected({ acceptance_points: values })}
             />
           </fieldset>
 
-          <fieldset>
-            <legend>自动验收命令</legend>
-            <p className="field-help">
-              运行结束后执行项目自己的测试或脚本，用来确认改动是否真的可用。通过只表示这些命令通过。
-            </p>
-            <ListEditor
-              title="命令"
-              values={validationCommands}
-              placeholder="python -m pytest"
-              helpText="建议使用项目已有的单测、构建或校验脚本。命令在本地运行，不会调用远程 judge。"
-              onChange={(values) => updateTask({ validation_commands: values })}
-            />
-          </fieldset>
-
           <details className="advanced-inline">
-            <summary>高级验收设置</summary>
+            <summary>更多设置：自动检查 / AI 仲裁</summary>
+            <fieldset>
+              <legend>自动检查命令</legend>
+              <ListEditor
+                title="命令"
+                values={validationCommands}
+                placeholder="python -m pytest"
+                onChange={(values) => updateTask({ validation_commands: values })}
+              />
+            </fieldset>
             <fieldset>
               <legend>用例属性</legend>
               <div className="form-grid">
                 <label htmlFor="task-id">
                   <span className="label-with-help">
                     用例 ID
-                    <HelpTip text="稳定的本地标识，用于结果文件名和导出。" />
+                    <HelpTip text="用于文件名和导出。" />
                   </span>
                   <input
                     id="task-id"
@@ -302,12 +296,16 @@ export function TaskEditor({
               />
             </fieldset>
             <fieldset>
-              <legend>人工反馈规则</legend>
+              <legend>AI 仲裁维度</legend>
               <p className="field-help">
-                给人工反馈或后续可选软性评分使用；默认不自动调用 LLM judge。
+                只生成仲裁材料，不自动调用 LLM judge。
               </p>
               <RubricEditor items={rubric} onChange={(items) => updateSoft({ rubric: items })} />
             </fieldset>
+            <div className="arbitration-material-note" aria-label="AI 仲裁材料说明">
+              <strong>AI 仲裁材料</strong>
+              <span>结果页会生成 soft_evaluation_payload.json，供人工或外部 AI 仲裁复核。</span>
+            </div>
           </details>
 
           {validationErrors.length > 0 && (
@@ -420,7 +418,7 @@ function ExpectedFileEditor({ files, onChange }: ExpectedFileEditorProps) {
       <div className="subsection-heading">
         <strong className="label-with-help">
           期望变更文件
-          <HelpTip text="用于提示哪些文件应该被新增、修改或删除。它帮助人工反馈，不会单独证明任务正确。" />
+          <HelpTip text="提示应改哪些文件。" />
         </strong>
         <button
           type="button"
@@ -493,7 +491,7 @@ function CommandCheckEditor({ checks, onChange }: CommandCheckEditorProps) {
       <div className="subsection-heading">
         <strong className="label-with-help">
           命令检查
-          <HelpTip text="更细的确定性检查：运行命令并匹配期望输出，适合补充自动验收命令覆盖不到的证据。" />
+          <HelpTip text="运行命令并匹配输出。" />
         </strong>
         <button
           type="button"
@@ -559,8 +557,8 @@ function RubricEditor({ items, onChange }: RubricEditorProps) {
     <div className="list-editor">
       <div className="subsection-heading">
         <strong className="label-with-help">
-          反馈维度
-          <HelpTip text="给人工反馈使用的维度说明；未来可选 soft judge 也会复用这些维度。" />
+          仲裁维度
+          <HelpTip text="AI 仲裁和人工反馈共用。" />
         </strong>
         <button
           type="button"

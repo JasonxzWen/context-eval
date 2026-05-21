@@ -113,28 +113,27 @@ describe('App workflow shell', () => {
 
     expect(screen.getByTestId('local-app-shell')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'AGENTS.md / skills 效果对比' })).toBeVisible();
-    expect(screen.getByText(/比较不同上下文方案对 coding agent 执行效果的影响/)).toBeVisible();
+    expect(screen.getByText(/同一批任务，换不同资料包/)).toBeVisible();
     await waitFor(() => expect(screen.getAllByText('示例数据预览').length).toBeGreaterThan(0));
-    expect(screen.getByText('作用')).toBeVisible();
-    expect(screen.getByText(/比较不同 AGENTS\.md \/ skills 上下文/)).toBeVisible();
-    expect(screen.getByText('如何开始')).toBeVisible();
-    expect(screen.getByText('写测试用例')).toBeVisible();
-    expect(screen.getByText('添加上下文方案')).toBeVisible();
-    expect(screen.getByText('运行后做人工反馈')).toBeVisible();
+    expect(screen.getByText('用同一任务，对比不同资料包')).toBeVisible();
+    expect(screen.getByText('写任务')).toBeVisible();
+    expect(screen.getByText('放资料')).toBeVisible();
+    expect(screen.getByText('看结果')).toBeVisible();
     expect(screen.getAllByRole('heading', { name: '1 配测试用例' }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('heading', { name: '2 配上下文方案' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('heading', { name: '2 配资料包' }).length).toBeGreaterThan(0);
+    expect(screen.getByText(/给 AI 准备两套资料/)).toBeVisible();
     expect(screen.getAllByRole('heading', { name: '3 配执行器' }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('heading', { name: '4 配指标与反馈' }).length).toBeGreaterThan(0);
-    expect(screen.getByText(/AGENTS\.md 工作说明和 skills 技能包/)).toBeVisible();
+    expect(screen.getAllByRole('heading', { name: '4 反馈规则' }).length).toBeGreaterThan(0);
     expect(screen.getByRole('navigation', { name: '工作台导航' })).toBeVisible();
     expect(screen.getByTestId('matrix-count')).toHaveTextContent('8');
-    fireEvent.click(screen.getByText('高级验收设置'));
+    fireEvent.click(screen.getByText('更多设置：自动检查 / AI 仲裁'));
     fireEvent.click(screen.getByText('配置与任务细节'));
     expect(screen.getByRole('heading', { name: '执行器' })).toBeVisible();
     expect(screen.getByRole('heading', { name: '期望结果' })).toBeVisible();
     expect(screen.getByRole('heading', { name: '硬性检查' })).toBeVisible();
-    expect(screen.getByRole('heading', { name: '人工反馈规则' })).toBeVisible();
-    expect(screen.getByText(/这段会写进 prompt 文件并交给 coding agent/)).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'AI 仲裁维度' })).toBeVisible();
+    expect(screen.getAllByText('AI 仲裁材料').length).toBeGreaterThan(0);
+    expect(screen.getByText(/soft_evaluation_payload\.json/)).toBeVisible();
   });
 
   it('loads Coco hybrid evaluation data from the local server API', async () => {
@@ -154,7 +153,10 @@ describe('App workflow shell', () => {
 
     fireEvent.click(screen.getByText('配置与任务细节'));
     await waitFor(() => expect(screen.getByLabelText('仓库路径')).toHaveValue('./fixture-repo'));
-    expect(screen.getByText('Agent 工作说明')).toBeVisible();
+    const taskTab = screen.getByRole('button', { name: /Fix greeting punctuation/ });
+    expect(within(taskTab).getByText('Fix greeting punctuation')).toBeVisible();
+    expect(within(taskTab).getByText('ID: fix-greeting-punctuation')).toBeVisible();
+    expect(screen.getByText('AI 工作说明')).toBeVisible();
     expect(
       screen.getAllByText('coco -y --query-timeout 10m --bash-tool-timeout 5m -p "{prompt}"').length,
     ).toBeGreaterThan(0);
@@ -288,8 +290,8 @@ describe('App workflow shell', () => {
 
     render(<App />);
 
-    await waitFor(() => expect(screen.getByLabelText('给 AI 的任务提示词')).toHaveValue('Fix it.'));
-    fireEvent.click(screen.getByText('高级验收设置'));
+    await waitFor(() => expect(screen.getByLabelText('AI 要做什么')).toHaveValue('Fix it.'));
+    fireEvent.click(screen.getByText('更多设置：自动检查 / AI 仲裁'));
     expect(screen.getAllByRole('radiogroup', { name: '任务分类' }).length).toBeGreaterThan(0);
     expect(
       screen.getAllByRole('radio', { name: '运行时' }).some((node) => node.getAttribute('aria-checked') === 'true'),
@@ -298,10 +300,10 @@ describe('App workflow shell', () => {
     expect(
       screen.getAllByRole('radio', { name: '简单' }).some((node) => node.getAttribute('aria-checked') === 'true'),
     ).toBe(true);
-    fireEvent.change(screen.getByLabelText('给 AI 的任务提示词'), {
+    fireEvent.change(screen.getByLabelText('AI 要做什么'), {
       target: { value: 'Use the visual editor prompt.' },
     });
-    fireEvent.change(screen.getByLabelText('人工验收目标'), {
+    fireEvent.change(screen.getByLabelText('怎样算完成'), {
       target: { value: 'Visual editor summary.' },
     });
     fireEvent.click(within(screen.getByRole('group', { name: '硬性检查' })).getByRole('button', { name: '添加' }));
@@ -415,11 +417,11 @@ describe('App workflow shell', () => {
 
     render(<App />);
 
-    await waitFor(() => expect(screen.getByLabelText('方案说明')).toHaveValue('Baseline'));
-    fireEvent.change(screen.getByLabelText('方案说明'), {
+    await waitFor(() => expect(screen.getByLabelText('资料包名称')).toHaveValue('Baseline'));
+    fireEvent.change(screen.getByLabelText('资料包名称'), {
       target: { value: 'Edited baseline instructions' },
     });
-    fireEvent.change(screen.getByLabelText('上下文资料来源路径 1'), {
+    fireEvent.change(screen.getByLabelText('资料来源路径 1'), {
       target: { value: './contexts/edited/AGENTS.md' },
     });
     fireEvent.change(screen.getByLabelText('执行器命令模板'), {
@@ -431,7 +433,7 @@ describe('App workflow shell', () => {
     fireEvent.change(screen.getByLabelText('执行器联网权限'), {
       target: { value: 'enabled' },
     });
-    fireEvent.click(screen.getByRole('button', { name: '保存上下文方案' }));
+    fireEvent.click(screen.getByRole('button', { name: '保存资料包' }));
 
     await waitFor(() => {
       expect(screen.getByTestId('variant-save-status')).toHaveTextContent('已保存配置并刷新执行计划');
@@ -444,7 +446,7 @@ describe('App workflow shell', () => {
       '/api/run-plan',
       expect.objectContaining({ method: 'POST' }),
     );
-    expect(screen.getByLabelText('方案说明')).toHaveValue('Edited baseline instructions');
+    expect(screen.getByLabelText('资料包名称')).toHaveValue('Edited baseline instructions');
   });
 
   it('blocks invalid task fields before submitting structured saves', async () => {
@@ -462,13 +464,13 @@ describe('App workflow shell', () => {
 
     render(<App />);
 
-    await waitFor(() => expect(screen.getByLabelText('给 AI 的任务提示词')).toHaveValue('Fix it.'));
-    fireEvent.change(screen.getByLabelText('给 AI 的任务提示词'), { target: { value: ' ' } });
+    await waitFor(() => expect(screen.getByLabelText('AI 要做什么')).toHaveValue('Fix it.'));
+    fireEvent.change(screen.getByLabelText('AI 要做什么'), { target: { value: ' ' } });
     fireEvent.change(screen.getByLabelText('命令 1'), { target: { value: ' ' } });
     fireEvent.click(screen.getByRole('button', { name: '保存测试用例' }));
 
     const taskPanel = screen.getByRole('region', { name: '测试用例配置' });
-    expect(await within(taskPanel).findByText('fix-greeting-punctuation: 给 AI 的任务提示词不能为空')).toBeVisible();
+    expect(await within(taskPanel).findByText('fix-greeting-punctuation: AI 要做什么不能为空')).toBeVisible();
     expect(within(taskPanel).getByText('fix-greeting-punctuation: 第 1 条验证命令不能为空')).toBeVisible();
     expect(within(taskPanel).getByTestId('task-save-status')).toHaveTextContent(
       '有配置问题，请按红色提示修改后再保存',
@@ -495,19 +497,19 @@ describe('App workflow shell', () => {
 
     render(<App />);
 
-    await waitFor(() => expect(screen.getByLabelText('方案名称')).toHaveValue('baseline'));
-    fireEvent.change(screen.getByLabelText('方案名称'), { target: { value: ' ' } });
-    fireEvent.change(screen.getByLabelText('上下文资料来源路径 1'), { target: { value: ' ' } });
+    await waitFor(() => expect(screen.getByLabelText('资料包 ID')).toHaveValue('baseline'));
+    fireEvent.change(screen.getByLabelText('资料包 ID'), { target: { value: ' ' } });
+    fireEvent.change(screen.getByLabelText('资料来源路径 1'), { target: { value: ' ' } });
     fireEvent.change(screen.getByLabelText('执行器命令模板'), { target: { value: ' ' } });
     fireEvent.change(screen.getByLabelText('执行器超时分钟'), { target: { value: '0' } });
-    await waitFor(() => expect(screen.getByLabelText('方案名称')).toHaveValue(' '));
+    await waitFor(() => expect(screen.getByLabelText('资料包 ID')).toHaveValue(' '));
     await waitFor(() => expect(screen.getByLabelText('执行器超时分钟')).toHaveValue(0));
     fireEvent.click(screen.getByRole('button', { name: '保存执行器配置' }));
 
-    const variantPanel = screen.getByRole('region', { name: '上下文方案配置' });
+    const variantPanel = screen.getByRole('region', { name: '对比资料包配置' });
     const agentPanel = screen.getByRole('region', { name: '执行器配置' });
-    expect(await within(variantPanel).findByText('第 1 个上下文方案名称不能为空')).toBeVisible();
-    expect(within(variantPanel).getByText('第 1 个上下文方案的第 1 个上下文资料来源路径不能为空')).toBeVisible();
+    expect(await within(variantPanel).findByText('第 1 个资料包名称不能为空')).toBeVisible();
+    expect(within(variantPanel).getByText('第 1 个资料包的第 1 份资料来源路径不能为空')).toBeVisible();
     expect(within(agentPanel).getByText('第 1 个执行器命令模板不能为空')).toBeVisible();
     expect(within(agentPanel).getByText('第 1 个执行器超时必须大于 0')).toBeVisible();
     expect(within(agentPanel).getByTestId('agent-save-status')).toHaveTextContent(
@@ -651,7 +653,7 @@ describe('App workflow shell', () => {
 
     await waitFor(() => expect(screen.getByLabelText('任务 second-task')).toBeChecked());
     fireEvent.click(screen.getByLabelText('任务 fix-greeting-punctuation'));
-    fireEvent.click(screen.getByLabelText('上下文方案 baseline'));
+    fireEvent.click(screen.getByLabelText('资料包 baseline'));
     fireEvent.click(screen.getByLabelText('执行器 coco'));
     fireEvent.click(screen.getByRole('button', { name: '刷新执行计划' }));
 
@@ -684,7 +686,7 @@ describe('App workflow shell', () => {
 
     render(<App />);
 
-    await waitFor(() => expect(screen.getByLabelText('给 AI 的任务提示词')).toHaveValue('Fix it.'));
+    await waitFor(() => expect(screen.getByLabelText('AI 要做什么')).toHaveValue('Fix it.'));
     fireEvent.click(screen.getByRole('button', { name: '保存测试用例' }));
 
     await waitFor(() => {

@@ -47,7 +47,7 @@ const checkLabels: Record<string, string> = {
   schema: '配置结构',
   repo: '仓库路径',
   git_refs: 'Git 引用',
-  overlay_paths: '上下文覆盖路径',
+  overlay_paths: '资料覆盖路径',
   task_ids: '任务 ID',
   prompt_templates: '提示模板',
   agent_command_variables: '本地代理命令变量',
@@ -169,7 +169,7 @@ function metricValue(value: number | string | null | undefined, suffix = '') {
 
 function displayVariantName(name: string | null | undefined) {
   if (!name) return '-';
-  return name === 'baseline' ? 'baseline（当前默认上下文）' : name;
+  return name === 'baseline' ? 'baseline（当前默认资料包）' : name;
 }
 
 function formatDuration(seconds: number | null | undefined) {
@@ -210,7 +210,7 @@ function validationIssueBuckets(editable: EditableConfig, issues: string[]) {
   const taskIssues = issues.filter((issue) => (
     taskLabels.some((label) => issue.startsWith(label)) || issue.startsWith('任务 ID 重复')
   ));
-  const variantIssues = issues.filter((issue) => issue.includes('上下文方案'));
+  const variantIssues = issues.filter((issue) => issue.includes('资料包') || issue.includes('上下文方案'));
   const agentIssues = issues.filter((issue) => issue.includes('执行器'));
   return { taskIssues, variantIssues, agentIssues };
 }
@@ -266,17 +266,12 @@ function DesignerGuide() {
   return (
     <section className="designer-guide" aria-label="策划工作流说明">
       <article className="designer-guide-card">
-        <strong>作用</strong>
-        <span>
-          比较不同 AGENTS.md / skills 上下文，看看哪套更能让 coding agent 完成同一个任务。
-        </span>
-      </article>
-      <article className="designer-guide-card guide-start">
-        <strong>如何开始</strong>
+        <strong>用同一任务，对比不同资料包</strong>
+        <span>看哪套 AGENTS.md / skills 更能帮 AI 做对事。</span>
         <ol className="designer-guide-steps">
-          <li>写测试用例</li>
-          <li>添加上下文方案</li>
-          <li>运行后做人工反馈</li>
+          <li>写任务</li>
+          <li>放资料</li>
+          <li>看结果</li>
         </ol>
       </article>
     </section>
@@ -286,9 +281,9 @@ function DesignerGuide() {
 function TopNav({ hasResults }: { hasResults: boolean }) {
   const links = [
     ['#task-config', '测试用例'],
-    ['#context-config', '上下文方案'],
+    ['#context-config', '资料包'],
     ['#agent-config', '执行器'],
-    ['#metric-config', '指标与反馈'],
+    ['#metric-config', '反馈'],
     ['#run-config', '运行'],
     ['#results', hasResults ? '结果' : '结果待生成'],
   ];
@@ -307,33 +302,29 @@ function EvaluationSetupPanel() {
   return (
     <section className="panel metric-guide-panel" id="metric-config" aria-label="指标与反馈配置">
       <div className="panel-heading">
-        <h2>4 配指标与反馈</h2>
-        <span>硬指标 + 人工反馈</span>
+        <h2>4 反馈规则</h2>
+        <span>结果页使用</span>
       </div>
-      <p className="panel-note">
-        这里说明本次评测会看哪些证据。自动验收和硬性检查在“测试用例”的高级验收里配置；
-        Codex CLI 硬指标来自 <code>codex exec --json</code> 事件 JSONL。
-      </p>
       <div className="metric-guide-grid">
         <article>
-          <strong>自动验收命令</strong>
-          <span>在测试用例里填写项目自己的测试、构建或检查命令。通过只代表这些命令通过。</span>
+          <strong>硬指标</strong>
+          <span>耗时、Token、工具调用、命令调用。</span>
         </article>
         <article>
-          <strong>硬性检查</strong>
-          <span>在高级验收设置里配置文件、片段和命令检查，用来补充机器可判定证据。</span>
+          <strong>自动检查</strong>
+          <span>运行项目自己的测试命令。</span>
         </article>
         <article>
-          <strong>人工反馈维度</strong>
-          <span>在高级验收设置里配置反馈维度；结果详情里保存人工结论、可信度和备注。</span>
+          <strong>AI 仲裁材料</strong>
+          <span>只生成材料，不自动调用 judge。</span>
         </article>
         <article>
-          <strong>Codex CLI 硬指标</strong>
-          <span>执行器类型选 Codex CLI，命令模板使用 JSON 输出后，可展示耗时、Token、Tool calls、命令 calls、模型、错误原因和证据缺口。</span>
+          <strong>人工反馈</strong>
+          <span>人在结果页记录通过、失败或待复核。</span>
         </article>
         <article>
-          <strong>改动范围</strong>
-          <span>结果会展示变更文件数和 patch 路径，方便人工判断改动是否过大或跑偏。</span>
+          <strong>证据缺口</strong>
+          <span>缺日志、缺 token 或缺最终回复会标出。</span>
         </article>
       </div>
     </section>
@@ -501,8 +492,8 @@ export function App() {
     if (taskIssueIndex >= 0) {
       setSelectedTaskIndex(taskIssueIndex);
     }
-    const variantIssueMatch = issues.find((issue) => issue.includes('上下文方案'));
-    const variantIndex = variantIssueMatch?.match(/^第 (\d+) 个上下文方案/)?.[1];
+    const variantIssueMatch = issues.find((issue) => issue.includes('资料包') || issue.includes('上下文方案'));
+    const variantIndex = variantIssueMatch?.match(/^第 (\d+) 个(?:资料包|上下文方案)/)?.[1];
     if (variantIndex) {
       setSelectedVariantIndex(Math.max(0, Number(variantIndex) - 1));
     }
@@ -738,7 +729,7 @@ export function App() {
     setError('');
     const scope = runScopeRef.current;
     if (scope.task_ids.length === 0 || scope.variants.length === 0 || scope.agents.length === 0) {
-      throw new Error('请至少选择一个测试用例、上下文方案和执行器');
+      throw new Error('请至少选择一个测试用例、资料包和执行器');
     }
     setResults(null);
     setSelectedCaseId('');
@@ -899,7 +890,7 @@ export function App() {
         ? '自动'
         : preflightStatus;
   const taskTitle = task?.title || task?.id || '未配置任务';
-  const variantSummary = runScope.variants.join(' vs ') || '未选择上下文方案';
+  const variantSummary = runScope.variants.join(' vs ') || '未选择资料包';
   const agentSummary = runScope.agents.join(', ') || cocoAgent?.name || '未配置执行器';
   const runBrief = configLoaded
     ? `用 ${agentSummary} 在 ${variantSummary} 上执行 ${runScope.task_ids.length} 个测试用例，预计 ${visibleCaseCount} 个评测用例。`
@@ -920,7 +911,7 @@ export function App() {
         <div>
           <p className="eyebrow">context-eval · 只看本地产物</p>
           <h1>AGENTS.md / skills 效果对比</h1>
-          <p className="topbar-subtitle">用同一批测试用例，比较不同上下文方案对 coding agent 执行效果的影响。</p>
+          <p className="topbar-subtitle">同一批任务，换不同资料包，比较 AI 执行结果。</p>
         </div>
         <div className="status-pill" aria-label="服务状态">
           {modeLabel}
@@ -1004,7 +995,7 @@ export function App() {
           runScope={runScope}
           selectedCaseCount={visibleCaseCount}
           serverMode={serverMode}
-          taskSummary={task?.expected_outcome?.summary || '未配置人工验收目标'}
+          taskSummary={task?.expected_outcome?.summary || '未配置验收 / 仲裁目标'}
           taskTitle={taskTitle}
           tasks={loaded.editable.tasks}
           variants={loaded.editable.variants}
@@ -1183,7 +1174,7 @@ export function App() {
                       </select>
                     </label>
                     <p className="status-line">
-                      对照组是你认为“当前默认”的上下文方案，其他方案会和它比较；baseline 通常指当前 AGENTS.md / skills。
+                      对照组是你认为“当前默认”的资料包，其他资料包会和它比较；baseline 通常指当前 AGENTS.md / skills。
                     </p>
                   </div>
                   {results.baseline_selection_notice && (
@@ -1242,7 +1233,7 @@ export function App() {
                       ))}
                     </div>
                   ) : (
-                    <p className="status-line">当前对照组没有可对比对象，至少选择两个上下文方案后会生成摘要。</p>
+                    <p className="status-line">当前对照组没有可比对象，至少选择两个资料包后会生成摘要。</p>
                   )}
                 </section>
               )}
