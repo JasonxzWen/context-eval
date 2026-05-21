@@ -431,6 +431,8 @@ test('renders the fixture-backed Coco hybrid shell', async ({ page }) => {
   await expect(page.getByRole('heading', { name: '期望结果' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '硬性检查' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'AI 仲裁与人工反馈维度' })).toBeVisible();
+  await expect(page.getByText('AI 仲裁材料', { exact: true })).toBeVisible();
+  await expect(page.getByText(/soft_evaluation_payload\.json/)).toBeVisible();
   await expect(page.getByRole('button', { name: '加载配置' })).toBeVisible();
   await expect(page.getByRole('button', { name: '保存并重载' })).toBeVisible();
 

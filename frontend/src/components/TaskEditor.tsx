@@ -206,7 +206,7 @@ export function TaskEditor({
           </fieldset>
 
           <fieldset>
-            <legend>期望结果</legend>
+            <legend>验收与 AI 仲裁材料</legend>
             <label htmlFor="expected-summary">
               <span className="label-with-help">
                 人类验收 / AI 仲裁目标
@@ -223,9 +223,16 @@ export function TaskEditor({
               title="验收点"
               values={acceptancePoints}
               placeholder="例如：验证脚本确认问候语已经更新"
-              helpText="人工逐条检查；通过不等于绝对正确。"
+              helpText="人类和 AI 仲裁逐条检查；通过不等于绝对正确。"
               onChange={(values) => updateExpected({ acceptance_points: values })}
             />
+            <div className="arbitration-material-note" aria-label="AI 仲裁材料说明">
+              <strong>AI 仲裁材料</strong>
+              <span>
+                运行后会把任务提示词、验收目标、验收点、仲裁维度、patch、日志和硬指标写入
+                soft_evaluation_payload.json；context-eval 不自动调用 LLM judge。
+              </span>
+            </div>
           </fieldset>
 
           <fieldset>

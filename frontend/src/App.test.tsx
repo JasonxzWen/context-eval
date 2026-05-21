@@ -134,6 +134,8 @@ describe('App workflow shell', () => {
     expect(screen.getByRole('heading', { name: '期望结果' })).toBeVisible();
     expect(screen.getByRole('heading', { name: '硬性检查' })).toBeVisible();
     expect(screen.getByRole('heading', { name: 'AI 仲裁与人工反馈维度' })).toBeVisible();
+    expect(screen.getByText('AI 仲裁材料')).toBeVisible();
+    expect(screen.getByText(/soft_evaluation_payload\.json/)).toBeVisible();
     expect(screen.getByText('写入 prompt，交给 agent。')).toBeVisible();
   });
 
