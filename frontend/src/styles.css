@@ -120,6 +120,34 @@ button:disabled {
   white-space: nowrap;
 }
 
+.top-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.top-nav a {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 6px 10px;
+  color: var(--blue);
+  font-size: 13px;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.top-nav a:hover,
+.top-nav a:focus {
+  border-color: var(--line);
+  background: #f3faf6;
+  outline: none;
+}
+
 .notice {
   margin: 14px 0 0;
   border-left: 4px solid var(--red);
@@ -447,39 +475,49 @@ button:disabled {
   order: 3;
 }
 
+.content-grid > .agent-editor-panel {
+  grid-column: span 12;
+  order: 4;
+}
+
+.content-grid > .metric-guide-panel {
+  grid-column: span 12;
+  order: 5;
+}
+
 .content-grid > .run-brief-panel {
   grid-column: span 7;
-  order: 4;
+  order: 6;
 }
 
 .content-grid > .matrix-panel {
   grid-column: span 5;
-  order: 5;
+  order: 7;
 }
 
 .content-grid > .advanced-editor-shell {
   grid-column: span 12;
-  order: 6;
+  order: 8;
 }
 
 .content-grid > .results-panel {
   grid-column: span 12;
-  order: 8;
+  order: 10;
   overflow-x: auto;
 }
 
 .content-grid > .run-panel {
   grid-column: span 12;
-  order: 7;
+  order: 9;
 }
 
 .content-grid > .project-panel {
-  order: 9;
+  order: 11;
 }
 
 .content-grid > .advanced-workbench {
   grid-column: span 12;
-  order: 9;
+  order: 12;
 }
 
 .content-grid > .yaml-panel {
@@ -587,6 +625,34 @@ textarea {
   margin: 12px 0 0;
   color: var(--muted);
   font-size: 13px;
+  line-height: 1.45;
+}
+
+.metric-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.metric-guide-grid article {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px;
+  background: #ffffff;
+}
+
+.metric-guide-grid strong {
+  color: var(--blue);
+  font-size: 13px;
+}
+
+.metric-guide-grid span {
+  color: var(--muted);
+  font-size: 12px;
   line-height: 1.45;
 }
 
@@ -1011,31 +1077,19 @@ fieldset {
 }
 
 .label-with-help {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: baseline;
   max-width: 100%;
 }
 
-.help-tip {
-  display: inline-grid;
-  place-items: center;
-  width: 18px;
-  height: 18px;
-  flex: 0 0 auto;
-  border: 1px solid #91a59c;
-  border-radius: 50%;
-  background: #ffffff;
-  color: var(--blue);
+.inline-help {
+  color: var(--muted);
   font-size: 12px;
-  font-weight: 900;
-  line-height: 1;
-  cursor: help;
-}
-
-.help-tip:focus {
-  outline: 2px solid var(--blue);
-  outline-offset: 2px;
+  font-weight: 650;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .advanced-inline,
@@ -1738,6 +1792,7 @@ legend {
   .advanced-grid,
   .two-column-list,
   .guide-grid,
+  .metric-guide-grid,
   .designer-guide,
   .designer-guide-steps,
   .baseline-control {

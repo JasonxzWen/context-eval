@@ -457,7 +457,7 @@ def test_local_app_results_cleans_removed_baseline_selection(tmp_path: Path) -> 
 
     assert payload["selected_baseline_variant"] == "baseline"
     assert payload["baseline_selection_notice"] == (
-        "已清理不存在的比较基线 removed-variant，改用 baseline。"
+        "已清理不存在的对照组方案 removed-variant，改用 baseline。"
     )
     assert [
         (group["baseline_variant"], group["comparison_variant"])

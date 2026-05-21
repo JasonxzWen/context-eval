@@ -29,6 +29,10 @@ function blankVariant(variants: EditableVariant[]): EditableVariant {
   };
 }
 
+function displayVariantName(name: string) {
+  return name === 'baseline' ? 'baseline（当前默认上下文）' : name;
+}
+
 function overlayKind(source: string, target: string) {
   const combined = `${source} ${target}`.toLowerCase();
   if (combined.includes('agents.md')) {
@@ -105,7 +109,7 @@ export function VariantEditor({
   }
 
   return (
-    <section className="panel variant-editor-panel" aria-label="上下文方案配置">
+    <section className="panel variant-editor-panel" id="context-config" aria-label="上下文方案配置">
       <div className="panel-heading">
         <h2>2 配上下文方案</h2>
         <span>{variants.length} 个方案</span>
@@ -122,7 +126,7 @@ export function VariantEditor({
                 aria-label={`选择上下文方案 ${item.name || index + 1}`}
                 onClick={() => onSelectVariant(index)}
               >
-                <strong>{item.name || `variant-${index + 1}`}</strong>
+                <strong>{displayVariantName(item.name) || `variant-${index + 1}`}</strong>
                 <span>{item.description || `${item.overlays.length} 个上下文资料`}</span>
               </button>
             ))}
@@ -155,7 +159,7 @@ export function VariantEditor({
               <label htmlFor="variant-name">
                 <span className="label-with-help">
                   方案名称
-                  <HelpTip text="用于结果对比的短名称，例如 baseline、agents-v2、skills-added。" />
+                  <HelpTip text="用于结果对比的短名称。baseline 通常表示“当前默认上下文”，也可以改成 current-agents、skills-added。" />
                 </span>
                 <input
                   id="variant-name"
@@ -167,7 +171,7 @@ export function VariantEditor({
               <label htmlFor="variant-description">
                 <span className="label-with-help">
                   方案说明
-                  <HelpTip text="给人看的说明：这套 AGENTS.md 或 skills 相比基线改了什么。" />
+                  <HelpTip text="给人看的说明：这套 AGENTS.md 或 skills 是当前默认方案，还是一次实验改动。" />
                 </span>
                 <textarea
                   id="variant-description"

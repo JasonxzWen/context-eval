@@ -220,7 +220,7 @@ export function validateEditableConfig(editable: EditableConfig) {
       issues.push(`${label}: 任务 ID 不能为空`);
     }
     if (!task.prompt.trim()) {
-      issues.push(`${label}: 任务说明不能为空`);
+      issues.push(`${label}: 给 AI 的任务提示词不能为空`);
     }
     task.validation_commands.forEach((command, commandIndex) => {
       if (!command.trim()) {

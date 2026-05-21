@@ -1,7 +1,6 @@
 import type {
   CommandCheck,
   EditableTask,
-  EditableVariant,
   ExpectedOutcome,
   HardEvaluation,
   SoftEvaluation,
@@ -11,7 +10,6 @@ import { HelpTip } from './HelpTip';
 
 type TaskEditorProps = {
   tasks: EditableTask[];
-  variants: EditableVariant[];
   selectedTaskIndex: number;
   saveStatus: string;
   serverMode: 'checking' | 'connected' | 'fixture';
@@ -73,7 +71,6 @@ const changeTypeOptions = [
 
 export function TaskEditor({
   tasks,
-  variants,
   selectedTaskIndex,
   saveStatus,
   serverMode,
@@ -128,7 +125,7 @@ export function TaskEditor({
   const rubric = soft.rubric || [];
 
   return (
-    <section className="panel task-editor-panel" aria-label="测试用例配置">
+    <section className="panel task-editor-panel" id="task-config" aria-label="测试用例配置">
       <div className="panel-heading">
         <h2>1 配测试用例</h2>
         <span>{tasks.length} 个用例</span>
@@ -179,7 +176,7 @@ export function TaskEditor({
               <label htmlFor="task-title">
                 <span className="label-with-help">
                   用例标题
-                  <HelpTip text="给人看的短标题，方便在结果列表里快速识别这个测试用例。" />
+                  <HelpTip text="给人看的短标题，方便在结果列表里识别。" />
                 </span>
                 <input
                   id="task-title"
@@ -190,12 +187,12 @@ export function TaskEditor({
             </div>
             <label htmlFor="task-prompt">
               <span className="label-with-help">
-                任务说明
-                <HelpTip text="会交给 coding agent 的任务描述。请写清目标、限制和验收重点，不要写评测工具内部操作。" />
+                给 AI 的任务提示词
+                <HelpTip text="这段会写进 prompt 文件并交给 coding agent。写清目标、限制和验收重点。" />
               </span>
               <textarea
                 id="task-prompt"
-                aria-label="任务说明"
+                aria-label="给 AI 的任务提示词"
                 value={task.prompt}
                 onChange={(event) => updateTask({ prompt: event.target.value })}
               />
@@ -206,12 +203,12 @@ export function TaskEditor({
             <legend>期望结果</legend>
             <label htmlFor="expected-summary">
               <span className="label-with-help">
-                期望结果摘要
-                <HelpTip text="一句话说明什么样的结果算达成目标。它会出现在执行计划和结果列表里。" />
+                人工验收目标
+                <HelpTip text="给人复核看的成功标准，会出现在执行计划和结果里；默认不作为 AI 提示词。" />
               </span>
               <textarea
                 id="expected-summary"
-                aria-label="期望结果摘要"
+                aria-label="人工验收目标"
                 value={expected.summary || ''}
                 onChange={(event) => updateExpected({ summary: event.target.value })}
               />
@@ -220,7 +217,7 @@ export function TaskEditor({
               title="验收点"
               values={acceptancePoints}
               placeholder="例如：验证脚本确认问候语已经更新"
-              helpText="给人工反馈使用的逐条检查项。验证通过不代表任务绝对正确，仍应结合这些验收点复核。"
+              helpText="给人工反馈使用的逐条检查项。验证通过不代表任务绝对正确。"
               onChange={(values) => updateExpected({ acceptance_points: values })}
             />
           </fieldset>
@@ -247,7 +244,7 @@ export function TaskEditor({
                 <label htmlFor="task-id">
                   <span className="label-with-help">
                     用例 ID
-                    <HelpTip text="稳定的本地标识，用于结果文件名和导出。建议使用英文、数字和短横线。" />
+                    <HelpTip text="稳定的本地标识，用于结果文件名和导出。" />
                   </span>
                   <input
                     id="task-id"
@@ -267,19 +264,6 @@ export function TaskEditor({
                   options={difficultyOptions}
                   onChange={(value) => updateTask({ difficulty: value })}
                 />
-              </div>
-            </fieldset>
-            <fieldset>
-              <legend>适用的上下文方案</legend>
-              <p className="field-help">实际运行范围在“本次运行”里选择。</p>
-              <div className="variant-chip-row">
-                {variants.map((variant) => (
-                  <span className="variant-chip" key={variant.name}>
-                    <strong>{variant.name}</strong>
-                    {variant.description && <small>{variant.description}</small>}
-                  </span>
-                ))}
-                {variants.length === 0 && <span className="status-line">未配置上下文方案</span>}
               </div>
             </fieldset>
             <fieldset>
@@ -576,7 +560,7 @@ function RubricEditor({ items, onChange }: RubricEditorProps) {
       <div className="subsection-heading">
         <strong className="label-with-help">
           反馈维度
-          <HelpTip text="给人工反馈或未来可选 soft judge 的维度说明；默认不自动评分，也不进入综合排名。" />
+          <HelpTip text="给人工反馈使用的维度说明；未来可选 soft judge 也会复用这些维度。" />
         </strong>
         <button
           type="button"
