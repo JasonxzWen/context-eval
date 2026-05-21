@@ -130,6 +130,9 @@ button:disabled {
 }
 
 .top-nav {
+  position: sticky;
+  top: 0;
+  z-index: 30;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -138,6 +141,8 @@ button:disabled {
   border-radius: 8px;
   padding: 8px;
   background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 8px 22px rgba(32, 48, 40, 0.08);
+  backdrop-filter: blur(8px);
 }
 
 .top-nav a {
@@ -155,6 +160,15 @@ button:disabled {
   border-color: var(--line);
   background: #f3faf6;
   outline: none;
+}
+
+#task-config,
+#context-config,
+#agent-config,
+#metric-config,
+#run-config,
+#results {
+  scroll-margin-top: 72px;
 }
 
 .notice {
@@ -1810,6 +1824,15 @@ legend {
 
   .topbar h1 {
     font-size: 30px;
+  }
+
+  #task-config,
+  #context-config,
+  #agent-config,
+  #metric-config,
+  #run-config,
+  #results {
+    scroll-margin-top: 112px;
   }
 
   .content-grid {

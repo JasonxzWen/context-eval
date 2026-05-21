@@ -265,6 +265,15 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
 
     await expect(page.locator('.run-brief-panel')).toContainText('baseline vs experiment');
     await expect(page.getByRole('heading', { name: '1 配测试用例' })).toBeVisible();
+    await page.evaluate(() => window.scrollTo(0, 1400));
+    await page.waitForTimeout(100);
+    const navBoxAfterScroll = await page.locator('.top-nav').boundingBox();
+    expect(Math.round(navBoxAfterScroll?.y ?? -1)).toBe(0);
+    await page.locator('.top-nav a[href="#context-config"]').click();
+    await page.waitForTimeout(100);
+    const navBoxAfterJump = await page.locator('.top-nav').boundingBox();
+    const contextBoxAfterJump = await page.locator('#context-config').boundingBox();
+    expect((contextBoxAfterJump?.y ?? 0) - ((navBoxAfterJump?.y ?? 0) + (navBoxAfterJump?.height ?? 0))).toBeGreaterThan(8);
     await page.locator('summary', { hasText: '高级验收设置' }).click();
     await expect(page.getByRole('radiogroup', { name: '任务分类' })).toBeVisible();
     await expect(page.getByRole('radio', { name: '缺陷修复' })).toHaveAttribute('aria-checked', 'true');
