@@ -120,7 +120,6 @@ export function VariantEditor({
     <section className="panel variant-editor-panel" id="context-config" aria-label="对比资料配置">
       <div className="panel-heading">
         <h2>2 准备对比资料</h2>
-        <span>{variants.length} 套方案</span>
       </div>
       <p className="panel-note">
         一套方案就是运行时给 AI 看的资料。版本 1 放优化前 AGENTS.md；版本 2 可放优化后 AGENTS.md、docs/wiki、skills。
@@ -182,7 +181,10 @@ export function VariantEditor({
             </div>
             <div className="list-editor">
               <div className="subsection-heading">
-                <strong>会放进项目的资料</strong>
+                <div className="subsection-title">
+                  <strong>会放进项目的资料</strong>
+                  <span className="inline-help">同路径会覆盖，如 AGENTS.md；原仓库不改</span>
+                </div>
                 <button
                   type="button"
                   className="secondary compact-button"

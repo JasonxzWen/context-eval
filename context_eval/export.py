@@ -136,10 +136,10 @@ def _evaluation_explanation() -> dict[str, Any]:
             "skipped_meaning": "skipped 表示缺少可评分本地产物，不能把缺失证据当作通过。",
         },
         "soft_evaluation": {
-            "mode": "payload-only",
+            "mode": "runner",
             "meaning": (
-                "soft evaluation 默认只生成本地复核 payload；"
-                "显式选择 runner 时会运行本地仲裁命令，结果仍只是软证据。"
+                "soft evaluation 默认在评测 agent 结束后，使用同一个本地 AI "
+                "读取评分依据和本地产物并输出软评分；结果仍只是软证据。"
             ),
         },
         "manual_review": {

@@ -22,9 +22,9 @@ def test_real_project_evaluation_plan_documents_required_contract() -> None:
         "not sending it to the coding agent by default",
         "Codex telemetry must come from structured local run artifacts",
         "Missing telemetry remains `null`",
-        "explicit local arbitration executor",
+        "default same-agent local AI arbitration runner support",
         "no hidden hosted judge calls",
-        "When no arbitration executor is chosen, runner mode uses the same executor",
+        "AI arbitration runner output is saved as local soft evidence",
     ]:
         assert term in text
 
@@ -38,7 +38,7 @@ def test_task_format_documents_real_project_fields() -> None:
         "`compile_diagnosis`",
         "`incident`",
         "`feature`",
-        "It is not appended to the agent prompt by default",
+        "It is not appended to the coding-agent prompt by default",
         "`fix_ref`",
     ]:
         assert term in text
@@ -55,6 +55,6 @@ def test_development_plan_tracks_real_project_capability() -> None:
         "reference_evidence",
         "Do not make hidden OpenAI, Claude, or other hosted LLM judge calls",
         "Do not infer token or tool metrics from unstructured logs",
-        "Add explicit AI arbitration runner execution and artifacts",
+        "Run AI arbitration by default with the same local executor",
     ]:
         assert term in text

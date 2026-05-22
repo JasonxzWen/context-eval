@@ -43,11 +43,6 @@ const agentKindLabels: Record<string, string> = {
   traecli: 'Trae CLI',
 };
 
-const softModeLabels: Record<string, string> = {
-  'payload-only': '仅生成复核材料',
-  runner: '运行 AI 仲裁',
-};
-
 function labelFor(labels: Record<string, string>, value: string | null | undefined) {
   return value ? labels[value] || value : '未配置';
 }
@@ -226,24 +221,12 @@ export function AdvancedConfigDetails({
 
         <section className="panel">
           <div className="panel-heading">
-            <h2>AI 仲裁维度</h2>
-            <span>{labelFor(softModeLabels, task?.soft_evaluation?.mode)}</span>
+            <h2>AI 仲裁</h2>
+            <span>默认开启</span>
           </div>
-          {task?.soft_evaluation?.mode === 'runner' && (
-            <p className="panel-note">
-              仲裁命令：{task.soft_evaluation.runner_agent || '同评测用的本地 AI'}
-            </p>
-          )}
-          <ul className="check-list">
-            {(task?.soft_evaluation?.rubric || []).map((rubric) => (
-              <li key={rubric.name}>
-                <strong>{rubric.name}</strong>
-                <span>{rubric.description}</span>
-                <small>权重={rubric.weight}</small>
-              </li>
-            ))}
-            {!task?.soft_evaluation?.rubric?.length && <li>未配置评分规则</li>}
-          </ul>
+          <p className="panel-note">
+            评测 agent 完成后，同一个本地 AI 会读取评分依据、本地产物和日志，输出软评分。
+          </p>
         </section>
 
         <section className="panel yaml-panel">

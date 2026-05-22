@@ -14,12 +14,12 @@ repository and reports local observations, not absolute agent rankings.
    `coco -y --query-timeout 10m --bash-tool-timeout 5m -p "{prompt}"`.
 4. Configure context variants and overlays.
 5. Author tasks with prompts, category, difficulty, and optional repo refs.
-6. Add expected outcomes, deterministic hard checks, and optional soft
-   evaluation payload settings.
+6. Add expected outcomes, deterministic hard checks, and reference evidence for
+   human review and default local AI arbitration.
 7. Run side-effect-free preflight.
 8. Review the task x variant x trial run plan and explicitly confirm execution.
-9. Inspect results, hard-check evidence, soft payload status, metrics, patches,
-   logs, and exports from local run artifacts.
+9. Inspect results, hard-check evidence, AI arbitration status, metrics,
+   patches, logs, and exports from local run artifacts.
 
 ## Coco-first Agent Profile Configuration
 
@@ -80,7 +80,7 @@ tasks:
       require_validation_pass: true
     soft_evaluation:
       enabled: true
-      mode: "payload-only"
+      mode: "runner"
 ```
 
 Unknown task fields must not be silently dropped by local app save/reload
@@ -125,22 +125,16 @@ The sidecar contains schema version, case identity, pass/fail status, score,
 max score, check rows, evidence, and summary. `results.jsonl`, reports, exports,
 and the local app expose a compact summary while preserving old row parsing.
 
-## Optional Soft Evaluation Model
+## AI Arbitration Model
 
-The first implementation supports payload generation only:
+The default implementation runs local AI arbitration after the coding agent:
 
 ```yaml
 soft_evaluation:
   enabled: true
-  mode: "payload-only"
+  mode: "runner"
   max_score: 10
-  rubric:
-    - name: "requirement_match"
-      weight: 4
-      description: "Patch satisfies the requested behavior."
-    - name: "minimality"
-      weight: 2
-      description: "Patch avoids unrelated changes."
+  runner_agent: null
 ```
 
 The runner writes:
@@ -150,11 +144,12 @@ artifacts/<case_id>/soft_evaluation_payload.json
 ```
 
 The payload includes the task prompt, expected outcome summary, acceptance
-points, rubric, changed files, patch excerpt, validation status, hard
+points, changed files, patch excerpt, validation status, hard
 evaluation summary, and relevant log/artifact paths. context-eval does not call
-OpenAI, Claude, or other hosted model APIs directly and does not require
-provider keys. Soft score is optional evidence and is not the correctness
-source. This workflow does not call hosted model APIs directly.
+OpenAI, Claude, or other hosted models. It does not call hosted model APIs directly.
+If `runner_agent` is empty, the same local agent profile reviews
+the payload in the case workspace and returns JSON soft evidence. The score is
+secondary review evidence and is not the correctness source.
 
 ## Local App UI Workflow
 
@@ -169,11 +164,12 @@ The local app exposes these workflow sections:
   paths, and snippet expectations.
 - Hard Evaluation: enablement, validation requirement, changed-file limit,
   path checks, and snippet checks.
-- Soft Evaluation: enablement, payload-only mode, and rubric.
+- AI Arbitration: default same-agent local review and saved soft evidence.
 - Run Plan: selected Coco profile, planned matrix, and hard/soft flags.
 - Run Execution: explicit confirmation, progress, logs, stop state, and errors.
-- Results: case status, validation, hard score/checks, soft payload/result
-  status, metrics, changed files, patches, logs, and sidecar links.
+- Results: case status, validation, hard score/checks, AI arbitration
+  payload/result status, metrics, changed files, patches, logs, and sidecar
+  links.
 
 The static UI remains export-only and cannot run agents or write files. Local
 app execution still requires explicit confirmation.
@@ -187,7 +183,7 @@ The local app API extends existing endpoints without adding a hosted service:
 - validate expected outcome and evaluation paths during save/preflight;
 - include Coco profile, expected outcome summary, and hard/soft flags in run
   planning;
-- include hard evaluation and soft payload/result status in results;
+- include hard evaluation and AI arbitration payload/result status in results;
 - read `hard_evaluation.json` and `soft_evaluation_payload.json` through the
   existing safe artifact endpoint.
 
@@ -236,7 +232,7 @@ Older rows omit these fields and parse with unavailable defaults.
 - Config/local app tests proving save/reload preserves unknown task fields.
 - Runner tests for hard evaluation pass/fail, required paths, forbidden paths,
   snippet checks, validation requirements, and sidecar artifacts.
-- Runner tests for soft payload-only generation.
+- Runner tests for default same-agent soft arbitration.
 - Local app tests for plan flags, results summaries, and safe sidecar reads.
 - Report/export tests for stable hard/soft fields and old row compatibility.
 - Frontend tests for Coco, expected outcome, hard/soft sections, run plan, and

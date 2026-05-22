@@ -17,6 +17,7 @@ import {
   emptyConfig,
   emptyRunScope,
   fallbackConfig,
+  normalizeEditableForSave,
   primaryAgent,
   reconcileRunScope,
   uniqueTaskId,
@@ -268,6 +269,62 @@ function caseEvidenceNotes(result: ResultCase) {
   return notes;
 }
 
+function hardScoreLabel(result: ResultCase) {
+  const status = labelFor(evaluationLabels, result.hard_evaluation_status || 'not_configured');
+  if (result.hard_evaluation_score == null || result.hard_evaluation_max_score == null) return status;
+  return `${status} ${result.hard_evaluation_score}/${result.hard_evaluation_max_score}`;
+}
+
+function softScoreLabel(result: ResultCase) {
+  const status = labelFor(evaluationLabels, result.soft_evaluation_status || 'not_configured');
+  if (result.soft_evaluation_score == null) return status;
+  return `${status} ${result.soft_evaluation_score}/${result.soft_evaluation_max_score ?? '-'}`;
+}
+
+function manualReviewLabel(review: ManualReview | undefined) {
+  if (!review) return '未复核';
+  const decision = labelFor(reviewDecisionLabels, review.decision || 'not_reviewed');
+  return review.rating ? `${decision} ${review.rating} 星` : decision;
+}
+
+function resultMaterialItems(result: ResultCase) {
+  const items = [
+    {
+      label: '真实结果/修复说明',
+      value: result.reference_evidence?.summary || '未填写',
+    },
+    {
+      label: '真实修复版本',
+      value: result.reference_evidence?.fix_ref || '未填写',
+    },
+    {
+      label: 'AI 仲裁材料',
+      value: result.soft_evaluation_result_path || result.soft_evaluation_payload_path || '未生成',
+    },
+    {
+      label: 'AI 仲裁执行器',
+      value: result.soft_evaluation_runner_agent || '未运行',
+    },
+    {
+      label: '硬性检查',
+      value: hardScoreLabel(result),
+    },
+    {
+      label: '人工反馈',
+      value: manualReviewLabel(result.manual_review),
+    },
+  ];
+  return items;
+}
+
+function resultArtifactItems(result: ResultCase) {
+  return [
+    { label: 'Patch', value: result.patch_path || '未生成' },
+    { label: 'stdout', value: result.stdout_path || '未生成' },
+    { label: 'stderr', value: result.stderr_path || '未生成' },
+  ];
+}
+
 function DesignerGuide() {
   return (
     <section className="designer-guide" aria-label="评测流程说明">
@@ -310,7 +367,6 @@ function TopNav({ hasResults }: { hasResults: boolean }) {
     ['#task-config', '评测题目'],
     ['#context-config', '对比资料'],
     ['#agent-config', '本地 AI'],
-    ['#metric-config', '评分依据'],
     ['#run-config', '开始评测'],
     ['#results', hasResults ? '结果反馈' : '结果待生成'],
   ];
@@ -322,42 +378,6 @@ function TopNav({ hasResults }: { hasResults: boolean }) {
         </a>
       ))}
     </nav>
-  );
-}
-
-function EvaluationSetupPanel() {
-  return (
-    <section className="panel metric-guide-panel" id="metric-config" aria-label="指标与反馈配置">
-      <div className="panel-heading">
-        <h2>4 设置评分依据</h2>
-        <span>结果页使用</span>
-      </div>
-      <p className="panel-note">
-        这些设置决定结果页怎么看证据：硬指标来自本地日志，人工星级由你填写，AI 仲裁必须显式开启。
-      </p>
-      <div className="metric-guide-grid">
-        <article>
-          <strong>硬指标</strong>
-          <span>耗时、token、工具/命令次数、改动文件；缺证据会标出。</span>
-        </article>
-        <article>
-          <strong>项目验证</strong>
-          <span>运行你配置的测试或检查命令，辅助判断功能是否可用。</span>
-        </article>
-        <article>
-          <strong>AI 仲裁</strong>
-          <span>可只生成材料，也可运行本地仲裁命令；分数只是软证据。</span>
-        </article>
-        <article>
-          <strong>人工反馈</strong>
-          <span>你在结果页记录 1-5 星、通过/失败和备注。</span>
-        </article>
-        <article>
-          <strong>证据缺口</strong>
-          <span>缺 Codex JSONL、token、最终回复等会单独提示。</span>
-        </article>
-      </div>
-    </section>
   );
 }
 
@@ -442,6 +462,7 @@ export function App() {
     setConfigYaml(payload.config_yaml);
     setTasksYaml(payload.tasks_yaml);
     setTaskValidationErrors([]);
+    setProjectRepoPath(payload.resolved.repo_path || payload.editable.repo.path || '');
     setSelectedTaskIndex((current) => Math.min(current, Math.max(payload.editable.tasks.length - 1, 0)));
     setSelectedVariantIndex((current) => Math.min(current, Math.max(payload.editable.variants.length - 1, 0)));
     setSelectedAgentIndex((current) => Math.min(current, Math.max(agentsFrom(payload).length - 1, 0)));
@@ -494,7 +515,8 @@ export function App() {
   async function saveEditableConfig(message = '已保存配置并刷新评测计划') {
     setError('');
     const currentLoaded = loadedRef.current;
-    const issues = validateEditableConfig(currentLoaded.editable);
+    const editableForSave = normalizeEditableForSave(currentLoaded.editable);
+    const issues = validateEditableConfig(editableForSave);
     setTaskValidationErrors(issues);
     if (issues.length > 0) {
       setSaveStatus('有配置问题，请按红色提示修改后再保存');
@@ -506,7 +528,7 @@ export function App() {
       body: JSON.stringify({
         config_path: currentLoaded.config_path || configPath,
         tasks_path: currentLoaded.tasks_path || currentLoaded.editable.tasks_path || 'tasks.yaml',
-        editable: currentLoaded.editable,
+        editable: editableForSave,
       }),
     });
     let nextScope = runScopeRef.current;
@@ -647,11 +669,25 @@ export function App() {
     await checkEnvironment();
   }
 
+  function confirmProjectSetupOverwrite() {
+    if (!configLoaded && !workspaceState?.has_config) return false;
+    const confirmed = window.confirm(
+      '这会覆盖当前评测配置，重新生成默认题目、对比资料和本地 AI 命令。继续吗？',
+    );
+    if (!confirmed) {
+      setSaveStatus('已取消切换项目');
+      return null;
+    }
+    return true;
+  }
+
   async function initializeProject() {
     setError('');
+    const overwrite = confirmProjectSetupOverwrite();
+    if (overwrite === null) return;
     const payload = await apiRequest<BootstrapResponse>('/api/workspace/project', {
       method: 'POST',
-      body: JSON.stringify({ repo_path: projectRepoPath, overwrite: false }),
+      body: JSON.stringify({ repo_path: projectRepoPath, overwrite }),
     });
     setWorkspaceState(payload);
     if (payload.loaded) {
@@ -665,13 +701,15 @@ export function App() {
 
   async function cloneProject() {
     setError('');
+    const overwrite = confirmProjectSetupOverwrite();
+    if (overwrite === null) return;
     setEnvironmentStatus('正在克隆仓库');
     const payload = await apiRequest<BootstrapResponse>('/api/workspace/project', {
       method: 'POST',
       body: JSON.stringify({
         repo_url: projectRepoUrl,
         clone_dir: projectCloneDir || undefined,
-        overwrite: false,
+        overwrite,
       }),
     });
     setWorkspaceState(payload);
@@ -1001,7 +1039,10 @@ export function App() {
   const availableBaselineVariants = resultVariants(results);
   const selectedBaselineValue =
     compareBaselineVariant || results?.selected_baseline_variant || availableBaselineVariants[0] || '';
-  const evaluationExplanation = results?.evaluation_explanation;
+  const resultsByCaseId = useMemo(
+    () => new Map((results?.cases || []).map((item) => [item.case_id, item])),
+    [results],
+  );
   const detailHardEvaluation = hardEvaluationFrom(caseDetail);
   const detailEvidenceNotes = caseDetail ? caseEvidenceNotes(caseDetail.case) : [];
   const validationBuckets = validationIssueBuckets(loaded.editable, taskValidationErrors);
@@ -1034,24 +1075,29 @@ export function App() {
         ]}
       />
 
-      <DesignerGuide />
+      <FirstRunPanel
+        title={isFirstRun ? '打开评测项目' : '打开或切换评测项目'}
+        subtitle={
+          isFirstRun
+            ? '先选要评测的代码仓库'
+            : '要换项目时在这里填本地仓库路径或 Git URL；会覆盖当前评测配置'
+        }
+        showDemo={isFirstRun}
+        projectRepoPath={projectRepoPath}
+        projectRepoUrl={projectRepoUrl}
+        projectCloneDir={projectCloneDir}
+        environment={environment}
+        environmentStatus={environmentStatus}
+        onProjectRepoPathChange={setProjectRepoPath}
+        onProjectRepoUrlChange={setProjectRepoUrl}
+        onProjectCloneDirChange={setProjectCloneDir}
+        onBootstrapDemo={() => guarded(bootstrapDemo)}
+        onInitializeProject={() => guarded(initializeProject)}
+        onCloneProject={() => guarded(cloneProject)}
+        onCheckEnvironment={() => guarded(() => checkEnvironment(projectRepoPath).then(() => undefined))}
+      />
 
-      {isFirstRun && (
-        <FirstRunPanel
-          projectRepoPath={projectRepoPath}
-          projectRepoUrl={projectRepoUrl}
-          projectCloneDir={projectCloneDir}
-          environment={environment}
-          environmentStatus={environmentStatus}
-          onProjectRepoPathChange={setProjectRepoPath}
-          onProjectRepoUrlChange={setProjectRepoUrl}
-          onProjectCloneDirChange={setProjectCloneDir}
-          onBootstrapDemo={() => guarded(bootstrapDemo)}
-          onInitializeProject={() => guarded(initializeProject)}
-          onCloneProject={() => guarded(cloneProject)}
-          onCheckEnvironment={() => guarded(() => checkEnvironment(projectRepoPath).then(() => undefined))}
-        />
-      )}
+      <DesignerGuide />
 
       {!isFirstRun && (
       <section className="content-grid">
@@ -1062,7 +1108,6 @@ export function App() {
         )}
         <TaskEditor
           tasks={loaded.editable.tasks}
-          agents={agents}
           selectedTaskIndex={selectedTaskIndex}
           saveStatus={saveStatus}
           serverMode={serverMode}
@@ -1094,7 +1139,6 @@ export function App() {
           onUpdateAgents={updateAgents}
           onSave={() => guarded(() => saveEditableConfig('已保存配置并刷新评测计划'))}
         />
-        <EvaluationSetupPanel />
         <RunControls
           cleanupPolicy={cleanupPolicy}
           isRunActive={isRunActive}
@@ -1171,107 +1215,47 @@ export function App() {
 
         <section className="panel results-panel" id="results" ref={resultsPanelRef}>
           <div className="panel-heading">
-            <h2>6 看结果和反馈</h2>
+            <h2>5 看结果和反馈</h2>
             <span>{results?.overview.case_count ?? 0}</span>
           </div>
           {results ? (
             <>
-              <div className="evaluation-guide" aria-label="评分依据">
-                <div className="guide-heading">
-                  <strong>评分依据和边界</strong>
-                  <span>{evaluationExplanation?.local_only || '仅基于本地产物观察，不是公开 benchmark 或 agent 排行。'}</span>
-                </div>
-                <div className="guide-grid">
-                  <article className="guide-card">
-                    <strong>验证可信度</strong>
-                    <dl>
-                      <div>
-                        <dt>高</dt>
-                        <dd>
-                          {evaluationExplanation?.validation_confidence.high ||
-                            '配置了 validation commands，且验证通过。'}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt>中</dt>
-                        <dd>
-                          {evaluationExplanation?.validation_confidence.medium ||
-                            '配置了 validation commands，但验证失败或超时。'}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt>低</dt>
-                        <dd>
-                          {evaluationExplanation?.validation_confidence.low ||
-                            '没有 validation commands，不能做高置信判断。'}
-                        </dd>
-                      </div>
-                    </dl>
-                  </article>
-                  <article className="guide-card">
-                    <strong>硬性检查</strong>
-                    <p>
-                      {evaluationExplanation?.hard_evaluation.score_meaning ||
-                        'hard score 是通过检查数 / 可评分检查数，不是综合质量分。'}
-                    </p>
-                    <p>
-                      {evaluationExplanation?.hard_evaluation.skipped_meaning ||
-                        'skipped 表示本地产物不足，不能把缺失证据当作通过。'}
-                    </p>
-                  </article>
-                  <article className="guide-card">
-                    <strong>复核材料</strong>
-                    <p>
-                      {evaluationExplanation?.soft_evaluation.meaning ||
-                        '默认只生成复核材料；显式选择 AI 仲裁命令后，会保存软评分证据。'}
-                    </p>
-                  </article>
-                  <article className="guide-card">
-                    <strong>人工反馈</strong>
-                    <p>
-                      {evaluationExplanation?.manual_review.meaning ||
-                        '人工反馈保存的是 reviewer 的证据和结论，不是自动评分。'}
-                    </p>
-                  </article>
-                </div>
-                <ul className="evidence-limit-list">
-                  {(evaluationExplanation?.evidence_limits || [
-                    '无 validation、hard check skipped 或 telemetry missing 时，只能提示证据不足和下一步。',
-                  ]).map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-              <dl className="metric-grid">
+              <section className="result-summary-panel" aria-label="结果概览">
                 <div>
-                  <dt>失败结果</dt>
-                  <dd>{results.overview.failed_count}</dd>
+                  <h3>先看结论，再看证据</h3>
+                  <p>这里汇总每套上下文的执行结果、打分材料和实际变更。分数不是单独结论，必须和 patch、日志、验证结果一起看。</p>
                 </div>
-                <div>
-                  <dt>超时</dt>
-                  <dd>{results.overview.timeout_count}</dd>
-                </div>
-                <div>
-                  <dt>低可信度</dt>
-                  <dd>{results.overview.low_confidence_count}</dd>
-                </div>
-                <div>
-                  <dt>证据缺口</dt>
-                  <dd>{results.overview.telemetry_gap_count}</dd>
-                </div>
-              </dl>
+                <dl className="metric-grid result-health-grid">
+                  <div>
+                    <dt>失败</dt>
+                    <dd>{results.overview.failed_count}</dd>
+                  </div>
+                  <div>
+                    <dt>超时</dt>
+                    <dd>{results.overview.timeout_count}</dd>
+                  </div>
+                  <div>
+                    <dt>低可信</dt>
+                    <dd>{results.overview.low_confidence_count}</dd>
+                  </div>
+                  <div>
+                    <dt>缺指标</dt>
+                    <dd>{results.overview.telemetry_gap_count}</dd>
+                  </div>
+                </dl>
+              </section>
               {availableBaselineVariants.length > 0 && (
-                <section className="compare-summary" aria-label="对比摘要">
+                <section className="compare-summary" aria-label="对比结论">
                   <div className="panel-heading compact-heading">
-                    <h3>对比摘要</h3>
+                    <h3>对比结论</h3>
                     <span>{results.compare_groups?.length ?? 0}</span>
                   </div>
                   <div className="baseline-control">
                     <label htmlFor="compare-baseline">
-                      对照组方案
+                      对照方案
                       <select
                         id="compare-baseline"
-                        aria-label="对照组方案"
+                        aria-label="对照方案"
                         value={selectedBaselineValue}
                         onChange={(event) => {
                           const nextBaseline = event.target.value;
@@ -1285,161 +1269,199 @@ export function App() {
                         ))}
                       </select>
                     </label>
-                    <p className="status-line">
-                      对照组是你认为“当前默认”的上下文资料，其他资料会和它比较；baseline 通常指当前 AGENTS.md / skills。
-                    </p>
+                    <p className="status-line">选择一套作为对照，其他上下文方案会和它比较。</p>
                   </div>
                   {results.baseline_selection_notice && (
                     <div className="notice validation-notice">{results.baseline_selection_notice}</div>
                   )}
                   {(results.compare_groups || []).length > 0 ? (
                     <div className="compare-grid">
-                      {(results.compare_groups || []).map((group: CompareGroup) => (
-                        <article className="compare-card" key={group.group_id}>
-                          <div className="compare-card-heading">
-                            <strong>{labelFor(compareVerdictLabels, group.verdict)}</strong>
-                            <span>{group.summary}</span>
-                          </div>
-                          <dl>
-                            <div>
-                              <dt>任务</dt>
-                              <dd>{group.task_id}</dd>
+                      {(results.compare_groups || []).map((group: CompareGroup) => {
+                        const baselineResult = resultsByCaseId.get(group.baseline_case_id);
+                        const comparisonResult = resultsByCaseId.get(group.comparison_case_id);
+                        return (
+                          <article className="compare-card" key={group.group_id}>
+                            <div className="compare-card-heading">
+                              <strong>{labelFor(compareVerdictLabels, group.verdict)}</strong>
+                              <span>{group.summary}</span>
                             </div>
-                            <div>
-                              <dt>对照组</dt>
-                              <dd>{displayVariantName(group.baseline_variant)}</dd>
+                            <div className="compare-pair-grid">
+                              <div>
+                                <small>对照</small>
+                                <strong>{displayVariantName(group.baseline_variant)}</strong>
+                                <span>{baselineResult ? hardScoreLabel(baselineResult) : '-'}</span>
+                                <span>{baselineResult ? softScoreLabel(baselineResult) : '-'}</span>
+                                <span>变更 {metricValue(baselineResult?.changed_files)}</span>
+                              </div>
+                              <div>
+                                <small>对比</small>
+                                <strong>{displayVariantName(group.comparison_variant)}</strong>
+                                <span>{comparisonResult ? hardScoreLabel(comparisonResult) : '-'}</span>
+                                <span>{comparisonResult ? softScoreLabel(comparisonResult) : '-'}</span>
+                                <span>变更 {metricValue(comparisonResult?.changed_files)}</span>
+                              </div>
                             </div>
-                            <div>
-                              <dt>对比对象</dt>
-                              <dd>{displayVariantName(group.comparison_variant)}</dd>
+                            <dl className="compare-delta-list">
+                              <div>
+                                <dt>验证差异</dt>
+                                <dd>{signedDelta(group.validation_delta)}</dd>
+                              </div>
+                              <div>
+                                <dt>硬检差异</dt>
+                                <dd>{signedDelta(group.hard_check_delta)}</dd>
+                              </div>
+                              <div>
+                                <dt>Token 差异</dt>
+                                <dd>{signedDelta(group.total_tokens_delta)}</dd>
+                              </div>
+                            </dl>
+                            <div className="button-row compact-actions">
+                              {baselineResult && (
+                                <button
+                                  type="button"
+                                  className="secondary compact-button"
+                                  onClick={() => guarded(() => loadCaseDetail(baselineResult.case_id))}
+                                >
+                                  看对照变更
+                                </button>
+                              )}
+                              {comparisonResult && (
+                                <button
+                                  type="button"
+                                  className="secondary compact-button"
+                                  onClick={() => guarded(() => loadCaseDetail(comparisonResult.case_id))}
+                                >
+                                  看对比变更
+                                </button>
+                              )}
                             </div>
-                            <div>
-                              <dt>Validation delta</dt>
-                              <dd>{signedDelta(group.validation_delta)}</dd>
+                            <div className="evidence-gap-block compact-evidence">
+                              <strong>缺失指标</strong>
+                              {group.evidence_gaps.length > 0 ? (
+                                <ul className="evidence-gap-list">
+                                  {group.evidence_gaps.slice(0, 3).map((gap) => (
+                                    <li key={`${group.group_id}:${gap.code}:${gap.variant}`}>
+                                      <span>{gap.message}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <small>未发现影响本次比较的证据缺口。</small>
+                              )}
                             </div>
-                            <div>
-                              <dt>Hard check delta</dt>
-                              <dd>{signedDelta(group.hard_check_delta)}</dd>
-                            </div>
-                            <div>
-                              <dt>令牌差值</dt>
-                              <dd>{signedDelta(group.total_tokens_delta)}</dd>
-                            </div>
-                          </dl>
-                          <div className="evidence-gap-block">
-                            <strong>证据不足原因</strong>
-                            {group.evidence_gaps.length > 0 ? (
-                              <ul className="evidence-gap-list">
-                                {group.evidence_gaps.map((gap) => (
-                                  <li key={`${group.group_id}:${gap.code}:${gap.variant}`}>
-                                    <span>{gap.message}</span>
-                                    <small>{gap.next_step}</small>
-                                  </li>
-                                ))}
-                              </ul>
-                            ) : (
-                              <small>未发现影响本次比较的证据缺口。</small>
-                            )}
-                          </div>
-                        </article>
-                      ))}
+                          </article>
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="status-line">当前对照组没有可比对象，至少选择两套对比资料后会生成摘要。</p>
                   )}
                 </section>
               )}
-              <table>
-                <thead>
-                  <tr>
-                    <th>题目</th>
-                    <th>本地 AI</th>
-                    <th>状态</th>
-                    <th>验证</th>
-                    <th>可信度</th>
-                    <th>硬指标</th>
-                    <th>硬性检查</th>
-                    <th>软性材料</th>
-                    <th>复核</th>
-                    <th>详情</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <section className="result-card-section" aria-label="逐条结果">
+                <div className="panel-heading compact-heading">
+                  <h3>逐条结果</h3>
+                  <span>{results.cases.length}</span>
+                </div>
+                <div className="result-card-grid">
                   {results.cases.map((result) => {
                     const evidenceNotes = caseEvidenceNotes(result);
                     return (
-                      <tr key={result.case_id} className={selectedCaseId === result.case_id ? 'selected-row' : ''}>
-                        <td data-label="题目">
-                          {result.task_id}
-                          <small>{displayVariantName(result.variant)}</small>
-                        </td>
-                        <td data-label="本地 AI">{result.agent_name}</td>
-                        <td data-label="状态">{labelFor(resultStatusLabels, result.status)}</td>
-                        <td data-label="验证">{labelFor(validationLabels, result.validation_status)}</td>
-                        <td data-label="可信度">
-                          {labelFor(confidenceLabels, result.confidence)}
-                          <small>{confidenceReason(result.confidence)}</small>
-                        </td>
-                        <td data-label="硬指标">
-                          {labelFor(telemetryLabels, result.telemetry_status || 'unavailable')}
-                          <small>耗时 {formatDuration(result.agent_duration_seconds)}</small>
-                          <small>Token {metricValue(result.total_tokens)}</small>
-                          <small>
-                            Tool {metricValue(result.tool_call_count)} / 命令 {metricValue(result.command_call_count)}
-                          </small>
-                          <small>改动文件 {metricValue(result.changed_files)}</small>
-                          <small>{codexEvidenceGapSummary(result)}</small>
-                          {result.telemetry_error && <small>{result.telemetry_error}</small>}
-                        </td>
-                        <td data-label="硬性检查">
-                          {labelFor(evaluationLabels, result.hard_evaluation_status || 'not_configured')}{' '}
-                          {result.hard_evaluation_score ?? '-'}
-                          /
-                          {result.hard_evaluation_max_score ?? '-'}
-                          <small>通过检查数 / 可评分检查数</small>
-                        </td>
-                        <td data-label="软性材料">
-                          {labelFor(evaluationLabels, result.soft_evaluation_status || 'not_configured')}
-                          {result.soft_evaluation_payload_path && (
-                            <small>
-                              {result.soft_evaluation_result_path ? '本地仲裁结果' : 'payload-only'}
-                            </small>
-                          )}
-                          {result.soft_evaluation_score != null && (
-                            <small>
-                              软评分 {result.soft_evaluation_score}/{result.soft_evaluation_max_score ?? '-'}
-                            </small>
-                          )}
-                          {result.soft_evaluation_runner_agent && (
-                            <small>仲裁命令 {result.soft_evaluation_runner_agent}</small>
-                          )}
-                        </td>
-                        <td data-label="复核">
-                          {labelFor(reviewDecisionLabels, result.manual_review?.decision || 'not_reviewed')}
-                          {result.manual_review?.confidence && (
-                            <small>{labelFor(confidenceLabels, result.manual_review.confidence)}</small>
-                          )}
-                          {result.manual_review?.rating && <small>{result.manual_review.rating} 星</small>}
-                        </td>
-                        <td data-label="详情">
-                          <button
-                            type="button"
-                            className="secondary compact-button"
-                            onClick={() => guarded(() => loadCaseDetail(result.case_id))}
-                          >
-                            查看详情
-                          </button>
-                          {evidenceNotes.length > 0 && <small>有证据不足解释</small>}
-                        </td>
-                      </tr>
+                      <article
+                        className={`result-card ${selectedCaseId === result.case_id ? 'selected-result-card' : ''}`}
+                        key={result.case_id}
+                      >
+                        <div className="result-card-heading">
+                          <div>
+                            <strong>{result.task_id}</strong>
+                            <span>{displayVariantName(result.variant)} · {result.agent_name}</span>
+                          </div>
+                          <span className="result-status-chip">{labelFor(resultStatusLabels, result.status)}</span>
+                        </div>
+                        <dl className="result-kpi-grid">
+                          <div>
+                            <dt>硬性检查</dt>
+                            <dd>{hardScoreLabel(result)}</dd>
+                          </div>
+                          <div>
+                            <dt>AI 仲裁</dt>
+                            <dd>{softScoreLabel(result)}</dd>
+                          </div>
+                          <div>
+                            <dt>人工反馈</dt>
+                            <dd>{manualReviewLabel(result.manual_review)}</dd>
+                          </div>
+                          <div>
+                            <dt>耗时</dt>
+                            <dd>{formatDuration(result.agent_duration_seconds)}</dd>
+                          </div>
+                          <div>
+                            <dt>Token</dt>
+                            <dd>{metricValue(result.total_tokens)}</dd>
+                          </div>
+                          <div>
+                            <dt>工具 / 命令</dt>
+                            <dd>
+                              {metricValue(result.tool_call_count)} / {metricValue(result.command_call_count)}
+                            </dd>
+                          </div>
+                        </dl>
+                        <div className="result-card-columns">
+                          <div className="result-card-sectionlet">
+                            <strong>打分材料</strong>
+                            <dl>
+                              {resultMaterialItems(result).map((item) => (
+                                <div key={`${result.case_id}:${item.label}`}>
+                                  <dt>{item.label}</dt>
+                                  <dd>{item.value}</dd>
+                                </div>
+                              ))}
+                            </dl>
+                          </div>
+                          <div className="result-card-sectionlet">
+                            <strong>变更与日志</strong>
+                            <dl>
+                              <div>
+                                <dt>改动文件</dt>
+                                <dd>{metricValue(result.changed_files)}</dd>
+                              </div>
+                              {resultArtifactItems(result).map((item) => (
+                                <div key={`${result.case_id}:${item.label}`}>
+                                  <dt>{item.label}</dt>
+                                  <dd>{item.value}</dd>
+                                </div>
+                              ))}
+                            </dl>
+                          </div>
+                        </div>
+                        {evidenceNotes.length > 0 && (
+                          <div className="evidence-gap-block compact-evidence">
+                            <strong>缺失指标</strong>
+                            <ul className="evidence-gap-list">
+                              {evidenceNotes.slice(0, 3).map((note) => (
+                                <li key={`${result.case_id}:${note.title}`}>
+                                  <span>{note.message}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          className="secondary result-card-action"
+                          onClick={() => guarded(() => loadCaseDetail(result.case_id))}
+                        >
+                          查看变更和日志
+                        </button>
+                      </article>
                     );
                   })}
-                </tbody>
-              </table>
+                </div>
+              </section>
               {caseDetail && (
                 <section className="case-detail-panel">
                   <div className="panel-heading compact-heading">
-                    <h3>结果详情</h3>
+                    <h3>变更与打分材料</h3>
                     <span>{displayVariantName(caseDetail.case.variant)}</span>
                   </div>
                   <div className="detail-grid">
@@ -1453,7 +1475,7 @@ export function App() {
                         <dd>{formatCaseType(caseDetail.case.case_type)}</dd>
                       </div>
                       <div>
-                        <dt>参考答案</dt>
+                        <dt>真实对照</dt>
                         <dd>
                           {caseDetail.case.reference_evidence?.summary || '未填写'}
                           {caseDetail.case.reference_evidence?.fix_ref && (
@@ -1506,7 +1528,7 @@ export function App() {
                             <small>
                               {caseDetail.case.soft_evaluation_result_path
                                 ? '本地仲裁结果'
-                                : 'payload-only'}
+                                : '本地复核材料'}
                             </small>
                           )}
                           {caseDetail.case.soft_evaluation_score != null && (
@@ -1516,7 +1538,7 @@ export function App() {
                             </small>
                           )}
                           {caseDetail.case.soft_evaluation_runner_agent && (
-                            <small>仲裁命令 {caseDetail.case.soft_evaluation_runner_agent}</small>
+                            <small>仲裁 AI {caseDetail.case.soft_evaluation_runner_agent}</small>
                           )}
                         </dd>
                       </div>
@@ -1537,9 +1559,7 @@ export function App() {
                     >
                       <div className="review-form-heading">
                         <strong>人工反馈</strong>
-                        <span>
-                          请根据期望结果、自动验收、patch 和日志记录结论；这是一条人工证据，不会替代硬指标。
-                        </span>
+                        <span>看完 patch、日志、硬性检查和 AI 仲裁后，记录你的最终判断。</span>
                       </div>
                       <label htmlFor="review-decision">
                         反馈结论
@@ -1751,9 +1771,7 @@ export function App() {
                   {(caseDetail.soft_evaluation || caseDetail.case.soft_evaluation_payload_path) && (
                     <section className="soft-detail-panel" aria-label="软性复核材料">
                       <h4>软性复核材料</h4>
-                      <p>
-                        这里展示本地复核材料和可选 AI 仲裁结果；仲裁分只作为软证据。
-                      </p>
+                      <p>AI 仲裁读取这些本地材料打软分；分数只作为复核参考。</p>
                       <dl className="compact-list">
                         <div>
                           <dt>payload</dt>

@@ -2,11 +2,33 @@ import { localAppFixture } from './fixture';
 import type {
   EditableAgent,
   EditableConfig,
+  SoftEvaluation,
   EditableTask,
   EditableVariant,
   LoadedConfig,
   RunScope,
 } from './types';
+
+export function defaultSoftEvaluation(): SoftEvaluation {
+  return {
+    enabled: true,
+    mode: 'runner',
+    runner_agent: null,
+    timeout_seconds: null,
+    max_score: 10,
+    rubric: [],
+  };
+}
+
+export function normalizeEditableForSave(editable: EditableConfig): EditableConfig {
+  return {
+    ...editable,
+    tasks: editable.tasks.map((task) => ({
+      ...task,
+      soft_evaluation: defaultSoftEvaluation(),
+    })),
+  };
+}
 
 export function fallbackConfig(): LoadedConfig {
   const fallbackAgents: EditableAgent[] = localAppFixture.agents.map((agent) => ({
@@ -43,12 +65,7 @@ export function fallbackConfig(): LoadedConfig {
       command_checks: [],
     },
     soft_evaluation: {
-      enabled: true,
-      mode: 'payload-only',
-      runner_agent: null,
-      timeout_seconds: null,
-      max_score: 10,
-      rubric: [{ name: 'quality', weight: 1, description: 'Patch is clear.' }],
+      ...defaultSoftEvaluation(),
     },
   }));
   const fallbackVariants: EditableVariant[] = localAppFixture.variants.map((variant) => ({
@@ -92,9 +109,6 @@ export function fallbackConfig(): LoadedConfig {
       '    hard_evaluation:',
       '      enabled: true',
       '      required_paths: [README.md]',
-      '    soft_evaluation:',
-      '      enabled: true',
-      '      mode: payload-only',
     ]),
     '',
   ].join('\n');
@@ -231,7 +245,7 @@ export function validateEditableConfig(editable: EditableConfig) {
       issues.push(`${label}: 任务 ID 不能为空`);
     }
     if (!task.prompt.trim()) {
-      issues.push(`${label}: AI 要做什么不能为空`);
+      issues.push(`${label}: 任务提示词不能为空`);
     }
     task.validation_commands.forEach((command, commandIndex) => {
       if (!command.trim()) {
@@ -246,19 +260,6 @@ export function validateEditableConfig(editable: EditableConfig) {
         issues.push(`${label}: 第 ${checkIndex + 1} 条命令检查内容不能为空`);
       }
     });
-    task.soft_evaluation?.rubric?.forEach((item, rubricIndex) => {
-      if (!item.name.trim()) {
-        issues.push(`${label}: 第 ${rubricIndex + 1} 条评分规则名称不能为空`);
-      }
-      if (!(item.weight > 0)) {
-        issues.push(`${label}: 第 ${rubricIndex + 1} 条评分规则权重必须大于 0`);
-      }
-    });
-    if (task.soft_evaluation?.runner_agent) {
-      if (!agentNames.includes(task.soft_evaluation.runner_agent.trim())) {
-        issues.push(`${label}: 仲裁命令必须匹配已有本地 AI`);
-      }
-    }
   });
   duplicates.forEach((id) => issues.push(`任务 ID 重复: ${id}`));
   return issues;
@@ -305,12 +306,7 @@ export function blankTask(tasks: EditableTask[]): EditableTask {
       command_checks: [],
     },
     soft_evaluation: {
-      enabled: true,
-      mode: 'payload-only',
-      runner_agent: null,
-      timeout_seconds: null,
-      max_score: 10,
-      rubric: [],
+      ...defaultSoftEvaluation(),
     },
   };
 }

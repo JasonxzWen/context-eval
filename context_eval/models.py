@@ -407,7 +407,7 @@ class SoftRubricItem(BaseModel):
 
 class SoftEvaluationConfig(BaseModel):
     enabled: bool = True
-    mode: Literal["payload-only", "runner"] = "payload-only"
+    mode: Literal["payload-only", "runner"] = "runner"
     runner_agent: str | None = None
     timeout_seconds: int | None = Field(default=None, ge=1)
     max_score: float = Field(default=10, gt=0)
@@ -452,6 +452,10 @@ class TaskConfig(BaseModel):
         if not value.strip():
             raise ValueError("task prompt must not be empty")
         return value
+
+
+def effective_soft_evaluation_config(task: TaskConfig) -> SoftEvaluationConfig:
+    return task.soft_evaluation or SoftEvaluationConfig()
 
 
 class TaskFile(BaseModel):

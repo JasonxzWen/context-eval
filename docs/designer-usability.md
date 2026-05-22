@@ -16,7 +16,7 @@ public benchmark or an agent leaderboard.
 The product boundary is local-only and artifact-based: not a public benchmark,
 not an agent leaderboard, and no hidden OpenAI, Claude, or other LLM judge calls.
 validation passing means configured checks passed, not that the task is
-absolutely correct. AI arbitration runner output is optional soft evidence.
+absolutely correct. AI arbitration output is secondary soft evidence.
 
 ## First-Use Workflow
 
@@ -33,7 +33,7 @@ YAML:
    context-eval can capture structured evidence.
 5. Run local checks: verify Git, Codex CLI, repository state, task refs, overlay
    paths, and output paths before starting a run.
-6. Review results: inspect hard metrics, validation, optional AI arbitration,
+6. Review results: inspect hard metrics, validation, AI arbitration,
    reference evidence, patch/log artifacts, and manual feedback.
 
 ## User Scope
@@ -73,13 +73,13 @@ the comparison target.
 | repo_ref | 起始版本 | The Git version used to create this case's isolated workspace. |
 | expected_outcome | 人工验收目标 | What a successful result should look like for human review. |
 | acceptance_points | 验收点 | Checklist items used by human feedback and optional arbitration payloads. |
-| reference_evidence | 参考答案 | True answer, real fix ref, important files, or maintainer notes. |
+| reference_evidence | 真实对照材料 | True answer, real fix ref, important files, or maintainer notes. |
 | validation_commands | 自动验收命令 | Project tests or scripts run after the agent finishes. |
 | variant | 上下文方案 / 对比资料 | A named context package to compare. |
 | overlay | Agent 工作说明 / 技能包 / 资料 | A local `AGENTS.md`, `skills` folder, docs folder, or wiki export copied into the run workspace. |
 | agent | 本地 AI | The local command that runs the coding agent. |
 | hard_evaluation | 硬性检查 | Deterministic local checks; evidence, not absolute correctness. |
-| soft_evaluation | AI 仲裁材料 | Optional local arbitration evidence; never the truth source by itself. |
+| soft_evaluation | AI 仲裁 | Default same-agent local arbitration; never the truth source by itself. |
 | manual_review | 人工反馈 | Human conclusion, rating, confidence, and notes saved with the result. |
 | telemetry | 硬指标 | Duration, tokens, tool calls, command calls, status, and evidence gaps. |
 
@@ -125,13 +125,14 @@ The case editor should keep the common fields visible:
 - case type;
 - AI task prompt;
 - start version;
-- human acceptance target;
+- human acceptance target and AI arbitration basis;
 - reference answer or real fix evidence;
 - validation command.
 
-Advanced hard checks and AI arbitration settings may stay behind an expandable
-section. The copy must make clear that reference evidence is not sent to the
-coding agent by default.
+Advanced hard checks may stay behind an expandable section. AI arbitration is
+not a planner setting in the common UI: it runs after the coding agent with the
+same local AI and the same case workspace. The copy must make clear that
+reference evidence is not sent to the coding agent by default.
 
 ### Context Packages
 
@@ -155,7 +156,7 @@ The result detail should show:
 - changed files and touched paths;
 - validation status;
 - hard-check status and score;
-- optional AI arbitration result as soft evidence;
+- AI arbitration result as soft evidence;
 - evidence gaps such as missing Codex JSONL or final message;
 - manual one-to-five rating, conclusion, confidence, reviewer, and notes.
 
@@ -182,10 +183,10 @@ This slice is acceptable when:
 3. The UI shows local environment checks for Git, Codex CLI, and the selected
    repository.
 4. The case editor supports start version, reference evidence, validation, hard
-   checks, optional AI arbitration, and manual-review goals.
+   checks, default AI arbitration basis, and manual-review goals.
 5. The context editor makes old `AGENTS.md` versus new `AGENTS.md` plus docs or
    skills easy to configure.
-6. Result views show hard metrics, Codex evidence gaps, optional AI arbitration,
+6. Result views show hard metrics, Codex evidence gaps, AI arbitration,
    and manual feedback.
 7. Missing telemetry remains missing and is shown as an evidence gap.
 8. Unit tests, frontend tests, and Playwright E2E tests cover the setup and

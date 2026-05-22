@@ -10,7 +10,7 @@ def test_coco_visual_hybrid_spec_documents_required_contract() -> None:
         "## Task Authoring Model",
         "## Expected Outcome Model",
         "## Hard Evaluation Model",
-        "## Optional Soft Evaluation Model",
+        "## AI Arbitration Model",
         "## Local App UI Workflow",
         "## Local App API Workflow",
         "## Artifact Schema Additions",
@@ -26,7 +26,7 @@ def test_coco_visual_hybrid_spec_documents_required_contract() -> None:
         "expected_outcome",
         "hard_evaluation",
         "soft_evaluation",
-        "payload-only",
+        "default local AI arbitration",
         "artifacts/<case_id>/hard_evaluation.json",
         "artifacts/<case_id>/soft_evaluation_payload.json",
         "does not install Coco",
@@ -46,7 +46,7 @@ def test_development_plan_marks_coco_visual_hybrid_as_next_capability() -> None:
         "docs/coco-visual-hybrid-evaluation.md",
         'kind: "coco"',
         "deterministic hard checks",
-        "optional soft evaluation payload",
+        "default local AI arbitration",
     ]:
         assert term in text
 
@@ -72,7 +72,7 @@ def test_openspec_change_defines_coco_visual_hybrid_capability() -> None:
         "#### Scenario: Coco profile validates",
         "### Requirement: Structured task authoring model",
         "### Requirement: Deterministic hard evaluation artifacts",
-        "### Requirement: Optional soft evaluation payload",
+        "### Requirement: Default same-agent AI arbitration",
         "### Requirement: Local app visual workflow",
         "### Requirement: Reports and exports expose stable evaluation fields",
     ]:

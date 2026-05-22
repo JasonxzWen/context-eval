@@ -167,8 +167,8 @@ YAML keys, artifact names, and API fields can remain English.
 The current visual case editor lets users select a task and edit the common
 case-authoring fields without touching YAML: task ID, title, prompt, category,
 difficulty, expected-outcome summary, acceptance points, expected files,
-validation commands, command-based hard checks, soft review rubric, and visible
-context variant associations. Saving this form writes `tasks.yaml`, reloads the
+validation commands, command-based hard checks, default AI arbitration material,
+and visible context variant associations. Saving this form writes `tasks.yaml`, reloads the
 server-side config, and refreshes the run plan before the user starts a run.
 The raw YAML view stays available as an advanced folded view for fields that do
 not yet have visual controls.
@@ -187,8 +187,8 @@ configuration path.
 
 The Coco-first visual authoring slice is specified in
 `docs/coco-visual-hybrid-evaluation.md`. It extends this workflow with Project,
-Coco Agent, Context Variants, Tasks, Expected Outcome, Hard Evaluation, Soft
-Evaluation, Run Plan, Run Execution, and Results sections. The app must keep
+Coco Agent, Context Variants, Tasks, Expected Outcome, Hard Evaluation, AI
+Arbitration, Run Plan, Run Execution, and Results sections. The app must keep
 these controls local-only: structured authoring may save `context-eval.yaml`
 and `tasks.yaml`, but agent execution still requires explicit run confirmation.
 
@@ -264,8 +264,8 @@ The results view should read local run artifacts and show:
 - hard evaluation status, score, failed checks, and sidecar links when present,
   with the score labeled as passed checks / scoreable checks rather than a
   combined quality score;
-- soft evaluation payload/result status and sidecar links when present, labeled
-  as payload-only material rather than automatic LLM scoring;
+- AI arbitration payload/result status and sidecar links when present, labeled
+  as secondary local review evidence rather than automatic truth;
 - manual review status as human-entered evidence and conclusions rather than
   automatic scoring;
 - evidence-gap explanations and next steps when validation is missing, a hard

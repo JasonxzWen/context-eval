@@ -41,18 +41,19 @@ The Coco-first hybrid evaluation workflow adds case-local sidecars:
 
 - `artifacts/<case_id>/hard_evaluation.json`
 - `artifacts/<case_id>/soft_evaluation_payload.json`
-- `artifacts/<case_id>/soft_evaluation_result.json` when an explicit local AI
-  arbitration runner is enabled
-- `artifacts/<case_id>/soft_evaluation_raw_result.txt` when a runner is enabled
+- `artifacts/<case_id>/soft_evaluation_result.json` when default local AI
+  arbitration completes
+- `artifacts/<case_id>/soft_evaluation_raw_result.txt` when local arbitration
+  runs
 
 `hard_evaluation.json` records deterministic check results, score, max score,
 pass/fail status, evidence, and summary. Checks can cover validation success,
 required files, forbidden files, changed-file limits, expected snippets,
 forbidden snippets, diff-stat bounds, and agent completion.
 
-`soft_evaluation_payload.json` records review input for later human or local
-judge use. It is not a hosted API call and does not make soft scores mandatory
-for pass/fail.
+`soft_evaluation_payload.json` records review input for human review and the
+default same-agent local arbitration run. It is not a hosted API call and does
+not make soft scores mandatory for pass/fail.
 
 `soft_evaluation_result.json` records the local arbitration executor, command
 exit status, duration, stdout/stderr paths, raw result path, telemetry, parsed

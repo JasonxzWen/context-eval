@@ -19,8 +19,61 @@ const agentKinds = [
   { value: 'traecli', label: 'Trae CLI' },
 ];
 
+const generatedCommandKinds = new Set(['codex-cli', 'claude-code', 'coco', 'traecli']);
+
 function agentKindLabel(value: string) {
   return agentKinds.find((kind) => kind.value === value)?.label || value;
+}
+
+function commandTemplateParts(kind: string): { prefix: string; suffix: string } | null {
+  if (kind === 'codex-cli') {
+    return {
+      prefix: 'codex exec --json',
+      suffix: ' --output-last-message "{output_dir}/codex-final-message.md" -C "{workspace}" - < "{prompt_file}"',
+    };
+  }
+  if (kind === 'claude-code') {
+    return {
+      prefix: 'claude -p',
+      suffix: ' < "{prompt_file}"',
+    };
+  }
+  if (kind === 'coco') {
+    return {
+      prefix: 'coco -y',
+      suffix: ' -p "{prompt}"',
+    };
+  }
+  if (kind === 'traecli') {
+    return {
+      prefix: 'traecli',
+      suffix: ' -p "{prompt}"',
+    };
+  }
+  return null;
+}
+
+function defaultAgentArgs(kind: string) {
+  if (kind === 'codex-cli') return '--sandbox workspace-write';
+  if (kind === 'claude-code') return '--output-format stream-json';
+  if (kind === 'coco') return '--query-timeout 10m --bash-tool-timeout 5m';
+  return '';
+}
+
+function buildAgentCommand(kind: string, extraArgs: string = defaultAgentArgs(kind)) {
+  const parts = commandTemplateParts(kind);
+  if (!parts) return '';
+  const trimmed = extraArgs.trim();
+  return `${parts.prefix}${trimmed ? ` ${trimmed}` : ''}${parts.suffix}`;
+}
+
+function agentExtraArgs(agent: EditableAgent) {
+  const parts = commandTemplateParts(agent.kind);
+  const command = agent.command.trim();
+  if (!parts || !command.startsWith(parts.prefix) || !command.endsWith(parts.suffix)) {
+    return '';
+  }
+  return command.slice(parts.prefix.length, command.length - parts.suffix.length).trim();
 }
 
 function uniqueAgentName(base: string, agents: EditableAgent[]) {
@@ -34,10 +87,11 @@ function uniqueAgentName(base: string, agents: EditableAgent[]) {
 }
 
 function blankAgent(agents: EditableAgent[]): EditableAgent {
+  const kind = 'codex-cli';
   return {
-    name: uniqueAgentName('new-agent', agents),
-    kind: 'custom',
-    command: '',
+    name: uniqueAgentName('codex-cli', agents),
+    kind,
+    command: buildAgentCommand(kind),
     timeout_minutes: 60,
     network: 'disabled',
   };
@@ -61,6 +115,18 @@ export function AgentEditor({
     onUpdateAgents(
       agents.map((item, index) => (index === selectedIndex ? { ...item, ...patch } : item)),
     );
+  }
+
+  function updateAgentKind(kind: string) {
+    const next: Partial<EditableAgent> = { kind };
+    if (generatedCommandKinds.has(kind)) {
+      next.command = buildAgentCommand(kind);
+    }
+    updateAgent(next);
+  }
+
+  function updateGeneratedArgs(extraArgs: string) {
+    updateAgent({ command: buildAgentCommand(agent.kind, extraArgs) });
   }
 
   function addAgent() {
@@ -89,7 +155,6 @@ export function AgentEditor({
     <section className="panel agent-editor-panel" id="agent-config" aria-label="执行器配置">
       <div className="panel-heading">
         <h2>3 选择本地 AI</h2>
-        <span>{agents.length} 个命令</span>
       </div>
       <p className="panel-note">
         执行器就是实际做题的本地 AI 命令。用 Codex CLI 时建议 `codex exec --json`，这样能采集 token、耗时和工具调用。
@@ -151,7 +216,7 @@ export function AgentEditor({
                   id="agent-kind"
                   aria-label="执行器类型"
                   value={agent.kind}
-                  onChange={(event) => updateAgent({ kind: event.target.value })}
+                  onChange={(event) => updateAgentKind(event.target.value)}
                 >
                   {agentKinds.map((kind) => (
                     <option value={kind.value} key={kind.value}>
@@ -160,6 +225,19 @@ export function AgentEditor({
                   ))}
                 </select>
               </label>
+              {generatedCommandKinds.has(agent.kind) && (
+                <label htmlFor="agent-extra-args">
+                  启动参数（可选）
+                  <input
+                    id="agent-extra-args"
+                    aria-label="启动参数"
+                    placeholder="例如：--model gpt-5.1"
+                    value={agentExtraArgs(agent)}
+                    onChange={(event) => updateGeneratedArgs(event.target.value)}
+                  />
+                  <small className="inline-help">系统会自动加入工作区路径和题目提示词</small>
+                </label>
+              )}
               <label htmlFor="agent-timeout">
                 最长运行时间（分钟）
                 <input
@@ -184,17 +262,37 @@ export function AgentEditor({
                 </select>
               </label>
             </div>
-            <label htmlFor="agent-command">
-              启动命令
-              <textarea
-                id="agent-command"
-                aria-label="执行器命令模板"
-                placeholder='例如：codex exec --json --output-last-message final.txt < "{prompt_file}"'
-                value={agent.command}
-                onChange={(event) => updateAgent({ command: event.target.value })}
-                spellCheck={false}
-              />
-            </label>
+            {generatedCommandKinds.has(agent.kind) ? (
+              <details className="advanced-inline">
+                <summary>高级：查看自动生成的完整命令</summary>
+                <label htmlFor="agent-command-preview" className="advanced-field-grid">
+                  完整命令预览
+                  <textarea
+                    id="agent-command-preview"
+                    aria-label="自动生成的完整命令"
+                    value={agent.command || buildAgentCommand(agent.kind)}
+                    readOnly
+                    spellCheck={false}
+                  />
+                </label>
+              </details>
+            ) : (
+              <details className="advanced-inline">
+                <summary>高级：技术命令（不推荐）</summary>
+                <p className="panel-note">只给技术用户使用；推荐优先选择 Codex CLI 或 Claude Code。</p>
+                <label htmlFor="agent-command" className="advanced-field-grid">
+                  完整命令
+                  <textarea
+                    id="agent-command"
+                    aria-label="自定义完整命令"
+                    placeholder='例如：agent -p "{prompt_file}"'
+                    value={agent.command}
+                    onChange={(event) => updateAgent({ command: event.target.value })}
+                    spellCheck={false}
+                  />
+                </label>
+              </details>
+            )}
             {validationErrors.length > 0 && (
               <div className="notice validation-notice" role="alert">
                 {validationErrors.map((issue) => (

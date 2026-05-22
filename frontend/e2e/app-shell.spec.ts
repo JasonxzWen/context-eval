@@ -93,8 +93,13 @@ function writeWorkflowFiles(workspace: string, fixture: string) {
   fs.writeFileSync(
     agentScript,
     [
+      'import json, sys',
       'from pathlib import Path',
+      'prompt = Path(sys.argv[1]).read_text(encoding="utf-8")',
       'p = Path("fixture_app/greetings.py")',
+      'if "context-eval AI arbitration" in prompt:',
+      '    print(json.dumps({"score": 8, "max_score": 10, "verdict": "pass", "summary": "reviewed"}))',
+      '    raise SystemExit(0)',
       'text = p.read_text(encoding="utf-8")',
       'p.write_text(',
       '    text.replace(',
@@ -127,13 +132,6 @@ function writeWorkflowFiles(workspace: string, fixture: string) {
       '        - path: fixture_app/greetings.py',
       '          snippets:',
       '            - context-eval',
-      '    soft_evaluation:',
-      '      enabled: true',
-      '      mode: payload-only',
-      '      rubric:',
-      '        - name: quality',
-      '          weight: 1',
-      '          description: Patch is clear.',
       '',
     ].join('\n'),
   );
@@ -146,7 +144,7 @@ function writeWorkflowFiles(workspace: string, fixture: string) {
       'agents:',
       '  coco:',
       '    kind: coco',
-      `    command: '"${toPosix(python)}" "${toPosix(agentScript)}"'`,
+      `    command: '"${toPosix(python)}" "${toPosix(agentScript)}" "{prompt_file}"'`,
       '    timeout_minutes: 1',
       '    network: disabled',
       'tasks: ./tasks.yaml',
@@ -295,7 +293,7 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
     await expect(page.getByText('./fixture-repo')).toHaveCount(0);
 
     await page.getByRole('button', { name: '试用示例' }).click();
-    await expect(page.getByLabel('仓库路径')).toHaveValue('./demo-repo');
+    await expect(page.getByLabel('仓库路径', { exact: true })).toHaveValue('./demo-repo');
 
     await expect(page.locator('.run-brief-panel')).toContainText('baseline vs experiment');
     await expect(page.getByRole('heading', { name: '1 写评测题目' })).toBeVisible();
@@ -315,15 +313,15 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
     await expect(page.getByLabel('起始版本')).toBeVisible();
     await page.getByLabel('真实结果 / 修复说明').fill('Real fix evidence for browser acceptance.');
     await page.getByLabel('真实修复版本').fill('real-fix-ref');
-    await page.locator('summary', { hasText: '更多设置：自动检查 / AI 仲裁' }).click();
+    await page.locator('summary', { hasText: '更多设置：自动检查 / 题目信息' }).click();
     await expect(page.getByRole('radiogroup', { name: '任务分类' })).toBeVisible();
     await expect(page.getByRole('radio', { name: '缺陷修复' })).toHaveAttribute('aria-checked', 'true');
     await expect(page.getByRole('radio', { name: '简单' })).toHaveAttribute('aria-checked', 'true');
-    await page.getByLabel('怎样算完成').fill('Visual editor saved summary.');
+    await page.getByLabel('期望结果').fill('Visual editor saved summary.');
     await page.getByRole('button', { name: '保存评测题目' }).click();
     await expect(page.getByTestId('task-save-status')).toContainText('已保存评测题目并刷新评测计划');
     await expect(page.locator('.matrix-panel')).toContainText('Visual editor saved summary.');
-    await expect(page.locator('.matrix-panel')).toContainText('参考答案已填写');
+    await expect(page.locator('.matrix-panel')).toContainText('真实对照已填写');
 
     await page.getByLabel('选择对比资料 experiment').click();
     await page.getByLabel('资料包名称').fill('Edited experiment instructions');
@@ -344,11 +342,11 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
     await expect(page.getByTestId('planned-case-count')).toHaveText('1');
     await expect(page.getByTestId('run-status')).toContainText('已完成', { timeout: 60000 });
     await expect(page.getByText('评测结果已生成')).toBeVisible();
-    await expect(page.getByRole('cell', { name: '通过 4/4' })).toBeVisible();
+    await expect(page.locator('.result-card', { hasText: 'experiment' })).toContainText('通过 4/4');
 
-    const experimentRow = page.locator('tbody tr', { hasText: 'experiment' });
-    await experimentRow.getByRole('button').click();
-    await expect(page.getByRole('heading', { name: '结果详情' })).toBeVisible();
+    const experimentCard = page.locator('.result-card', { hasText: 'experiment' });
+    await experimentCard.getByRole('button', { name: '查看变更和日志' }).click();
+    await expect(page.getByRole('heading', { name: '变更与打分材料' })).toBeVisible();
     await expect(page.locator('.case-detail-panel')).toContainText('experiment');
     await expect(page.locator('.artifact-pane').first()).toBeVisible();
 
@@ -390,7 +388,7 @@ test('empty workspace can open a real local project and surfaces bad project pat
     await page.getByRole('button', { name: '打开并创建配置' }).click();
     await expect(page.getByRole('heading', { name: '1 写评测题目' })).toBeVisible();
     await page.getByText('配置与任务细节').click();
-    await expect(page.getByLabel('仓库路径')).toHaveValue(toPosix(fixture));
+    await expect(page.getByLabel('仓库路径', { exact: true })).toHaveValue(toPosix(fixture));
     await expect(page.getByLabel('配置路径')).toHaveValue(/context-eval\.yaml$/);
     await expectNoHorizontalOverflow(page);
     await expectNoVerticalButtonText(page);
@@ -418,7 +416,7 @@ test('empty workspace can clone a project from Git URL', async ({ page }) => {
     await expect(page.getByRole('heading', { name: '1 写评测题目' })).toBeVisible();
     await page.getByText('配置与任务细节').click();
     const clonedPath = path.join(workspace, 'repositories', 'SeriaServer');
-    await expect(page.getByLabel('仓库路径')).toHaveValue(toPosix(clonedPath));
+    await expect(page.getByLabel('仓库路径', { exact: true })).toHaveValue(toPosix(clonedPath));
     expect(fs.existsSync(path.join(clonedPath, '.git'))).toBe(true);
     await expectNoHorizontalOverflow(page);
     await expectNoVerticalButtonText(page);
@@ -503,18 +501,13 @@ test('renders the fixture-backed Coco hybrid shell', async ({ page }) => {
 
   await expect(page.getByRole('heading', { name: 'AGENTS.md / skills 效果对比' })).toBeVisible();
   await expect(page.getByTestId('matrix-count')).toHaveText('8');
-  await page.locator('summary', { hasText: '更多设置：自动检查 / AI 仲裁' }).click();
+  await page.locator('summary', { hasText: '更多设置：自动检查 / 题目信息' }).click();
   await page.getByText('配置与任务细节').click();
   await expect(page.getByRole('heading', { name: '本地 AI 命令', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: '期望结果' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '硬性检查' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'AI 仲裁维度' })).toBeVisible();
-  await expect(page.getByLabel('测试用例配置').getByText('AI 仲裁材料', { exact: true })).toBeVisible();
-  await expect(page.locator('#soft-mode')).toHaveValue('payload-only');
-  await expect(page.locator('#soft-runner-agent')).toBeDisabled();
-  await page.locator('#soft-mode').selectOption('runner');
-  await expect(page.locator('#soft-runner-agent')).toBeEnabled();
-  await expect(page.locator('#soft-runner-agent')).toHaveValue('');
+  await expect(page.getByRole('heading', { name: 'AI 仲裁' })).toBeVisible();
+  await expect(page.getByLabel('测试用例配置').getByText(/同一个本地 AI/)).toBeVisible();
   await expect(page.getByRole('button', { name: '加载配置' })).toBeVisible();
   await expect(page.getByRole('button', { name: '保存并重载' })).toBeVisible();
 
@@ -586,12 +579,7 @@ test('explains scoring gaps, baseline changes, and API errors in results UI', as
             expected_snippets: [],
             forbidden_snippets: [],
           },
-          soft_evaluation: {
-            enabled: true,
-            mode: 'payload-only',
-            max_score: 10,
-            rubric: [{ name: 'quality', weight: 1, description: 'Patch is clear.' }],
-          },
+          soft_evaluation: { enabled: true, mode: 'runner', runner_agent: null, max_score: 10, rubric: [] },
         },
       ],
       evaluation_commands: [],
@@ -618,8 +606,8 @@ test('explains scoring gaps, baseline changes, and API errors in results UI', as
       skipped_meaning: 'skipped 表示本地产物不足。',
     },
     soft_evaluation: {
-      mode: 'payload-only',
-      meaning: 'soft evaluation 默认只生成本地复核 payload；显式选择 runner 时会运行本地仲裁命令。',
+      mode: 'runner',
+      meaning: 'soft evaluation 默认使用同一个本地 AI 输出软评分。',
     },
     manual_review: { meaning: 'manual review 是人工复核证据和结论，不是自动评分。' },
     evidence_limits: ['无 validation、hard skipped 或 telemetry missing 时只能提示证据不足。'],
@@ -645,9 +633,15 @@ test('explains scoring gaps, baseline changes, and API errors in results UI', as
     hard_evaluation_max_score: null,
     hard_evaluation_passed_checks: null,
     hard_evaluation_failed_checks: null,
-    soft_evaluation_status: 'payload_generated',
+    soft_evaluation_status: 'result_available',
     soft_evaluation_payload_path:
       'artifacts/fix-greeting__baseline__demo-agent/soft_evaluation_payload.json',
+    soft_evaluation_result_path:
+      'artifacts/fix-greeting__baseline__demo-agent/soft_evaluation_result.json',
+    soft_evaluation_runner_agent: 'demo-agent',
+    soft_evaluation_score: 7,
+    soft_evaluation_max_score: 10,
+    soft_evaluation_verdict: 'needs_review',
     patch_path: 'patches/fix-greeting__baseline__demo-agent.patch',
     stdout_path: 'logs/fix-greeting__baseline__demo-agent.stdout.log',
     stderr_path: 'logs/fix-greeting__baseline__demo-agent.stderr.log',
@@ -673,6 +667,9 @@ test('explains scoring gaps, baseline changes, and API errors in results UI', as
     hard_evaluation_failed_checks: 0,
     soft_evaluation_payload_path:
       'artifacts/fix-greeting__experiment__demo-agent/soft_evaluation_payload.json',
+    soft_evaluation_result_path:
+      'artifacts/fix-greeting__experiment__demo-agent/soft_evaluation_result.json',
+    soft_evaluation_score: 8,
     patch_path: 'patches/fix-greeting__experiment__demo-agent.patch',
     stdout_path: 'logs/fix-greeting__experiment__demo-agent.stdout.log',
     stderr_path: 'logs/fix-greeting__experiment__demo-agent.stderr.log',
@@ -873,23 +870,25 @@ test('explains scoring gaps, baseline changes, and API errors in results UI', as
   });
 
   await page.goto('/');
+  await expect(page.getByRole('heading', { name: '打开或切换评测项目' })).toBeVisible();
+  await expect(page.getByLabel('本地仓库路径')).toHaveValue('./demo-repo');
+  await expect(page.getByText('从 Git URL 克隆')).toBeVisible();
   await page.getByRole('button', { name: '开始评测' }).click();
   await expect(page.getByTestId('run-status')).toContainText('已完成');
   await expect(page.getByText('评测结果已生成')).toBeVisible();
-  await expect(page.getByLabel('评分依据')).toContainText('验证可信度');
-  await expect(page.getByLabel('评分依据')).toContainText('通过检查数 / 可评分检查数');
-  await expect(page.getByLabel('评分依据')).toContainText('本地复核 payload');
-  await expect(page.getByLabel('评分依据')).toContainText('本地仲裁命令');
-  await expect(page.getByLabel('对照组方案')).toHaveValue('baseline');
-  await expect(page.getByLabel('对比摘要')).toContainText('对照组没有 validation commands');
+  await expect(page.getByLabel('结果概览')).toContainText('先看结论，再看证据');
+  await expect(page.getByLabel('逐条结果')).toContainText('打分材料');
+  await expect(page.getByLabel('逐条结果')).toContainText('变更与日志');
+  await expect(page.getByLabel('对照方案')).toHaveValue('baseline');
+  await expect(page.getByLabel('对比结论')).toContainText('对照组没有 validation commands');
 
-  await page.getByLabel('对照组方案').selectOption('experiment');
-  await expect(page.getByLabel('对照组方案')).toHaveValue('experiment');
-  await expect(page.getByLabel('对比摘要')).toContainText('对比对象没有 validation commands');
+  await page.getByLabel('对照方案').selectOption('experiment');
+  await expect(page.getByLabel('对照方案')).toHaveValue('experiment');
+  await expect(page.getByLabel('对比结论')).toContainText('对比对象没有 validation commands');
 
-  await page.getByLabel('对照组方案').selectOption('baseline');
-  const baselineRow = page.locator('tbody tr', { hasText: 'baseline' }).first();
-  await baselineRow.getByRole('button', { name: '查看详情' }).click();
+  await page.getByLabel('对照方案').selectOption('baseline');
+  const baselineCard = page.locator('.result-card', { hasText: 'baseline' }).first();
+  await baselineCard.getByRole('button', { name: '查看变更和日志' }).click();
   await expect(page.getByRole('heading', { name: '为什么不能高置信判断' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '硬性检查明细' })).toBeVisible();
   await expect(page.getByText('workspace missing and patch evidence was insufficient')).toBeVisible();
@@ -955,7 +954,7 @@ test('can request stop for a running local run', async ({ page }) => {
             expected_snippets: [],
             forbidden_snippets: [],
           },
-          soft_evaluation: { enabled: false, mode: 'payload-only', max_score: 10, rubric: [] },
+          soft_evaluation: { enabled: true, mode: 'runner', runner_agent: null, max_score: 10, rubric: [] },
         },
       ],
       evaluation_commands: [],
@@ -1017,7 +1016,9 @@ test('can request stop for a running local run', async ({ page }) => {
             command_preview: 'python scripts/example_agent.py prompt',
             expected_outcome_summary: 'Run can be stopped.',
             hard_evaluation_enabled: false,
-            soft_evaluation_enabled: false,
+            soft_evaluation_enabled: true,
+            soft_evaluation_mode: 'runner',
+            soft_evaluation_runner_agent: null,
           },
         ],
       });
@@ -1082,7 +1083,7 @@ test('completes the local server workflow with fake Coco and hybrid evaluation',
     await expect(page.getByRole('heading', { name: 'AGENTS.md / skills 效果对比' })).toBeVisible();
     await page.getByText('配置与任务细节').click();
     await page.getByRole('button', { name: '加载配置' }).click();
-    await expect(page.getByLabel('仓库路径')).toHaveValue(toPosix(fixture));
+    await expect(page.getByLabel('仓库路径', { exact: true })).toHaveValue(toPosix(fixture));
     await expect(
       page.locator('.status-line', { hasText: 'Greeting uses context-eval wording.' }),
     ).toBeVisible();
@@ -1093,19 +1094,18 @@ test('completes the local server workflow with fake Coco and hybrid evaluation',
     await expect(page.getByTestId('run-status')).toContainText('已完成', { timeout: 60000 });
     await expect(page.getByText('评测结果已生成')).toBeVisible();
 
-    await expect(page.getByLabel('评分依据')).toContainText('验证可信度');
-    await expect(page.getByLabel('评分依据')).toContainText('通过检查数 / 可评分检查数');
-    const baselineRow = page.locator('tbody tr', { hasText: 'baseline' }).first();
-    await expect(baselineRow).toContainText('通过 3/3');
-    await expect(baselineRow).toContainText('通过检查数 / 可评分检查数');
-    await expect(baselineRow).toContainText('已生成待复核材料');
-    await expect(page.getByLabel('对照组方案')).toHaveValue('baseline');
-    await expect(page.getByLabel('对比摘要')).toContainText('对比对象');
-    await page.getByLabel('对照组方案').selectOption('experiment');
-    await expect(page.getByLabel('对照组方案')).toHaveValue('experiment');
-    await expect(page.getByLabel('对比摘要')).toContainText('baseline');
+    await expect(page.getByLabel('结果概览')).toContainText('先看结论，再看证据');
+    const baselineCard = page.locator('.result-card', { hasText: 'baseline' }).first();
+    await expect(baselineCard).toContainText('通过 3/3');
+    await expect(baselineCard).toContainText('AI 仲裁结果已保存');
+    await expect(baselineCard).toContainText('Patch');
+    await expect(page.getByLabel('对照方案')).toHaveValue('baseline');
+    await expect(page.getByLabel('对比结论')).toContainText('对比对象');
+    await page.getByLabel('对照方案').selectOption('experiment');
+    await expect(page.getByLabel('对照方案')).toHaveValue('experiment');
+    await expect(page.getByLabel('对比结论')).toContainText('baseline');
 
-    await baselineRow.getByRole('button', { name: '查看详情' }).click();
+    await baselineCard.getByRole('button', { name: '查看变更和日志' }).click();
     await expect(page.getByRole('heading', { name: '硬性检查明细' })).toBeVisible();
     await expect(page.getByLabel('软性复核材料')).toContainText('soft_evaluation_payload.json');
 

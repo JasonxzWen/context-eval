@@ -41,6 +41,7 @@ from context_eval.models import (
     CaseResult,
     ContextEvalConfig,
     TaskFile,
+    effective_soft_evaluation_config,
     render_agent_command_preview,
     validate_agent_command_template,
 )
@@ -150,20 +151,40 @@ DEMO_AGENT_SCRIPT = dedent(
 
     import json
     import os
+    import sys
     import time
     from pathlib import Path
 
     started = time.monotonic()
+    prompt_text = (
+        Path(sys.argv[1]).read_text(encoding="utf-8")
+        if len(sys.argv) > 1 and Path(sys.argv[1]).exists()
+        else ""
+    )
     source = Path("fixture_app/greetings.py")
     instructions = Path("AGENTS.md")
     instruction_text = instructions.read_text(encoding="utf-8") if instructions.exists() else ""
-    marker = "  # context-eval-demo" if "context-eval-demo marker" in instruction_text else ""
-    text = source.read_text(encoding="utf-8")
-    text = text.replace(
-        '    return f"Hello, {name}"',
-        f'    return f"Hello, {{name}}!"{marker}',
-    )
-    source.write_text(text, encoding="utf-8")
+    if "context-eval AI arbitration" in prompt_text:
+        print(
+            json.dumps(
+                {
+                    "score": 8,
+                    "max_score": 10,
+                    "verdict": "pass",
+                    "summary": "Demo patch matches the configured evidence.",
+                    "reasons": ["The greeting function was updated and validation passed."],
+                },
+                sort_keys=True,
+            )
+        )
+    else:
+        marker = "  # context-eval-demo" if "context-eval-demo marker" in instruction_text else ""
+        text = source.read_text(encoding="utf-8")
+        text = text.replace(
+            '    return f"Hello, {name}"',
+            f'    return f"Hello, {{name}}!"{marker}',
+        )
+        source.write_text(text, encoding="utf-8")
 
     telemetry_file = os.environ.get("CONTEXT_EVAL_TELEMETRY_FILE")
     if telemetry_file:
@@ -548,6 +569,7 @@ class LocalAppService:
                             agent_name=agent_name,
                         )
                         repo_ref = task.repo_ref or config.repo.base_ref
+                        soft_evaluation = effective_soft_evaluation_config(task)
                         cases.append(
                             {
                                 "case_id": case_id,
@@ -580,18 +602,10 @@ class LocalAppService:
                                     task.hard_evaluation and task.hard_evaluation.enabled
                                 ),
                                 "soft_evaluation_enabled": bool(
-                                    task.soft_evaluation and task.soft_evaluation.enabled
+                                    soft_evaluation.enabled
                                 ),
-                                "soft_evaluation_mode": (
-                                    task.soft_evaluation.mode
-                                    if task.soft_evaluation is not None
-                                    else None
-                                ),
-                                "soft_evaluation_runner_agent": (
-                                    task.soft_evaluation.runner_agent
-                                    if task.soft_evaluation is not None
-                                    else None
-                                ),
+                                "soft_evaluation_mode": soft_evaluation.mode,
+                                "soft_evaluation_runner_agent": soft_evaluation.runner_agent,
                             }
                         )
         return {
@@ -1029,17 +1043,6 @@ class LocalAppService:
                             {
                                 "path": "fixture_app/greetings.py",
                                 "snippets": ["context-eval-demo"],
-                            }
-                        ],
-                    },
-                    "soft_evaluation": {
-                        "enabled": True,
-                        "mode": "payload-only",
-                        "rubric": [
-                            {
-                                "name": "task-fit",
-                                "weight": 1,
-                                "description": "补丁满足任务要求。",
                             }
                         ],
                     },
@@ -1682,10 +1685,10 @@ class LocalAppService:
                 ),
             },
             "soft_evaluation": {
-                "mode": "payload-only",
+                "mode": "runner",
                 "meaning": (
-                    "soft evaluation 默认只生成本地复核 payload；"
-                    "显式选择 runner 时会运行本地仲裁命令，结果仍只是软证据。"
+                    "soft evaluation 默认在评测 agent 结束后，使用同一个本地 AI "
+                    "读取评分依据和本地产物并输出软评分；结果仍只是软证据。"
                 ),
             },
             "manual_review": {

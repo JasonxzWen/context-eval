@@ -62,7 +62,7 @@ export function RunControls({
   return (
     <section className="panel run-brief-panel" id="run-config">
       <div className="panel-heading">
-        <h2>5 开始评测</h2>
+        <h2>4 开始评测</h2>
         <span>{results ? '已有结果' : isRunActive ? '正在评测' : '待开始'}</span>
       </div>
       <div className="brief-layout">

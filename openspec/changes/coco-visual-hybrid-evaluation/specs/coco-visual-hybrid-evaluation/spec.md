@@ -3,8 +3,8 @@
 ## Purpose
 
 Define Coco-first visual authoring, expected outcome configuration,
-deterministic hard checks, optional soft evaluation payload generation, and
-local result review for context-eval.
+deterministic hard checks, default same-agent AI arbitration, and local result
+review for context-eval.
 
 ## ADDED Requirements
 
@@ -67,24 +67,25 @@ The system SHALL compute hard evaluation from local artifacts after each case.
 - **THEN** the sidecar records failed checks and the case result exposes a
   failed hard evaluation summary without overwriting the agent status
 
-### Requirement: Optional soft evaluation payload
+### Requirement: Default same-agent AI arbitration
 
-The system SHALL generate soft evaluation payloads when configured without
-calling hosted model APIs.
+The system SHALL generate AI arbitration materials by default without calling
+hosted model APIs.
 
-#### Scenario: Payload-only soft evaluation writes payload
+#### Scenario: Default AI arbitration writes local artifacts
 
-- **WHEN** `soft_evaluation.enabled: true` and `mode: "payload-only"`
+- **WHEN** a case finishes
 - **THEN** the runner writes
   `artifacts/<case_id>/soft_evaluation_payload.json` with prompt, expected
-  outcome, rubric, changed files, patch excerpt, validation status, hard
-  evaluation summary, and log/artifact paths
+  outcome, reference evidence, changed files, patch excerpt, validation status,
+  hard evaluation summary, and log/artifact paths, then asks the same local
+  agent profile to return JSON soft evidence
 
-#### Scenario: Soft score is not required
+#### Scenario: Soft score is secondary evidence
 
-- **WHEN** no soft result is present
-- **THEN** reports and the local app show payload status without making soft
-  scoring part of pass/fail
+- **WHEN** an AI arbitration result is present
+- **THEN** reports and the local app show the score as secondary evidence
+  without making soft scoring part of pass/fail
 
 ### Requirement: Local app visual workflow
 
@@ -95,22 +96,22 @@ local files and artifacts.
 
 - **WHEN** the user plans a run
 - **THEN** the plan shows selected Coco profile, task x variant x trial matrix,
-  expected outcome summary, and hard/soft evaluation enabled flags
+  expected outcome summary, hard evaluation status, and AI arbitration status
 
 #### Scenario: Results include hard and soft evidence
 
 - **WHEN** the app loads completed results
 - **THEN** each case includes hard evaluation status, score, failed checks,
-  soft payload/result status, metrics, changed files, and artifact links
+  AI arbitration payload/result status, metrics, changed files, and artifact links
 
 ### Requirement: Reports and exports expose stable evaluation fields
 
-The system SHALL surface hard/soft evaluation summaries in local reports and
+The system SHALL surface hard evaluation and AI arbitration summaries in local reports and
 exports while preserving old result parsing.
 
 #### Scenario: CSV and JSON include new fields
 
-- **WHEN** a run has hard or soft evaluation data
+- **WHEN** a run has hard evaluation or AI arbitration data
 - **THEN** CSV and compact JSON exports include stable hard/soft status and
   score fields
 
@@ -126,7 +127,7 @@ The system SHALL keep the workflow local and artifact-based.
 
 #### Scenario: No hosted judging or dashboard is added
 
-- **WHEN** hard or soft evaluation is configured
+- **WHEN** hard evaluation or AI arbitration is configured
 - **THEN** context-eval does not call hosted model APIs, require provider keys,
   create a hosted dashboard, create an agent leaderboard, install Coco, manage
   Coco credentials, or commit target repository changes

@@ -1,6 +1,9 @@
 import type { EnvironmentPayload } from '../types';
 
 type FirstRunPanelProps = {
+  title?: string;
+  subtitle?: string;
+  showDemo?: boolean;
   projectRepoPath: string;
   projectRepoUrl: string;
   projectCloneDir: string;
@@ -22,6 +25,9 @@ function statusLabel(status: string) {
 }
 
 export function FirstRunPanel({
+  title = '打开评测项目',
+  subtitle = '先选要评测的代码仓库',
+  showDemo = true,
   projectRepoPath,
   projectRepoUrl,
   projectCloneDir,
@@ -36,21 +42,23 @@ export function FirstRunPanel({
   onCheckEnvironment,
 }: FirstRunPanelProps) {
   return (
-    <section className="first-run-panel" aria-label="首次设置">
+    <section className="first-run-panel" aria-label={title}>
       <div className="panel-heading">
-        <h2>打开评测项目</h2>
-        <span>先选要评测的代码仓库</span>
+        <h2>{title}</h2>
+        <span>{subtitle}</span>
       </div>
       <div className="first-run-grid">
-        <article className="setup-option">
-          <div>
-            <strong>试用示例</strong>
-            <p>生成一套本地演示配置，用来快速熟悉页面。</p>
-          </div>
-          <button type="button" onClick={onBootstrapDemo}>
-            试用示例
-          </button>
-        </article>
+        {showDemo && (
+          <article className="setup-option">
+            <div>
+              <strong>试用示例</strong>
+              <p>生成一套本地演示配置，用来快速熟悉页面。</p>
+            </div>
+            <button type="button" onClick={onBootstrapDemo}>
+              试用示例
+            </button>
+          </article>
+        )}
 
         <article className="setup-option">
           <div>

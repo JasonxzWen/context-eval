@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 from context_eval.config import validate_config_files
+from context_eval.models import effective_soft_evaluation_config
 
 
 def _run(command: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
@@ -71,7 +72,8 @@ def test_coco_visual_example_validates_hybrid_task_shape() -> None:
     assert task.case_type == "bugfix"
     assert task.expected_outcome.summary
     assert task.hard_evaluation.enabled is True
-    assert task.soft_evaluation.mode == "payload-only"
+    assert task.soft_evaluation is None
+    assert effective_soft_evaluation_config(task).mode == "runner"
     assert task.hard_evaluation.required_paths == ["fixture_app/greetings.py"]
 
 
