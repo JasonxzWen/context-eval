@@ -136,6 +136,26 @@ export type BootstrapResponse = WorkspaceState & {
   tasks_path?: string | null;
 };
 
+export type EnvironmentCheck = {
+  id: string;
+  label: string;
+  status: 'ok' | 'warning' | 'error';
+  summary: string;
+  detail?: string | null;
+};
+
+export type EnvironmentPayload = {
+  ok: boolean;
+  checks: EnvironmentCheck[];
+  repo?: {
+    path: string;
+    is_git_repo: boolean;
+    branch?: string | null;
+    head?: string | null;
+    dirty_file_count?: number | null;
+  } | null;
+};
+
 export type RunPlan = {
   case_count: number;
   cleanup_policy: string;
