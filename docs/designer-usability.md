@@ -1,156 +1,192 @@
 # Designer Usability For Context Evaluation
 
-This document defines the first usability slice for game designers and other
-non-technical reviewers who use context-eval to evaluate context quality.
+This document defines the planner-facing workflow for game designers and other
+non-technical reviewers who use context-eval to compare context quality.
 
 ## Product Purpose
 
-context-eval compares different local context environments by running the same
-coding-agent tasks end to end and collecting evidence from the resulting local
-artifacts. The comparison target is the context package, not the agent brand.
+context-eval answers one question: when the same coding-agent task runs against
+different context packages, which package helps the agent finish the task more
+reliably and efficiently?
 
-In the first designer-facing version, users should be able to answer three
-questions without editing YAML directly:
+The comparison target is the context package, usually `AGENTS.md`, project docs,
+wiki exports, and `skills`. The output is local evidence for review. It is not a
+public benchmark or an agent leaderboard.
 
-1. What task should the coding agent complete?
-2. Which context package should be compared, mainly `AGENTS.md` and `skills`?
-3. Did the result satisfy the task, based on artifacts and manual feedback?
+The product boundary is local-only and artifact-based: not a public benchmark,
+not an agent leaderboard, and no hidden OpenAI, Claude, or other LLM judge calls.
+validation passing means configured checks passed, not that the task is
+absolutely correct. AI arbitration runner output is optional soft evidence.
+
+## First-Use Workflow
+
+The first screen should let a planner move through these steps without editing
+YAML:
+
+1. Open the project: choose an existing local Git repository or clone a Git URL
+   into the evaluation workspace.
+2. Write evaluation cases: describe what the AI must do, where the case starts,
+   what the real answer is, and how a human should judge the result.
+3. Prepare comparison materials: create one package for the old context and one
+   package for the new context, such as optimized `AGENTS.md` plus `docs`.
+4. Choose the local AI command: for Codex CLI, prefer `codex exec --json` so
+   context-eval can capture structured evidence.
+5. Run local checks: verify Git, Codex CLI, repository state, task refs, overlay
+   paths, and output paths before starting a run.
+6. Review results: inspect hard metrics, validation, optional AI arbitration,
+   reference evidence, patch/log artifacts, and manual feedback.
 
 ## User Scope
 
-The first version is for designers who can describe desired behavior and review
-results, but should not need to know the internal schema.
+The first version is for users who can describe a task and judge a result, but
+should not need to know the internal schema.
 
 They can:
 
-- configure a test case with a title, task instruction, expected result,
-  acceptance points, expected files, task type, starting version, optional
-  reference evidence, and validation commands;
-- configure context packages as named schemes that copy local `AGENTS.md` files
-  and `skills` folders into the run workspace;
-- select which tasks and context schemes to run;
-- review each result, inspect patch/log/evidence artifacts, and save manual
-  feedback, including a simple one-to-five human assessment when needed.
+- open an existing local repository or clone a private repository by URL through
+  the local app;
+- configure cases for compile diagnosis, known bug fixes, incident diagnosis
+  and repair, feature work, and custom tasks;
+- configure old-context versus new-context packages from local files and
+  folders;
+- select a local AI command, including Codex CLI;
+- see whether required local tools are available before running;
+- review each result and save a one-to-five human rating with notes.
 
 They do not need to:
 
-- understand YAML overlays, telemetry internals, or benchmark terminology;
-- read unstructured agent logs to infer key metrics;
-- use hosted services, public leaderboards, or automatic LLM judges.
+- edit YAML directly for the common path;
+- understand overlay internals, telemetry schemas, or benchmark terminology;
+- read unstructured agent logs to infer token or tool-call metrics;
+- use hosted services, public leaderboards, or hidden LLM judges.
 
 ## Terminology
 
-The UI should prefer the following labels:
+The UI should prefer these labels. A context package, not the agent brand, is
+the comparison target.
 
-| Internal term | Designer-facing term | Meaning |
+| Internal term | UI label | Meaning |
 | --- | --- | --- |
-| task | 测试用例 | One agent assignment to run under every selected context scheme. |
-| prompt | 任务说明 | The instruction passed to the coding agent. |
-| case_type | 用例类型 | Compile diagnosis, bug fix, incident fix, feature work, or custom case. |
-| repo_ref | 起始版本 | The Git version used to create this task's isolated workspace. |
-| expected_outcome | 期望结果 | What a successful result should look like. |
-| acceptance_points | 验收点 | Human-readable checks for manual review. |
-| reference_evidence | 参考答案 | True answer, real fix ref, important files, or maintainer notes for review. |
+| task | 测试用例 / 评测题目 | One assignment repeated under each selected context package. |
+| prompt | AI 要做什么 | The instruction sent to the coding agent. |
+| case_type | 题目类型 | Compile diagnosis, bug fix, incident fix, feature work, or custom. |
+| repo_ref | 起始版本 | The Git version used to create this case's isolated workspace. |
+| expected_outcome | 人工验收目标 | What a successful result should look like for human review. |
+| acceptance_points | 验收点 | Checklist items used by human feedback and optional arbitration payloads. |
+| reference_evidence | 参考答案 | True answer, real fix ref, important files, or maintainer notes. |
 | validation_commands | 自动验收命令 | Project tests or scripts run after the agent finishes. |
-| variant | 上下文方案 | A named context package to compare. |
-| overlay | 上下文资料 | Local files copied into the run workspace. |
-| `AGENTS.md` | Agent 工作说明 | Instructions the coding agent reads in the workspace. |
-| `skills` | 技能包 | Reusable task knowledge available to the coding agent. |
-| hard_evaluation | 硬性检查 | Deterministic local checks; not a full quality score. |
-| soft_evaluation | 复核材料 | Optional review material, with an explicit local AI arbitration runner when enabled. |
-| manual_review | 人工反馈 | Human conclusion and notes saved with the result. |
-| telemetry | 执行指标 | Duration, tokens, tool calls, command calls, status, and evidence gaps. |
+| variant | 上下文方案 / 对比资料 | A named context package to compare. |
+| overlay | Agent 工作说明 / 技能包 / 资料 | A local `AGENTS.md`, `skills` folder, docs folder, or wiki export copied into the run workspace. |
+| agent | 本地 AI | The local command that runs the coding agent. |
+| hard_evaluation | 硬性检查 | Deterministic local checks; evidence, not absolute correctness. |
+| soft_evaluation | AI 仲裁材料 | Optional local arbitration evidence; never the truth source by itself. |
+| manual_review | 人工反馈 | Human conclusion, rating, confidence, and notes saved with the result. |
+| telemetry | 硬指标 | Duration, tokens, tool calls, command calls, status, and evidence gaps. |
+
+Avoid using "baseline" as the only explanation. If the name appears, explain it
+as "the old or default context package used for comparison".
 
 ## UI Requirements
 
-### Test Case Configuration
+### Project Setup
 
-The test-case panel must explain that a case is the same assignment repeated
-under each selected context scheme. It should show the core fields first:
+The local app must support two setup paths:
 
-- case type and title;
-- task instruction;
-- expected result summary;
-- acceptance points;
-- starting version;
+- Existing local repo: the user selects or pastes a local Git repository path.
+- Clone from Git URL: the user pastes a Git URL and chooses a local folder name;
+  context-eval runs local `git clone` into the evaluation workspace.
+
+The app must not read or store credentials. If a private repository needs
+authentication, local `git` should use the user's existing Git authentication and
+surface any failure message. URLs containing embedded credentials must be
+rejected with a clear explanation.
+
+### Environment Checks
+
+Before a real run, the UI must show compact checks for:
+
+- `git` availability;
+- `codex` availability and whether `codex --version` / `codex exec --help` can
+  run;
+- whether the selected project is a Git repository;
+- current branch, commit, and dirty-file count when available;
+- configured task refs, context paths, agent command variables, and output path
+  safety through existing preflight.
+
+Warnings should not claim the project is unusable unless a run would fail. For
+example, a dirty repository should be visible as a warning because context-eval
+creates isolated workspaces from Git refs.
+
+### Evaluation Cases
+
+The case editor should keep the common fields visible:
+
+- title;
+- case type;
+- AI task prompt;
+- start version;
+- human acceptance target;
 - reference answer or real fix evidence;
-- expected changed files;
-- validation commands.
+- validation command.
 
-For real project workflows, the built-in case types should be visible as
-templates: compile error diagnosis, known bug fix, incident diagnosis and fix,
-feature work, and custom case. The UI must make clear that reference evidence is
-for human review and optional soft arbitration payloads, not part of the prompt
-sent to the coding agent by default.
+Advanced hard checks and AI arbitration settings may stay behind an expandable
+section. The copy must make clear that reference evidence is not sent to the
+coding agent by default.
 
-Advanced deterministic checks and review rubrics stay visible, but the copy must
-state that they support evidence gathering and do not prove absolute task
-correctness.
+### Context Packages
 
-### Context Scheme Configuration
+The context package editor should explain the concrete action:
 
-The context-scheme panel must explain that a scheme is a local package of
-agent-facing context. It should make `AGENTS.md` and `skills` first-class in the
-copy, because those are the primary comparison materials for this version.
+- version 1 can point to the old `AGENTS.md`;
+- version 2 can point to the optimized `AGENTS.md`, `docs`, wiki export, and
+  `skills`;
+- each row copies a local file or folder into the temporary run workspace.
 
-For each copied path, the UI should identify common sources:
+The UI must not imply that context-eval reads global Codex logs, secrets, or
+credentials.
 
-- `AGENTS.md` paths as Agent 工作说明;
-- paths containing `skills` as 技能包;
-- all other paths as 其他上下文资料.
+### Results And Feedback
 
-The UI must not imply that context-eval reads user credentials or global
-sensitive logs. Any future Codex or agent log import must be explicit,
-path-selected, read-only, and explainable.
+The result detail should show:
 
-### Manual Feedback
+- final status and duration;
+- token usage, cached input tokens, output tokens, reasoning tokens;
+- tool-call count and command-call count;
+- changed files and touched paths;
+- validation status;
+- hard-check status and score;
+- optional AI arbitration result as soft evidence;
+- evidence gaps such as missing Codex JSONL or final message;
+- manual one-to-five rating, conclusion, confidence, reviewer, and notes.
 
-The result-detail panel must make manual feedback a primary action. It should
-show:
+## Non-Goals
 
-- the case status, validation status, confidence, telemetry status, and hard
-  check result;
-- Codex JSONL metrics and evidence gaps when the selected executor is Codex CLI;
-- the task type, starting version, and any reference evidence;
-- optional AI arbitration runner output, clearly labeled as soft evidence;
-- a feedback form with result conclusion, reviewer confidence, reviewer name,
-  one-to-five human assessment, and notes;
-- a note template that asks reviewers to record whether the result met the task,
-  what evidence they checked, and what issue remains.
+This usability slice does not add:
 
-Manual feedback is evidence. It is not an automatic score and must not silently
-override artifact-based metrics.
-
-### Comparison Results
-
-The result view must preserve the product boundary:
-
-- local-only and artifact-based;
-- not a public benchmark;
-- not an agent leaderboard;
-- no hidden OpenAI, Claude, or other LLM judge calls;
-- validation passing means configured checks passed, not that the task is
-  absolutely correct;
-- AI arbitration runner output is optional soft evidence and excluded from
-  comprehensive ranking.
+- public benchmark publishing;
+- agent leaderboard ranking;
+- automatic target-repository commits;
+- hosted LLM judge calls hidden behind the UI;
+- Codex CLI installation or login management;
+- provider credential storage;
+- price-table-driven cost estimation.
 
 ## Acceptance Criteria
 
 This slice is acceptable when:
 
-1. A designer can open the local app and understand that context-eval compares
-   context quality through local coding-agent runs.
-2. The main workflow labels are 测试用例, 上下文方案, and 人工反馈.
-3. Test-case fields include hover or inline help for task instruction, expected
-   result, acceptance points, starting version, reference evidence, expected
-   files, validation commands, hard checks, and review rubrics.
-4. Context schemes explain `AGENTS.md` and `skills`, and overlay rows display
-   whether each row is Agent 工作说明, 技能包, or 其他上下文资料.
-5. Manual feedback explains what reviewers should record and keeps the saved
-   fields artifact-based.
-6. Result guidance states that this is local-only, not a public benchmark, not
-   an agent leaderboard, and not an automatic LLM judge.
-7. Existing structured save behavior still preserves unknown YAML fields.
-8. Frontend unit tests, build, and browser acceptance pass.
-9. Real-project-style task templates remain local-only and do not expose private
-   repository URLs or secrets in generated documentation.
+1. A planner can open the local app and understand that the product compares
+   context packages for the same coding-agent tasks.
+2. A planner can create a real-project workspace from either a local repo path
+   or a Git URL without editing YAML.
+3. The UI shows local environment checks for Git, Codex CLI, and the selected
+   repository.
+4. The case editor supports start version, reference evidence, validation, hard
+   checks, optional AI arbitration, and manual-review goals.
+5. The context editor makes old `AGENTS.md` versus new `AGENTS.md` plus docs or
+   skills easy to configure.
+6. Result views show hard metrics, Codex evidence gaps, optional AI arbitration,
+   and manual feedback.
+7. Missing telemetry remains missing and is shown as an evidence gap.
+8. Unit tests, frontend tests, and Playwright E2E tests cover the setup and
+   review workflow.

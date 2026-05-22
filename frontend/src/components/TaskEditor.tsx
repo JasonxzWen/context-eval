@@ -100,12 +100,12 @@ export function TaskEditor({
     return (
       <section className="panel task-editor-panel">
         <div className="panel-heading">
-          <h2>测试用例</h2>
-          <span>0 个用例</span>
+          <h2>评测题目</h2>
+          <span>0 个题目</span>
         </div>
-        <p className="status-line">当前配置没有测试用例。新建一个用例后再保存。</p>
+        <p className="status-line">当前配置没有评测题目。新建一个题目后再保存。</p>
         <button type="button" onClick={onAddTask}>
-          新建测试用例
+          新建题目
         </button>
       </section>
     );
@@ -149,15 +149,15 @@ export function TaskEditor({
   return (
     <section className="panel task-editor-panel" id="task-config" aria-label="测试用例配置">
       <div className="panel-heading">
-        <h2>1 配测试用例</h2>
-        <span>{tasks.length} 个用例</span>
+        <h2>1 写评测题目</h2>
+        <span>{tasks.length} 个题目</span>
       </div>
-      <p className="panel-note">先写清任务、起始版本、验收标准；参考答案只给人复核，不默认发给 AI。</p>
+      <p className="panel-note">这里定义 AI 要做什么、从哪个版本开始，以及最后怎样判断结果。</p>
 
       <div className="task-editor-layout">
         <aside className="task-rail" aria-label="测试用例列表">
           {tasks.map((item, index) => {
-            const title = item.title?.trim() || item.id?.trim() || `第 ${index + 1} 个用例`;
+            const title = item.title?.trim() || item.id?.trim() || `第 ${index + 1} 个题目`;
             const taskId = item.id?.trim();
             const detail = taskId && taskId !== title ? `ID: ${taskId}` : item.category || '';
 
@@ -199,16 +199,16 @@ export function TaskEditor({
           }}
         >
           <fieldset>
-            <legend>任务</legend>
+            <legend>给 AI 的题目</legend>
             <SegmentedField
-              label="用例类型"
+              label="题目类型"
               value={task.case_type || 'custom'}
               options={caseTypeOptions}
               onChange={(value) => updateTask({ case_type: value as TaskCaseType })}
             />
             <div className="form-grid simplified-grid">
               <label htmlFor="task-title">
-                用例标题
+                题目名称
                 <input
                   id="task-title"
                   placeholder="例如：修复问候语标点"
@@ -218,7 +218,7 @@ export function TaskEditor({
               </label>
             </div>
             <label htmlFor="task-prompt">
-              给 AI 的任务提示词
+              AI 要执行什么
               <textarea
                 id="task-prompt"
                 aria-label="AI 要做什么"
@@ -228,7 +228,7 @@ export function TaskEditor({
               />
             </label>
             <label htmlFor="task-repo-ref" className="compact-label">
-              起始版本
+              从哪个版本开始
               <input
                 id="task-repo-ref"
                 aria-label="起始版本"
@@ -240,9 +240,9 @@ export function TaskEditor({
           </fieldset>
 
           <fieldset>
-            <legend>验收标准</legend>
+            <legend>判断结果</legend>
             <label htmlFor="expected-summary">
-              怎样算完成
+              成功标准
               <textarea
                 id="expected-summary"
                 aria-label="怎样算完成"
@@ -252,14 +252,14 @@ export function TaskEditor({
               />
             </label>
             <ListEditor
-              title="检查项"
+              title="逐条检查点"
               values={acceptancePoints}
               placeholder="例如：问候语包含正确标点"
               onChange={(values) => updateExpected({ acceptance_points: values })}
             />
             <div className="reference-evidence-box" aria-label="参考答案">
               <div className="subsection-heading">
-                <strong>参考答案（不给 AI）</strong>
+                <strong>参考答案（默认不给做题 AI）</strong>
                 <span className="inline-help">用于人工复核和可选 AI 仲裁材料</span>
               </div>
               <label htmlFor="reference-summary">
@@ -311,11 +311,11 @@ export function TaskEditor({
               />
             </fieldset>
             <fieldset>
-              <legend>用例属性</legend>
+              <legend>更多题目信息</legend>
               <div className="form-grid">
                 <label htmlFor="task-id">
                   <span className="label-with-help">
-                    用例 ID
+                    题目 ID
                     <HelpTip text="用于文件名和导出。" />
                   </span>
                   <input
@@ -376,7 +376,7 @@ export function TaskEditor({
             <fieldset>
               <legend>AI 仲裁维度</legend>
               <p className="field-help">
-                默认只生成复核材料；选择运行 AI 仲裁后，会用下面的执行器读取材料并输出软评分。
+                默认只生成复核材料；选择运行 AI 仲裁后，会用下面的本地命令读取材料并输出软评分。
               </p>
               <label className="checkbox-label" htmlFor="soft-enabled">
                 <input
@@ -406,15 +406,15 @@ export function TaskEditor({
                 </select>
               </label>
               <label htmlFor="soft-runner-agent">
-                仲裁执行器
+                仲裁命令
                 <select
                   id="soft-runner-agent"
-                  aria-label="仲裁执行器"
+                  aria-label="仲裁命令"
                   value={soft.runner_agent || ''}
                   onChange={(event) => updateSoft({ runner_agent: event.target.value || null })}
                   disabled={soft.mode !== 'runner'}
                 >
-                  <option value="">同评测执行器</option>
+                  <option value="">同评测用的本地 AI</option>
                   {agents.map((agent) => (
                     <option key={agent.name} value={agent.name}>
                       {agent.name}
@@ -440,7 +440,7 @@ export function TaskEditor({
 
           <div className="button-row editor-actions">
             <button type="submit" disabled={serverMode !== 'connected'}>
-              保存测试用例
+              保存评测题目
             </button>
             <span className="status-line" data-testid="task-save-status">
               {saveStatus}

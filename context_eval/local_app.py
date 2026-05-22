@@ -4,6 +4,7 @@ import io
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -288,10 +289,17 @@ class LocalAppService:
     def initialize_project_workspace(
         self,
         *,
-        repo_path: str | Path,
+        repo_path: str | Path | None = None,
+        repo_url: str | None = None,
+        clone_dir: str | None = None,
         overwrite: bool = False,
     ) -> dict[str, Any]:
-        repo = Path(repo_path).expanduser().resolve()
+        if repo_url:
+            repo = self.clone_project_repository(repo_url=repo_url, clone_dir=clone_dir)
+        else:
+            if repo_path is None or str(repo_path).strip() == "":
+                raise LocalAppError("repo path must not be empty")
+            repo = Path(repo_path).expanduser().resolve()
         if not repo.exists() or not repo.is_dir():
             raise LocalAppError(f"repo path does not exist: {repo}")
         targets = [
@@ -313,6 +321,52 @@ class LocalAppService:
             "config_path": loaded["config_path"],
             "tasks_path": loaded["tasks_path"],
             "loaded": loaded,
+        }
+
+    def clone_project_repository(self, *, repo_url: str, clone_dir: str | None = None) -> Path:
+        url = repo_url.strip()
+        if not url:
+            raise LocalAppError("repo URL must not be empty")
+        self._reject_credential_bearing_url(url)
+        clone_root = (self.workspace_root / "repositories").resolve()
+        folder = self._safe_clone_dir(clone_dir or self._default_clone_dir(url))
+        target = (clone_root / folder).resolve()
+        if not _is_relative_to(target, clone_root):
+            raise LocalAppError("clone target must stay inside the evaluation workspace")
+        if target.exists() and any(target.iterdir()):
+            raise LocalAppError(f"clone target already exists and is not empty: {target}")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        result = subprocess.run(
+            ["git", "clone", "--", url, str(target)],
+            cwd=self.workspace_root,
+            text=True,
+            capture_output=True,
+            timeout=600,
+        )
+        if result.returncode != 0:
+            message = result.stderr.strip() or result.stdout.strip() or "unknown git error"
+            raise LocalAppError(f"git clone failed: {message}")
+        return target
+
+    def environment_check(
+        self,
+        *,
+        repo_path: str | Path | None = None,
+        config_path: str | Path | None = None,
+    ) -> dict[str, Any]:
+        checks = [
+            self._command_check("git", ["git", "--version"], label="Git"),
+            self._codex_check(),
+        ]
+        repo = self._environment_repo_path(repo_path=repo_path, config_path=config_path)
+        repo_info: dict[str, Any] | None = None
+        if repo is not None:
+            repo_info = self._repo_environment_info(repo)
+            checks.append(repo_info["check"])
+        return {
+            "ok": not any(check["status"] == "error" for check in checks),
+            "checks": checks,
+            "repo": repo_info["repo"] if repo_info is not None else None,
         }
 
     def load_config(self, *, config_path: str | Path | None = None) -> dict[str, Any]:
@@ -1013,6 +1067,195 @@ class LocalAppService:
             message = result.stderr.strip() or result.stdout.strip()
             raise LocalAppError(f"demo git setup failed: git {' '.join(args)}: {message}")
 
+    def _environment_repo_path(
+        self,
+        *,
+        repo_path: str | Path | None,
+        config_path: str | Path | None,
+    ) -> Path | None:
+        if repo_path is not None and str(repo_path).strip():
+            return Path(repo_path).expanduser().resolve()
+        try:
+            path = self._config_path(config_path)
+            config, _ = self._load_config_and_tasks(path, strict=False, check_agents=False)
+        except Exception:
+            return None
+        return config.repo.path
+
+    def _repo_environment_info(self, repo: Path) -> dict[str, Any]:
+        repo_payload: dict[str, Any] = {
+            "path": str(repo),
+            "is_git_repo": False,
+            "branch": None,
+            "head": None,
+            "dirty_file_count": None,
+        }
+        if not repo.exists() or not repo.is_dir():
+            return {
+                "repo": repo_payload,
+                "check": {
+                    "id": "repo",
+                    "label": "项目仓库",
+                    "status": "error",
+                    "summary": f"路径不存在: {repo}",
+                    "detail": None,
+                },
+            }
+        inside = self._run_command(["git", "-C", str(repo), "rev-parse", "--is-inside-work-tree"])
+        if inside["exit_code"] != 0 or inside["stdout"].strip() != "true":
+            return {
+                "repo": repo_payload,
+                "check": {
+                    "id": "repo",
+                    "label": "项目仓库",
+                    "status": "error",
+                    "summary": "不是 Git 仓库",
+                    "detail": inside["stderr"] or inside["stdout"],
+                },
+            }
+        branch = self._run_command(["git", "-C", str(repo), "rev-parse", "--abbrev-ref", "HEAD"])
+        head = self._run_command(["git", "-C", str(repo), "rev-parse", "--short", "HEAD"])
+        status = self._run_command(["git", "-C", str(repo), "status", "--porcelain"])
+        dirty_files = [line for line in status["stdout"].splitlines() if line.strip()]
+        repo_payload.update(
+            {
+                "is_git_repo": True,
+                "branch": branch["stdout"].strip() if branch["exit_code"] == 0 else None,
+                "head": head["stdout"].strip() if head["exit_code"] == 0 else None,
+                "dirty_file_count": len(dirty_files) if status["exit_code"] == 0 else None,
+            }
+        )
+        if status["exit_code"] != 0:
+            return {
+                "repo": repo_payload,
+                "check": {
+                    "id": "repo",
+                    "label": "项目仓库",
+                    "status": "warning",
+                    "summary": "仓库可用，但状态读取失败",
+                    "detail": status["stderr"] or status["stdout"],
+                },
+            }
+        if dirty_files:
+            return {
+                "repo": repo_payload,
+                "check": {
+                    "id": "repo",
+                    "label": "项目仓库",
+                    "status": "warning",
+                    "summary": f"Git 仓库可用，有 {len(dirty_files)} 个未提交改动",
+                    "detail": "评测会从起始版本创建隔离工作区；未提交改动不会自动带入。",
+                },
+            }
+        return {
+            "repo": repo_payload,
+            "check": {
+                "id": "repo",
+                "label": "项目仓库",
+                "status": "ok",
+                "summary": "Git 仓库可用",
+                "detail": None,
+            },
+        }
+
+    def _codex_check(self) -> dict[str, Any]:
+        version = self._command_check("codex", ["codex", "--version"], label="Codex CLI")
+        if version["status"] == "error":
+            return version
+        exec_help = self._run_command(["codex", "exec", "--help"], timeout=10)
+        if exec_help["exit_code"] != 0:
+            return {
+                "id": "codex",
+                "label": "Codex CLI",
+                "status": "warning",
+                "summary": version["summary"],
+                "detail": exec_help["stderr"] or exec_help["stdout"],
+            }
+        return {
+            "id": "codex",
+            "label": "Codex CLI",
+            "status": "ok",
+            "summary": version["summary"],
+            "detail": "codex exec --help 可执行",
+        }
+
+    def _command_check(
+        self,
+        command_name: str,
+        command: list[str],
+        *,
+        label: str,
+    ) -> dict[str, Any]:
+        if shutil.which(command_name) is None:
+            return {
+                "id": command_name,
+                "label": label,
+                "status": "error",
+                "summary": f"未找到 {command_name}",
+                "detail": "请确认命令已安装并在 PATH 中。",
+            }
+        result = self._run_command(command, timeout=10)
+        if result["exit_code"] != 0:
+            return {
+                "id": command_name,
+                "label": label,
+                "status": "error",
+                "summary": f"{command_name} 不可执行",
+                "detail": result["stderr"] or result["stdout"],
+            }
+        output = (result["stdout"] or result["stderr"]).strip().splitlines()
+        return {
+            "id": command_name,
+            "label": label,
+            "status": "ok",
+            "summary": output[0] if output else f"{command_name} 可执行",
+            "detail": None,
+        }
+
+    def _run_command(self, command: list[str], *, timeout: int = 10) -> dict[str, Any]:
+        try:
+            result = subprocess.run(
+                command,
+                cwd=self.workspace_root,
+                text=True,
+                capture_output=True,
+                timeout=timeout,
+            )
+        except Exception as exc:
+            return {"exit_code": None, "stdout": "", "stderr": str(exc)}
+        return {
+            "exit_code": result.returncode,
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+        }
+
+    def _reject_credential_bearing_url(self, value: str) -> None:
+        parsed = urlparse(value)
+        if parsed.scheme in {"http", "https"} and "@" in parsed.netloc:
+            raise LocalAppError(
+                "repo URL must not contain credentials; use local Git authentication instead"
+            )
+
+    def _default_clone_dir(self, value: str) -> str:
+        parsed = urlparse(value)
+        candidate = parsed.path.rsplit("/", 1)[-1] if parsed.path else value.rsplit("/", 1)[-1]
+        if ":" in candidate and "/" not in candidate:
+            candidate = candidate.rsplit(":", 1)[-1]
+        if candidate.endswith(".git"):
+            candidate = candidate[:-4]
+        return candidate or "repository"
+
+    def _safe_clone_dir(self, value: str) -> str:
+        raw = value.strip().replace("\\", "/")
+        if not raw:
+            raise LocalAppError("clone folder must not be empty")
+        if _contains_traversal(raw) or _is_absolute_path_like(raw) or "/" in raw:
+            raise LocalAppError("clone folder must be a safe folder name")
+        sanitized = re.sub(r"[^A-Za-z0-9._-]+", "-", raw).strip(".-")
+        if not sanitized:
+            raise LocalAppError("clone folder must contain letters or numbers")
+        return sanitized
+
     def _config_path(self, value: str | Path | None) -> Path:
         if value is not None:
             return self.guard.resolve_workspace_path(value, field="config_path")
@@ -1442,7 +1685,7 @@ class LocalAppService:
                 "mode": "payload-only",
                 "meaning": (
                     "soft evaluation 默认只生成本地复核 payload；"
-                    "显式选择 runner 时会运行本地仲裁执行器，结果仍只是软证据。"
+                    "显式选择 runner 时会运行本地仲裁命令，结果仍只是软证据。"
                 ),
             },
             "manual_review": {
@@ -1820,6 +2063,14 @@ class _LocalAppHandler(BaseHTTPRequestHandler):
         if path == "/api/workspace":
             self._send_json(service.workspace_state())
             return
+        if path == "/api/environment":
+            self._send_json(
+                service.environment_check(
+                    repo_path=self._query_optional(query, "repo_path"),
+                    config_path=self._query_optional(query, "config_path"),
+                )
+            )
+            return
         run_match = re.fullmatch(r"/api/runs/([^/]+)", path)
         if run_match:
             self._send_json(service.get_run(run_match.group(1)))
@@ -1897,7 +2148,9 @@ class _LocalAppHandler(BaseHTTPRequestHandler):
         if path == "/api/workspace/project":
             self._send_json(
                 service.initialize_project_workspace(
-                    repo_path=body.get("repo_path", ""),
+                    repo_path=body.get("repo_path"),
+                    repo_url=body.get("repo_url"),
+                    clone_dir=body.get("clone_dir"),
                     overwrite=bool(body.get("overwrite", False)),
                 )
             )

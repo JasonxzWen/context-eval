@@ -74,7 +74,7 @@ export function AdvancedConfigDetails({
     <details className="advanced-workbench">
       <summary>
         <span>配置与任务细节</span>
-        <small>执行器、资料包、验收标准和 YAML</small>
+        <small>本地 AI、对比资料、验收标准和 YAML</small>
       </summary>
       <div className="advanced-grid">
         <section className="panel project-panel">
@@ -132,7 +132,7 @@ export function AdvancedConfigDetails({
 
         <section className="panel">
           <div className="panel-heading">
-            <h2>执行器</h2>
+            <h2>本地 AI 命令</h2>
             <span>{labelFor(agentKindLabels, cocoAgent?.kind)}</span>
           </div>
           <ul className="profile-list">
@@ -150,14 +150,14 @@ export function AdvancedConfigDetails({
 
         <section className="panel">
           <div className="panel-heading">
-            <h2>资料包</h2>
+            <h2>对比资料</h2>
           </div>
           <ul className="two-column-list single-list">
             {loaded.editable.variants.map((variant) => (
               <li key={variant.name}>
                 <strong>{variant.name}</strong>
                 <span>{variant.description || '未描述'}</span>
-                <small>{variant.overlays.length} 份资料</small>
+                <small>{variant.overlays.length} 份文件</small>
               </li>
             ))}
           </ul>
@@ -165,7 +165,7 @@ export function AdvancedConfigDetails({
 
         <section className="panel">
           <div className="panel-heading">
-            <h2>测试用例</h2>
+            <h2>评测题目</h2>
             <span>{loaded.editable.tasks.length}</span>
           </div>
           <ul className="two-column-list single-list">
@@ -231,7 +231,7 @@ export function AdvancedConfigDetails({
           </div>
           {task?.soft_evaluation?.mode === 'runner' && (
             <p className="panel-note">
-              仲裁执行器：{task.soft_evaluation.runner_agent || '同评测执行器'}
+              仲裁命令：{task.soft_evaluation.runner_agent || '同评测用的本地 AI'}
             </p>
           )}
           <ul className="check-list">

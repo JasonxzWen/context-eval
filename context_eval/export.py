@@ -139,7 +139,7 @@ def _evaluation_explanation() -> dict[str, Any]:
             "mode": "payload-only",
             "meaning": (
                 "soft evaluation 默认只生成本地复核 payload；"
-                "显式选择 runner 时会运行本地仲裁执行器，结果仍只是软证据。"
+                "显式选择 runner 时会运行本地仲裁命令，结果仍只是软证据。"
             ),
         },
         "manual_review": {

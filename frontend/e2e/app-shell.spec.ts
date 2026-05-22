@@ -3,7 +3,7 @@ import { spawn, spawnSync, type ChildProcessWithoutNullStreams } from 'node:chil
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const e2eDir = path.dirname(fileURLToPath(import.meta.url));
 const frontendDir = path.resolve(e2eDir, '..');
@@ -35,6 +35,22 @@ async function fulfillJson(route: Route, data: unknown, status = 200) {
   });
 }
 
+const environmentPayload = {
+  ok: true,
+  checks: [
+    { id: 'git', label: 'Git', status: 'ok', summary: 'git version test', detail: null },
+    { id: 'codex', label: 'Codex CLI', status: 'warning', summary: 'codex unavailable in test', detail: null },
+    { id: 'repo', label: '项目仓库', status: 'ok', summary: 'Git 仓库可用', detail: null },
+  ],
+  repo: {
+    path: './fixture-repo',
+    is_git_repo: true,
+    branch: 'main',
+    head: 'abc123',
+    dirty_file_count: 0,
+  },
+};
+
 function copyFixtureRepo(workspace: string) {
   const source = path.join(repoRoot, 'examples', 'fixture-repo');
   const fixture = path.join(workspace, 'fixture-repo');
@@ -47,6 +63,23 @@ function copyFixtureRepo(workspace: string) {
   });
   run(python, ['setup_fixture_repo.py'], fixture);
   return fixture;
+}
+
+function removeWorkspace(workspace: string) {
+  try {
+    fs.rmSync(workspace, {
+      recursive: true,
+      force: true,
+      maxRetries: process.platform === 'win32' ? 10 : 0,
+      retryDelay: 100,
+    });
+  } catch (caught) {
+    const code = caught && typeof caught === 'object' && 'code' in caught ? caught.code : null;
+    if (code !== 'EBUSY' && code !== 'EPERM' && code !== 'ENOTEMPTY') {
+      throw caught;
+    }
+    console.warn(`could not remove temporary workspace ${workspace}: ${String(caught)}`);
+  }
 }
 
 function writeWorkflowFiles(workspace: string, fixture: string) {
@@ -257,14 +290,15 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
     await page.waitForLoadState('networkidle');
 
     await expect(page.getByRole('heading', { name: 'AGENTS.md / skills 效果对比' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: '开始使用' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '打开评测项目' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '本机检查' })).toBeVisible();
     await expect(page.getByText('./fixture-repo')).toHaveCount(0);
 
     await page.getByRole('button', { name: '试用示例' }).click();
     await expect(page.getByLabel('仓库路径')).toHaveValue('./demo-repo');
 
     await expect(page.locator('.run-brief-panel')).toContainText('baseline vs experiment');
-    await expect(page.getByRole('heading', { name: '1 配测试用例' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '1 写评测题目' })).toBeVisible();
     await page.evaluate(() => window.scrollTo(0, 1400));
     await page.waitForTimeout(100);
     const navBoxAfterScroll = await page.locator('.top-nav').boundingBox();
@@ -274,10 +308,10 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
     const navBoxAfterJump = await page.locator('.top-nav').boundingBox();
     const contextBoxAfterJump = await page.locator('#context-config').boundingBox();
     expect((contextBoxAfterJump?.y ?? 0) - ((navBoxAfterJump?.y ?? 0) + (navBoxAfterJump?.height ?? 0))).toBeGreaterThan(8);
-    await expect(page.getByRole('heading', { name: '2 配资料包' })).toBeVisible();
-    await expect(page.getByText(/给 AI 准备两套资料/)).toBeVisible();
+    await expect(page.getByRole('heading', { name: '2 准备对比资料' })).toBeVisible();
+    await expect(page.getByText(/一套方案就是运行时给 AI 看的资料/)).toBeVisible();
     await page.locator('.top-nav a[href="#task-config"]').click();
-    await expect(page.getByRole('radiogroup', { name: '用例类型' })).toBeVisible();
+    await expect(page.getByRole('radiogroup', { name: '题目类型' })).toBeVisible();
     await expect(page.getByLabel('起始版本')).toBeVisible();
     await page.getByLabel('真实结果 / 修复说明').fill('Real fix evidence for browser acceptance.');
     await page.getByLabel('真实修复版本').fill('real-fix-ref');
@@ -286,35 +320,35 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
     await expect(page.getByRole('radio', { name: '缺陷修复' })).toHaveAttribute('aria-checked', 'true');
     await expect(page.getByRole('radio', { name: '简单' })).toHaveAttribute('aria-checked', 'true');
     await page.getByLabel('怎样算完成').fill('Visual editor saved summary.');
-    await page.getByRole('button', { name: '保存测试用例' }).click();
-    await expect(page.getByTestId('task-save-status')).toContainText('已保存测试用例并刷新执行计划');
+    await page.getByRole('button', { name: '保存评测题目' }).click();
+    await expect(page.getByTestId('task-save-status')).toContainText('已保存评测题目并刷新评测计划');
     await expect(page.locator('.matrix-panel')).toContainText('Visual editor saved summary.');
     await expect(page.locator('.matrix-panel')).toContainText('参考答案已填写');
 
-    await page.getByLabel('选择资料包 experiment').click();
+    await page.getByLabel('选择对比资料 experiment').click();
     await page.getByLabel('资料包名称').fill('Edited experiment instructions');
     await page.getByLabel('执行器超时分钟').fill('3');
-    await page.getByRole('button', { name: '保存执行器配置' }).click();
-    await expect(page.getByTestId('agent-save-status')).toContainText('已保存配置并刷新执行计划');
+    await page.getByRole('button', { name: '保存本地 AI 配置' }).click();
+    await expect(page.getByTestId('agent-save-status')).toContainText('已保存配置并刷新评测计划');
     await expect(page.getByLabel('执行器超时分钟')).toHaveValue('3');
-    await page.getByRole('button', { name: '保存资料包' }).click();
-    await expect(page.getByTestId('variant-save-status')).toContainText('已保存配置并刷新执行计划');
+    await page.getByRole('button', { name: '保存对比资料' }).click();
+    await expect(page.getByTestId('variant-save-status')).toContainText('已保存配置并刷新评测计划');
     await expect(page.getByLabel('资料包名称')).toHaveValue('Edited experiment instructions');
 
-    await page.getByRole('checkbox', { name: '资料包 baseline' }).uncheck();
-    await page.getByRole('button', { name: '刷新执行计划' }).click();
+    await page.getByRole('checkbox', { name: '对比资料 baseline' }).uncheck();
+    await page.getByRole('button', { name: '刷新评测计划' }).click();
     await expect(page.getByTestId('planned-case-count')).toHaveText('1');
 
-    await page.getByRole('button', { name: '开始运行' }).click();
+    await page.getByRole('button', { name: '开始评测' }).click();
     await expect(page.getByTestId('preflight-status')).toContainText('运行前检查通过');
     await expect(page.getByTestId('planned-case-count')).toHaveText('1');
     await expect(page.getByTestId('run-status')).toContainText('已完成', { timeout: 60000 });
-    await expect(page.getByText('结果已生成')).toBeVisible();
+    await expect(page.getByText('评测结果已生成')).toBeVisible();
     await expect(page.getByRole('cell', { name: '通过 4/4' })).toBeVisible();
 
     const experimentRow = page.locator('tbody tr', { hasText: 'experiment' });
     await experimentRow.getByRole('button').click();
-    await expect(page.getByRole('heading', { name: '用例详情' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '结果详情' })).toBeVisible();
     await expect(page.locator('.case-detail-panel')).toContainText('experiment');
     await expect(page.locator('.artifact-pane').first()).toBeVisible();
 
@@ -331,7 +365,7 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
     await expect(page.getByTestId('export-output')).toContainText('"decision": "pass"');
   } finally {
     await stopLocalApp(server.child);
-    fs.rmSync(workspace, { recursive: true, force: true });
+    removeWorkspace(workspace);
   }
 });
 
@@ -346,15 +380,15 @@ test('empty workspace can open a real local project and surfaces bad project pat
   try {
     await page.goto(server.url);
     await page.waitForLoadState('networkidle');
-    await expect(page.getByRole('heading', { name: '开始使用' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '打开评测项目' })).toBeVisible();
 
-    await page.getByLabel('项目路径').fill(path.join(workspace, 'missing-repo'));
-    await page.getByRole('button', { name: '创建工作区' }).click();
+    await page.getByLabel('本地仓库路径').fill(path.join(workspace, 'missing-repo'));
+    await page.getByRole('button', { name: '打开并创建配置' }).click();
     await expect(page.getByText('错误: repo path does not exist')).toBeVisible();
 
-    await page.getByLabel('项目路径').fill(fixture);
-    await page.getByRole('button', { name: '创建工作区' }).click();
-    await expect(page.getByRole('heading', { name: '1 配测试用例' })).toBeVisible();
+    await page.getByLabel('本地仓库路径').fill(fixture);
+    await page.getByRole('button', { name: '打开并创建配置' }).click();
+    await expect(page.getByRole('heading', { name: '1 写评测题目' })).toBeVisible();
     await page.getByText('配置与任务细节').click();
     await expect(page.getByLabel('仓库路径')).toHaveValue(toPosix(fixture));
     await expect(page.getByLabel('配置路径')).toHaveValue(/context-eval\.yaml$/);
@@ -362,7 +396,35 @@ test('empty workspace can open a real local project and surfaces bad project pat
     await expectNoVerticalButtonText(page);
   } finally {
     await stopLocalApp(server.child);
-    fs.rmSync(workspace, { recursive: true, force: true });
+    removeWorkspace(workspace);
+  }
+});
+
+test('empty workspace can clone a project from Git URL', async ({ page }) => {
+  test.setTimeout(90_000);
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'context-eval-clone-app-'));
+  const fixture = copyFixtureRepo(workspace);
+  const server = await startLocalApp(workspace, { config: null });
+
+  try {
+    await page.goto(server.url);
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByRole('heading', { name: '打开评测项目' })).toBeVisible();
+
+    await page.getByLabel('Git URL').fill(pathToFileURL(fixture).href);
+    await page.getByLabel('本地文件夹名').fill('SeriaServer');
+    await page.getByRole('button', { name: '克隆并创建配置' }).click();
+
+    await expect(page.getByRole('heading', { name: '1 写评测题目' })).toBeVisible();
+    await page.getByText('配置与任务细节').click();
+    const clonedPath = path.join(workspace, 'repositories', 'SeriaServer');
+    await expect(page.getByLabel('仓库路径')).toHaveValue(toPosix(clonedPath));
+    expect(fs.existsSync(path.join(clonedPath, '.git'))).toBe(true);
+    await expectNoHorizontalOverflow(page);
+    await expectNoVerticalButtonText(page);
+  } finally {
+    await stopLocalApp(server.child);
+    removeWorkspace(workspace);
   }
 });
 
@@ -376,26 +438,26 @@ test('structured editors copy, delete, save, and reject unsafe overlay paths', a
   try {
     await page.goto(server.url);
     await page.getByRole('button', { name: '试用示例' }).click();
-    await expect(page.getByRole('heading', { name: '1 配测试用例' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '1 写评测题目' })).toBeVisible();
 
-    const variantPanel = page.getByLabel('对比资料包配置');
+    const variantPanel = page.getByLabel('对比资料配置');
     await variantPanel.getByRole('button', { name: '复制' }).click();
-    await variantPanel.locator('summary', { hasText: '更多设置：资料包 ID' }).click();
+    await variantPanel.locator('summary', { hasText: '更多设置：方案 ID' }).click();
     await expect(variantPanel.getByLabel('资料包 ID')).toHaveValue('baseline-copy');
-    await variantPanel.getByText('位置').first().click();
+    await variantPanel.getByText('放到哪里').first().click();
     await variantPanel.getByLabel('资料目标路径 1').fill('../AGENTS.md');
-    await variantPanel.getByRole('button', { name: '保存资料包' }).click();
+    await variantPanel.getByRole('button', { name: '保存对比资料' }).click();
     const unsafeTargetError =
       '错误: export blocked: variant 3 overlay 1 target must be a safe relative path';
     await expect(page.getByText(unsafeTargetError)).toBeVisible();
 
     await variantPanel.getByLabel('资料目标路径 1').fill('docs/AGENTS.md');
-    await variantPanel.getByRole('button', { name: '保存资料包' }).click();
-    await expect(page.getByTestId('variant-save-status')).toContainText('已保存配置并刷新执行计划');
+    await variantPanel.getByRole('button', { name: '保存对比资料' }).click();
+    await expect(page.getByTestId('variant-save-status')).toContainText('已保存配置并刷新评测计划');
     await expect(page.getByText(unsafeTargetError)).toHaveCount(0);
 
     page.once('dialog', (dialog) => dialog.accept());
-    await variantPanel.getByLabel('资料包列表').getByRole('button', { name: '删除' }).click();
+    await variantPanel.getByLabel('对比资料列表').getByRole('button', { name: '删除' }).click();
     await expect(variantPanel.getByLabel('资料包 ID')).toHaveValue('experiment');
 
     const agentPanel = page.getByLabel('执行器配置');
@@ -408,12 +470,15 @@ test('structured editors copy, delete, save, and reject unsafe overlay paths', a
     await expectNoVerticalButtonText(page);
   } finally {
     await stopLocalApp(server.child);
-    fs.rmSync(workspace, { recursive: true, force: true });
+    removeWorkspace(workspace);
   }
 });
 
 async function stopLocalApp(child: ChildProcessWithoutNullStreams) {
   if (child.exitCode !== null || child.signalCode !== null) {
+    child.stdout.destroy();
+    child.stderr.destroy();
+    await new Promise((resolve) => setTimeout(resolve, 250));
     return;
   }
   await new Promise<void>((resolve) => {
@@ -428,6 +493,9 @@ async function stopLocalApp(child: ChildProcessWithoutNullStreams) {
     });
     child.kill();
   });
+  child.stdout.destroy();
+  child.stderr.destroy();
+  await new Promise((resolve) => setTimeout(resolve, 250));
 }
 
 test('renders the fixture-backed Coco hybrid shell', async ({ page }) => {
@@ -437,7 +505,7 @@ test('renders the fixture-backed Coco hybrid shell', async ({ page }) => {
   await expect(page.getByTestId('matrix-count')).toHaveText('8');
   await page.locator('summary', { hasText: '更多设置：自动检查 / AI 仲裁' }).click();
   await page.getByText('配置与任务细节').click();
-  await expect(page.getByRole('heading', { name: '执行器', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '本地 AI 命令', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: '期望结果' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '硬性检查' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'AI 仲裁维度' })).toBeVisible();
@@ -551,7 +619,7 @@ test('explains scoring gaps, baseline changes, and API errors in results UI', as
     },
     soft_evaluation: {
       mode: 'payload-only',
-      meaning: 'soft evaluation 默认只生成本地复核 payload；显式选择 runner 时会运行本地仲裁执行器。',
+      meaning: 'soft evaluation 默认只生成本地复核 payload；显式选择 runner 时会运行本地仲裁命令。',
     },
     manual_review: { meaning: 'manual review 是人工复核证据和结论，不是自动评分。' },
     evidence_limits: ['无 validation、hard skipped 或 telemetry missing 时只能提示证据不足。'],
@@ -690,6 +758,10 @@ test('explains scoring gaps, baseline changes, and API errors in results UI', as
       });
       return;
     }
+    if (apiPath === '/api/environment') {
+      await fulfillJson(route, environmentPayload);
+      return;
+    }
     if (apiPath === '/api/config/load') {
       await fulfillJson(route, loadedPayload);
       return;
@@ -801,13 +873,13 @@ test('explains scoring gaps, baseline changes, and API errors in results UI', as
   });
 
   await page.goto('/');
-  await page.getByRole('button', { name: '开始运行' }).click();
+  await page.getByRole('button', { name: '开始评测' }).click();
   await expect(page.getByTestId('run-status')).toContainText('已完成');
-  await expect(page.getByText('结果已生成')).toBeVisible();
+  await expect(page.getByText('评测结果已生成')).toBeVisible();
   await expect(page.getByLabel('评分依据')).toContainText('验证可信度');
   await expect(page.getByLabel('评分依据')).toContainText('通过检查数 / 可评分检查数');
   await expect(page.getByLabel('评分依据')).toContainText('本地复核 payload');
-  await expect(page.getByLabel('评分依据')).toContainText('本地仲裁执行器');
+  await expect(page.getByLabel('评分依据')).toContainText('本地仲裁命令');
   await expect(page.getByLabel('对照组方案')).toHaveValue('baseline');
   await expect(page.getByLabel('对比摘要')).toContainText('对照组没有 validation commands');
 
@@ -908,6 +980,10 @@ test('can request stop for a running local run', async ({ page }) => {
         initial_config_path: 'context-eval.yaml',
         workspace: { state: 'configured', has_config: true, config_path: 'context-eval.yaml' },
       });
+      return;
+    }
+    if (apiPath === '/api/environment') {
+      await fulfillJson(route, environmentPayload);
       return;
     }
     if (apiPath === '/api/config/load') {
@@ -1011,11 +1087,11 @@ test('completes the local server workflow with fake Coco and hybrid evaluation',
       page.locator('.status-line', { hasText: 'Greeting uses context-eval wording.' }),
     ).toBeVisible();
 
-    await page.getByRole('button', { name: '开始运行' }).click();
+    await page.getByRole('button', { name: '开始评测' }).click();
     await expect(page.getByTestId('preflight-status')).toContainText('运行前检查通过');
     await expect(page.getByTestId('planned-case-count')).toHaveText('2');
     await expect(page.getByTestId('run-status')).toContainText('已完成', { timeout: 60000 });
-    await expect(page.getByText('结果已生成')).toBeVisible();
+    await expect(page.getByText('评测结果已生成')).toBeVisible();
 
     await expect(page.getByLabel('评分依据')).toContainText('验证可信度');
     await expect(page.getByLabel('评分依据')).toContainText('通过检查数 / 可评分检查数');
@@ -1045,6 +1121,6 @@ test('completes the local server workflow with fake Coco and hybrid evaluation',
     await expectNoVerticalButtonText(page);
   } finally {
     await stopLocalApp(server.child);
-    fs.rmSync(workspace, { recursive: true, force: true });
+    removeWorkspace(workspace);
   }
 });

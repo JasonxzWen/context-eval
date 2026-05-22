@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+﻿import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { reconcileRunScope } from './localConfig';
@@ -114,6 +114,22 @@ const loadedPayload = {
   },
 };
 
+const environmentPayload = {
+  ok: true,
+  checks: [
+    { id: 'git', label: 'Git', status: 'ok', summary: 'git version test', detail: null },
+    { id: 'codex', label: 'Codex CLI', status: 'warning', summary: 'codex unavailable in test', detail: null },
+    { id: 'repo', label: '项目仓库', status: 'ok', summary: 'Git 仓库可用', detail: null },
+  ],
+  repo: {
+    path: './fixture-repo',
+    is_git_repo: true,
+    branch: 'main',
+    head: 'abc123',
+    dirty_file_count: 0,
+  },
+};
+
 afterEach(() => {
   window.localStorage.clear();
   vi.unstubAllGlobals();
@@ -127,33 +143,36 @@ describe('App workflow shell', () => {
 
     expect(screen.getByTestId('local-app-shell')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'AGENTS.md / skills 效果对比' })).toBeVisible();
-    expect(screen.getByText(/同一批任务，换不同资料包/)).toBeVisible();
+    expect(screen.getByText(/同一批题目，换不同 AGENTS.md/)).toBeVisible();
     await waitFor(() => expect(screen.getAllByText('示例数据预览').length).toBeGreaterThan(0));
-    expect(screen.getByText('用同一任务，对比不同资料包')).toBeVisible();
-    expect(screen.getByText('写任务')).toBeVisible();
-    expect(screen.getByText('放资料')).toBeVisible();
-    expect(screen.getByText('看结果')).toBeVisible();
-    expect(screen.getAllByRole('heading', { name: '1 配测试用例' }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('heading', { name: '2 配资料包' }).length).toBeGreaterThan(0);
-    expect(screen.getByText(/给 AI 准备两套资料/)).toBeVisible();
-    expect(screen.getAllByRole('heading', { name: '3 配执行器' }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('heading', { name: '4 反馈规则' }).length).toBeGreaterThan(0);
+    expect(screen.getByText(/这页用来回答一个问题/)).toBeVisible();
+    expect(screen.getByText('写评测题')).toBeVisible();
+    expect(screen.getByText('放对比资料')).toBeVisible();
+    expect(screen.getByText('看结果反馈')).toBeVisible();
+    expect(screen.getAllByRole('heading', { name: '1 写评测题目' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('heading', { name: '2 准备对比资料' }).length).toBeGreaterThan(0);
+    expect(screen.getByText(/一套方案就是运行时给 AI 看的资料/)).toBeVisible();
+    expect(screen.getAllByRole('heading', { name: '3 选择本地 AI' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('heading', { name: '4 设置评分依据' }).length).toBeGreaterThan(0);
     expect(screen.getByRole('navigation', { name: '工作台导航' })).toBeVisible();
     expect(screen.getByTestId('matrix-count')).toHaveTextContent('8');
     fireEvent.click(screen.getByText('更多设置：自动检查 / AI 仲裁'));
     fireEvent.click(screen.getByText('配置与任务细节'));
-    expect(screen.getByRole('heading', { name: '执行器' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: '本地 AI 命令' })).toBeVisible();
     expect(screen.getByRole('heading', { name: '期望结果' })).toBeVisible();
     expect(screen.getByRole('heading', { name: '硬性检查' })).toBeVisible();
     expect(screen.getByRole('heading', { name: 'AI 仲裁维度' })).toBeVisible();
     expect(screen.getAllByText('AI 仲裁材料').length).toBeGreaterThan(0);
     expect(screen.getByLabelText('仲裁方式')).toHaveValue('payload-only');
-    expect(screen.getByLabelText('仲裁执行器')).toBeDisabled();
+    expect(screen.getByLabelText('仲裁命令')).toBeDisabled();
   });
 
   it('loads Coco hybrid evaluation data from the local server API', async () => {
     const fetchMock = vi.fn((url: string | URL | Request) => {
       const target = String(url);
+      if (target.startsWith('/api/environment')) {
+        return jsonResponse(environmentPayload);
+      }
       if (target === '/api/health') {
         return jsonResponse({ ok: true, initial_config_path: 'context-eval.yaml' });
       }
@@ -171,7 +190,7 @@ describe('App workflow shell', () => {
     const taskTab = screen.getByRole('button', { name: /Fix greeting punctuation/ });
     expect(within(taskTab).getByText('Fix greeting punctuation')).toBeVisible();
     expect(within(taskTab).getByText('ID: fix-greeting-punctuation')).toBeVisible();
-    expect(screen.getByRole('radiogroup', { name: '用例类型' })).toBeVisible();
+    expect(screen.getByRole('radiogroup', { name: '题目类型' })).toBeVisible();
     expect(screen.getByRole('radio', { name: '修 Bug' })).toHaveAttribute('aria-checked', 'true');
     expect(screen.getByLabelText('起始版本')).toHaveValue('main');
     expect(screen.getByLabelText('真实结果 / 修复说明')).toHaveValue('Real fix updates README punctuation.');
@@ -189,6 +208,64 @@ describe('App workflow shell', () => {
     );
   });
 
+  it('can clone a Git URL from the first-run setup panel', async () => {
+    const fetchMock = vi.fn((url: string | URL | Request, init?: RequestInit) => {
+      const target = String(url);
+      if (target.startsWith('/api/environment')) {
+        return jsonResponse(environmentPayload);
+      }
+      if (target === '/api/health') {
+        return jsonResponse({
+          ok: true,
+          workspace: {
+            state: 'empty',
+            has_config: false,
+            default_config_path: 'context-eval.yaml',
+          },
+        });
+      }
+      if (target === '/api/workspace/project') {
+        const body = JSON.parse(String(init?.body || '{}'));
+        expect(body).toMatchObject({
+          repo_url: 'file:///tmp/SeriaServer.git',
+          clone_dir: 'SeriaServer',
+          overwrite: false,
+        });
+        return jsonResponse({
+          ok: true,
+          state: 'configured',
+          has_config: true,
+          default_config_path: 'context-eval.yaml',
+          config_path: 'context-eval.yaml',
+          tasks_path: 'tasks.yaml',
+          loaded: {
+            ...loadedPayload,
+            resolved: { ...loadedPayload.resolved, repo_path: './repositories/SeriaServer' },
+          },
+        });
+      }
+      throw new Error(`unexpected request: ${target}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByRole('heading', { name: '打开评测项目' })).toBeVisible());
+    expect(screen.getByRole('heading', { name: '本机检查' })).toBeVisible();
+    expect(screen.getByText('Codex CLI')).toBeVisible();
+
+    fireEvent.change(screen.getByLabelText('Git URL'), {
+      target: { value: 'file:///tmp/SeriaServer.git' },
+    });
+    fireEvent.change(screen.getByLabelText('本地文件夹名'), {
+      target: { value: 'SeriaServer' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '克隆并创建配置' }));
+
+    await waitFor(() => expect(screen.getByRole('heading', { name: '1 写评测题目' })).toBeVisible());
+    expect(screen.getAllByText(/仓库已克隆/).length).toBeGreaterThan(0);
+  });
+
   it('submits raw task YAML unknown fields when saving', async () => {
     const tasksWithUnknown = loadedPayload.tasks_yaml.replace(
       '    prompt: Fix it.',
@@ -196,6 +273,9 @@ describe('App workflow shell', () => {
     );
     const fetchMock = vi.fn((url: string | URL | Request, init?: RequestInit) => {
       const target = String(url);
+      if (target.startsWith('/api/environment')) {
+        return jsonResponse(environmentPayload);
+      }
       if (target === '/api/health') {
         return jsonResponse({ ok: true, initial_config_path: 'context-eval.yaml' });
       }
@@ -263,6 +343,9 @@ describe('App workflow shell', () => {
     };
     const fetchMock = vi.fn((url: string | URL | Request, init?: RequestInit) => {
       const target = String(url);
+      if (target.startsWith('/api/environment')) {
+        return jsonResponse(environmentPayload);
+      }
       if (target === '/api/health') {
         return jsonResponse({ ok: true, initial_config_path: 'context-eval.yaml' });
       }
@@ -324,7 +407,7 @@ describe('App workflow shell', () => {
     render(<App />);
 
     await waitFor(() => expect(screen.getByLabelText('AI 要做什么')).toHaveValue('Fix it.'));
-    expect(screen.getByRole('radiogroup', { name: '用例类型' })).toBeVisible();
+    expect(screen.getByRole('radiogroup', { name: '题目类型' })).toBeVisible();
     expect(screen.getByRole('radio', { name: '修 Bug' })).toHaveAttribute('aria-checked', 'true');
     expect(screen.getByLabelText('起始版本')).toHaveValue('main');
     fireEvent.click(screen.getByText('更多设置：自动检查 / AI 仲裁'));
@@ -365,9 +448,9 @@ describe('App workflow shell', () => {
     fireEvent.change(softMode!, { target: { value: 'runner' } });
     expect(softRunner!.disabled).toBe(false);
     expect(softRunner!.value).toBe('');
-    fireEvent.click(screen.getByRole('button', { name: '保存测试用例' }));
+    fireEvent.click(screen.getByRole('button', { name: '保存评测题目' }));
 
-    await waitFor(() => expect(screen.getByTestId('task-save-status')).toHaveTextContent('已保存测试用例并刷新执行计划'));
+    await waitFor(() => expect(screen.getByTestId('task-save-status')).toHaveTextContent('已保存评测题目并刷新评测计划'));
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/config/save-editable',
       expect.objectContaining({ method: 'POST' }),
@@ -409,6 +492,9 @@ describe('App workflow shell', () => {
     };
     const fetchMock = vi.fn((url: string | URL | Request, init?: RequestInit) => {
       const target = String(url);
+      if (target.startsWith('/api/environment')) {
+        return jsonResponse(environmentPayload);
+      }
       if (target === '/api/health') {
         return jsonResponse({ ok: true, initial_config_path: 'context-eval.yaml' });
       }
@@ -482,10 +568,10 @@ describe('App workflow shell', () => {
     fireEvent.change(screen.getByLabelText('执行器联网权限'), {
       target: { value: 'enabled' },
     });
-    fireEvent.click(screen.getByRole('button', { name: '保存资料包' }));
+    fireEvent.click(screen.getByRole('button', { name: '保存对比资料' }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('variant-save-status')).toHaveTextContent('已保存配置并刷新执行计划');
+      expect(screen.getByTestId('variant-save-status')).toHaveTextContent('已保存配置并刷新评测计划');
     });
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/config/save-editable',
@@ -501,6 +587,9 @@ describe('App workflow shell', () => {
   it('blocks invalid task fields before submitting structured saves', async () => {
     const fetchMock = vi.fn((url: string | URL | Request) => {
       const target = String(url);
+      if (target.startsWith('/api/environment')) {
+        return jsonResponse(environmentPayload);
+      }
       if (target === '/api/health') {
         return jsonResponse({ ok: true, initial_config_path: 'context-eval.yaml' });
       }
@@ -516,7 +605,7 @@ describe('App workflow shell', () => {
     await waitFor(() => expect(screen.getByLabelText('AI 要做什么')).toHaveValue('Fix it.'));
     fireEvent.change(screen.getByLabelText('AI 要做什么'), { target: { value: ' ' } });
     fireEvent.change(screen.getByLabelText('命令 1'), { target: { value: ' ' } });
-    fireEvent.click(screen.getByRole('button', { name: '保存测试用例' }));
+    fireEvent.click(screen.getByRole('button', { name: '保存评测题目' }));
 
     const taskPanel = screen.getByRole('region', { name: '测试用例配置' });
     expect(await within(taskPanel).findByText('fix-greeting-punctuation: AI 要做什么不能为空')).toBeVisible();
@@ -534,6 +623,9 @@ describe('App workflow shell', () => {
   it('blocks invalid variant and agent fields before structured saves', async () => {
     const fetchMock = vi.fn((url: string | URL | Request) => {
       const target = String(url);
+      if (target.startsWith('/api/environment')) {
+        return jsonResponse(environmentPayload);
+      }
       if (target === '/api/health') {
         return jsonResponse({ ok: true, initial_config_path: 'context-eval.yaml' });
       }
@@ -553,14 +645,14 @@ describe('App workflow shell', () => {
     fireEvent.change(screen.getByLabelText('执行器超时分钟'), { target: { value: '0' } });
     await waitFor(() => expect(screen.getByLabelText('资料包 ID')).toHaveValue(' '));
     await waitFor(() => expect(screen.getByLabelText('执行器超时分钟')).toHaveValue(0));
-    fireEvent.click(screen.getByRole('button', { name: '保存执行器配置' }));
+    fireEvent.click(screen.getByRole('button', { name: '保存本地 AI 配置' }));
 
-    const variantPanel = screen.getByRole('region', { name: '对比资料包配置' });
+    const variantPanel = screen.getByRole('region', { name: '对比资料配置' });
     const agentPanel = screen.getByRole('region', { name: '执行器配置' });
-    expect(await within(variantPanel).findByText('第 1 个资料包名称不能为空')).toBeVisible();
-    expect(within(variantPanel).getByText('第 1 个资料包的第 1 份资料来源路径不能为空')).toBeVisible();
-    expect(within(agentPanel).getByText('第 1 个执行器命令模板不能为空')).toBeVisible();
-    expect(within(agentPanel).getByText('第 1 个执行器超时必须大于 0')).toBeVisible();
+    expect(await within(variantPanel).findByText('第 1 套对比资料名称不能为空')).toBeVisible();
+    expect(within(variantPanel).getByText('第 1 套对比资料的第 1 份资料来源路径不能为空')).toBeVisible();
+    expect(within(agentPanel).getByText('第 1 个本地 AI命令不能为空')).toBeVisible();
+    expect(within(agentPanel).getByText('第 1 个本地 AI最长运行时间必须大于 0')).toBeVisible();
     expect(within(agentPanel).getByTestId('agent-save-status')).toHaveTextContent(
       '有配置问题，请按红色提示修改后再保存',
     );
@@ -609,6 +701,9 @@ describe('App workflow shell', () => {
     };
     const fetchMock = vi.fn((url: string | URL | Request, init?: RequestInit) => {
       const target = String(url);
+      if (target.startsWith('/api/environment')) {
+        return jsonResponse(environmentPayload);
+      }
       if (target === '/api/health') {
         return jsonResponse({ ok: true, initial_config_path: 'context-eval.yaml' });
       }
@@ -700,16 +795,16 @@ describe('App workflow shell', () => {
 
     render(<App />);
 
-    await waitFor(() => expect(screen.getByLabelText('任务 second-task')).toBeChecked());
-    fireEvent.click(screen.getByLabelText('任务 fix-greeting-punctuation'));
-    fireEvent.click(screen.getByLabelText('资料包 baseline'));
-    fireEvent.click(screen.getByLabelText('执行器 coco'));
-    fireEvent.click(screen.getByRole('button', { name: '刷新执行计划' }));
+    await waitFor(() => expect(screen.getByLabelText('评测题目 second-task')).toBeChecked());
+    fireEvent.click(screen.getByLabelText('评测题目 fix-greeting-punctuation'));
+    fireEvent.click(screen.getByLabelText('对比资料 baseline'));
+    fireEvent.click(screen.getByLabelText('本地 AI coco'));
+    fireEvent.click(screen.getByRole('button', { name: '刷新评测计划' }));
 
     await waitFor(() => expect(screen.getByTestId('planned-case-count')).toHaveTextContent('1'));
     expect(screen.getByText('second-task__experiment__codex')).toBeVisible();
 
-    fireEvent.click(screen.getByRole('button', { name: '开始运行' }));
+    fireEvent.click(screen.getByRole('button', { name: '开始评测' }));
     await waitFor(() => expect(screen.getByTestId('run-status')).toHaveTextContent('已完成 1/1'));
     expect(screen.getAllByText('codex').length).toBeGreaterThan(0);
   });
@@ -717,6 +812,9 @@ describe('App workflow shell', () => {
   it('shows API errors from structured saves', async () => {
     const fetchMock = vi.fn((url: string | URL | Request) => {
       const target = String(url);
+      if (target.startsWith('/api/environment')) {
+        return jsonResponse(environmentPayload);
+      }
       if (target === '/api/health') {
         return jsonResponse({ ok: true, initial_config_path: 'context-eval.yaml' });
       }
@@ -736,7 +834,7 @@ describe('App workflow shell', () => {
     render(<App />);
 
     await waitFor(() => expect(screen.getByLabelText('AI 要做什么')).toHaveValue('Fix it.'));
-    fireEvent.click(screen.getByRole('button', { name: '保存测试用例' }));
+    fireEvent.click(screen.getByRole('button', { name: '保存评测题目' }));
 
     await waitFor(() => {
       expect(screen.getByText('错误: tasks.0.prompt: server validation failed')).toBeVisible();
@@ -746,6 +844,9 @@ describe('App workflow shell', () => {
   it('shows hard and soft result status after a completed run', async () => {
     const fetchMock = vi.fn((url: string | URL | Request) => {
       const target = String(url);
+      if (target.startsWith('/api/environment')) {
+        return jsonResponse(environmentPayload);
+      }
       if (target === '/api/health') {
         return jsonResponse({ ok: true, initial_config_path: 'context-eval.yaml' });
       }
@@ -837,7 +938,7 @@ describe('App workflow shell', () => {
             },
             soft_evaluation: {
               mode: 'payload-only',
-              meaning: 'soft evaluation 默认只生成本地复核 payload；显式选择 runner 时会运行本地仲裁执行器。',
+              meaning: 'soft evaluation 默认只生成本地复核 payload；显式选择 runner 时会运行本地仲裁命令。',
             },
             manual_review: {
               meaning: 'manual review 是人工复核证据和结论，不是自动评分。',
@@ -1020,19 +1121,19 @@ describe('App workflow shell', () => {
     render(<App />);
 
     await waitFor(() => expect(screen.getAllByText('Fix greeting punctuation').length).toBeGreaterThan(0));
-    fireEvent.click(screen.getByRole('button', { name: '开始运行' }));
+    fireEvent.click(screen.getByRole('button', { name: '开始评测' }));
     await waitFor(() => expect(screen.getByTestId('preflight-status')).toHaveTextContent('运行前检查通过'));
     await waitFor(() => expect(screen.getByTestId('planned-case-count')).toHaveTextContent('1'));
     expect(screen.queryByRole('button', { name: '运行预检' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '生成矩阵' })).not.toBeInTheDocument();
     await waitFor(() => expect(screen.getByText('通过 4/4')).toBeVisible());
-    expect(screen.getByText('结果已生成')).toBeVisible();
-    expect(screen.getByRole('button', { name: '查看结果' })).toBeVisible();
+    expect(screen.getByText('评测结果已生成')).toBeVisible();
+    expect(screen.getByRole('button', { name: '查看结果和反馈' })).toBeVisible();
     expect(screen.getByText('AI 仲裁结果已保存')).toBeVisible();
     expect(screen.getByText('软评分 8/10')).toBeVisible();
-    expect(screen.getByText('仲裁执行器 judge')).toBeVisible();
+    expect(screen.getByText('仲裁命令 judge')).toBeVisible();
     expect(screen.getByText('评分依据和边界')).toBeVisible();
-    expect(screen.getByText('soft evaluation 默认只生成本地复核 payload；显式选择 runner 时会运行本地仲裁执行器。')).toBeVisible();
+    expect(screen.getByText('soft evaluation 默认只生成本地复核 payload；显式选择 runner 时会运行本地仲裁命令。')).toBeVisible();
     expect(screen.getByLabelText('对照组方案')).toHaveValue('baseline');
     expect(screen.getByText('对比对象改善')).toBeVisible();
     expect(screen.getByText('对比对象 hard evaluation 增加 1，validation 结果未变化。')).toBeVisible();
@@ -1045,7 +1146,7 @@ describe('App workflow shell', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: '查看详情' }));
-    await waitFor(() => expect(screen.getByRole('heading', { name: '用例详情' })).toBeVisible());
+    await waitFor(() => expect(screen.getByRole('heading', { name: '结果详情' })).toBeVisible());
     expect(screen.getByText('patches/fix-greeting-punctuation__baseline__coco.patch')).toBeVisible();
     expect(screen.getByText(/context-eval marker/)).toBeVisible();
     expect(screen.getByRole('heading', { name: '硬性检查明细' })).toBeVisible();

@@ -30,14 +30,14 @@ function blankVariant(variants: EditableVariant[]): EditableVariant {
 }
 
 function displayVariantTitle(variant: EditableVariant, index: number) {
-  if (variant.name === 'baseline') return '当前默认资料包';
-  return variant.description?.trim() || variant.name?.trim() || `第 ${index + 1} 个资料包`;
+  if (variant.name === 'baseline') return '默认上下文';
+  return variant.description?.trim() || variant.name?.trim() || `第 ${index + 1} 套资料`;
 }
 
 function displayVariantDetail(variant: EditableVariant, title: string) {
   const name = variant.name?.trim();
   if (name && name !== title) return `ID: ${name}`;
-  return `${variant.overlays.length} 份资料`;
+  return `${variant.overlays.length} 份文件`;
 }
 
 function overlayKind(source: string, target: string) {
@@ -111,21 +111,23 @@ export function VariantEditor({
 
   function deleteVariant() {
     if (!variant || variants.length <= 1) return;
-    if (!window.confirm(`删除资料包 "${variant.name}"？`)) return;
+    if (!window.confirm(`删除对比资料 "${variant.name}"？`)) return;
     onUpdateVariants(variants.filter((_, index) => index !== selectedIndex));
     onSelectVariant(Math.max(0, selectedIndex - 1));
   }
 
   return (
-    <section className="panel variant-editor-panel" id="context-config" aria-label="对比资料包配置">
+    <section className="panel variant-editor-panel" id="context-config" aria-label="对比资料配置">
       <div className="panel-heading">
-        <h2>2 配资料包</h2>
-        <span>{variants.length} 个资料包</span>
+        <h2>2 准备对比资料</h2>
+        <span>{variants.length} 套方案</span>
       </div>
-      <p className="panel-note">给 AI 准备两套资料：当前默认和实验版本。</p>
+      <p className="panel-note">
+        一套方案就是运行时给 AI 看的资料。版本 1 放优化前 AGENTS.md；版本 2 可放优化后 AGENTS.md、docs/wiki、skills。
+      </p>
       {variant ? (
         <div className="editor-split">
-          <aside className="task-rail" aria-label="资料包列表">
+          <aside className="task-rail" aria-label="对比资料列表">
             {variants.map((item, index) => {
               const title = displayVariantTitle(item, index);
               return (
@@ -133,7 +135,7 @@ export function VariantEditor({
                   type="button"
                   className={index === selectedIndex ? 'task-tab active' : 'task-tab'}
                   key={`${item.name}:${index}`}
-                  aria-label={`选择资料包 ${item.name || index + 1}`}
+                  aria-label={`选择对比资料 ${item.name || index + 1}`}
                   onClick={() => onSelectVariant(index)}
                 >
                   <strong>{title}</strong>
@@ -168,7 +170,7 @@ export function VariantEditor({
           >
             <div className="form-grid simplified-grid">
               <label htmlFor="variant-description">
-                资料包名称
+                方案名称
                 <input
                   id="variant-description"
                   aria-label="资料包名称"
@@ -180,7 +182,7 @@ export function VariantEditor({
             </div>
             <div className="list-editor">
               <div className="subsection-heading">
-                <strong>资料文件</strong>
+                <strong>会放进项目的资料</strong>
                 <button
                   type="button"
                   className="secondary compact-button"
@@ -200,7 +202,7 @@ export function VariantEditor({
                       <span>{kind.description}</span>
                     </div>
                     <label htmlFor={`overlay-source-${index}`}>
-                      本地 AGENTS.md / skills
+                      本地 AGENTS.md / docs / skills
                       <input
                         id={`overlay-source-${index}`}
                         aria-label={`资料来源路径 ${index + 1}`}
@@ -210,7 +212,7 @@ export function VariantEditor({
                       />
                     </label>
                     <details className="overlay-advanced">
-                      <summary>位置</summary>
+                      <summary>放到哪里</summary>
                       <label htmlFor={`overlay-target-${index}`}>
                         放到项目里的位置
                         <input
@@ -236,10 +238,10 @@ export function VariantEditor({
               {variant.overlays.length === 0 && <p className="status-line">未添加资料。</p>}
             </div>
             <details className="advanced-inline">
-              <summary>更多设置：资料包 ID</summary>
+              <summary>更多设置：方案 ID</summary>
               <div className="form-grid simplified-grid advanced-field-grid">
                 <label htmlFor="variant-name">
-                  资料包 ID
+                  方案 ID
                   <input
                     id="variant-name"
                     aria-label="资料包 ID"
@@ -258,7 +260,7 @@ export function VariantEditor({
             )}
             <div className="button-row editor-actions">
               <button type="submit" disabled={serverMode !== 'connected'}>
-                保存资料包
+                保存对比资料
               </button>
               <span className="status-line" data-testid="variant-save-status">
                 {saveStatus}
@@ -268,9 +270,9 @@ export function VariantEditor({
         </div>
       ) : (
         <div className="empty-editor">
-          <p className="status-line">当前配置没有资料包。</p>
+          <p className="status-line">当前配置没有对比资料。</p>
           <button type="button" onClick={addVariant}>
-            新建资料包
+            新建对比资料
           </button>
         </div>
       )}
