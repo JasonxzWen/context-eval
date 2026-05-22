@@ -30,6 +30,7 @@ import type {
   EditableConfig,
   EditableTask,
   EditableVariant,
+  EnvironmentPayload,
   HardEvaluationPayload,
   LoadedConfig,
   LogPayload,
@@ -172,7 +173,7 @@ function metricValue(value: number | string | null | undefined, suffix = '') {
 
 function displayVariantName(name: string | null | undefined) {
   if (!name) return '-';
-  return name === 'baseline' ? 'baseline（当前默认资料包）' : name;
+  return name === 'baseline' ? 'baseline（默认上下文）' : name;
 }
 
 function formatDuration(seconds: number | null | undefined) {
@@ -205,7 +206,7 @@ function resultVariants(results: ResultsPayload | null) {
 }
 
 function taskIssueLabel(task: EditableTask, index: number) {
-  return `${task.id.trim() || `第 ${index + 1} 个测试用例`}:`;
+  return `${task.id.trim() || `第 ${index + 1} 个评测题目`}:`;
 }
 
 function validationIssueBuckets(editable: EditableConfig, issues: string[]) {
@@ -213,8 +214,10 @@ function validationIssueBuckets(editable: EditableConfig, issues: string[]) {
   const taskIssues = issues.filter((issue) => (
     taskLabels.some((label) => issue.startsWith(label)) || issue.startsWith('任务 ID 重复')
   ));
-  const variantIssues = issues.filter((issue) => issue.includes('资料包') || issue.includes('上下文方案'));
-  const agentIssues = issues.filter((issue) => issue.includes('执行器'));
+  const variantIssues = issues.filter((issue) => (
+    issue.includes('对比资料') || issue.includes('资料包') || issue.includes('上下文方案')
+  ));
+  const agentIssues = issues.filter((issue) => issue.includes('本地 AI') || issue.includes('执行器'));
   return { taskIssues, variantIssues, agentIssues };
 }
 
@@ -230,7 +233,7 @@ function caseEvidenceNotes(result: ResultCase) {
   if (result.validation_status === 'skipped') {
     notes.push({
       title: '无 validation',
-      message: '本用例没有运行项目验证命令，patch 和日志只能作为人工反馈材料。',
+      message: '这条结果没有运行项目验证命令，patch 和日志只能作为人工反馈材料。',
       nextStep: '为任务配置项目自己的测试或验证脚本后重新运行。',
     });
   }
@@ -267,14 +270,35 @@ function caseEvidenceNotes(result: ResultCase) {
 
 function DesignerGuide() {
   return (
-    <section className="designer-guide" aria-label="策划工作流说明">
+    <section className="designer-guide" aria-label="评测流程说明">
       <article className="designer-guide-card">
-        <strong>用同一任务，对比不同资料包</strong>
-        <span>看哪套 AGENTS.md / skills 更能帮 AI 做对事。</span>
+        <strong>这页用来回答一个问题：哪套上下文更能帮 AI 把任务做对。</strong>
+        <span>按下面顺序准备和运行；每一步都会产出后面要用的本地证据。</span>
         <ol className="designer-guide-steps">
-          <li>写任务</li>
-          <li>放资料</li>
-          <li>看结果</li>
+          <li>
+            <strong>打开项目</strong>
+            <span>选择本地 Git 仓库</span>
+          </li>
+          <li>
+            <strong>写评测题</strong>
+            <span>任务、版本、答案</span>
+          </li>
+          <li>
+            <strong>放对比资料</strong>
+            <span>AGENTS.md / docs / skills</span>
+          </li>
+          <li>
+            <strong>选本地 AI</strong>
+            <span>Codex CLI 等命令</span>
+          </li>
+          <li>
+            <strong>开始评测</strong>
+            <span>批量跑并采集日志</span>
+          </li>
+          <li>
+            <strong>看结果反馈</strong>
+            <span>硬指标、仲裁、星级</span>
+          </li>
         </ol>
       </article>
     </section>
@@ -283,12 +307,12 @@ function DesignerGuide() {
 
 function TopNav({ hasResults }: { hasResults: boolean }) {
   const links = [
-    ['#task-config', '测试用例'],
-    ['#context-config', '资料包'],
-    ['#agent-config', '执行器'],
-    ['#metric-config', '反馈'],
-    ['#run-config', '运行'],
-    ['#results', hasResults ? '结果' : '结果待生成'],
+    ['#task-config', '评测题目'],
+    ['#context-config', '对比资料'],
+    ['#agent-config', '本地 AI'],
+    ['#metric-config', '评分依据'],
+    ['#run-config', '开始评测'],
+    ['#results', hasResults ? '结果反馈' : '结果待生成'],
   ];
   return (
     <nav className="top-nav" aria-label="工作台导航">
@@ -305,29 +329,32 @@ function EvaluationSetupPanel() {
   return (
     <section className="panel metric-guide-panel" id="metric-config" aria-label="指标与反馈配置">
       <div className="panel-heading">
-        <h2>4 反馈规则</h2>
+        <h2>4 设置评分依据</h2>
         <span>结果页使用</span>
       </div>
+      <p className="panel-note">
+        这些设置决定结果页怎么看证据：硬指标来自本地日志，人工星级由你填写，AI 仲裁必须显式开启。
+      </p>
       <div className="metric-guide-grid">
         <article>
           <strong>硬指标</strong>
-          <span>耗时、Token、工具调用、命令调用。</span>
+          <span>耗时、token、工具/命令次数、改动文件；缺证据会标出。</span>
         </article>
         <article>
-          <strong>自动检查</strong>
-          <span>运行项目自己的测试命令。</span>
+          <strong>项目验证</strong>
+          <span>运行你配置的测试或检查命令，辅助判断功能是否可用。</span>
         </article>
         <article>
-          <strong>AI 仲裁材料</strong>
-          <span>只生成材料，不自动调用 judge。</span>
+          <strong>AI 仲裁</strong>
+          <span>可只生成材料，也可运行本地仲裁命令；分数只是软证据。</span>
         </article>
         <article>
           <strong>人工反馈</strong>
-          <span>人在结果页记录通过、失败或待复核。</span>
+          <span>你在结果页记录 1-5 星、通过/失败和备注。</span>
         </article>
         <article>
           <strong>证据缺口</strong>
-          <span>缺日志、缺 token 或缺最终回复会标出。</span>
+          <span>缺 Codex JSONL、token、最终回复等会单独提示。</span>
         </article>
       </div>
     </section>
@@ -381,6 +408,10 @@ export function App() {
   const [cleanupPolicy, setCleanupPolicy] = useState('successful');
   const [workspaceState, setWorkspaceState] = useState<WorkspaceState | null>(null);
   const [projectRepoPath, setProjectRepoPath] = useState('');
+  const [projectRepoUrl, setProjectRepoUrl] = useState('');
+  const [projectCloneDir, setProjectCloneDir] = useState('');
+  const [environment, setEnvironment] = useState<EnvironmentPayload | null>(null);
+  const [environmentStatus, setEnvironmentStatus] = useState('');
   const [configLoaded, setConfigLoaded] = useState(false);
 
   const fixtureCaseCount = useMemo(() => plannedCaseCount(localAppFixture), []);
@@ -411,6 +442,7 @@ export function App() {
     setConfigYaml(payload.config_yaml);
     setTasksYaml(payload.tasks_yaml);
     setTaskValidationErrors([]);
+    setProjectRepoPath(payload.resolved.repo_path || payload.editable.repo.path || '');
     setSelectedTaskIndex((current) => Math.min(current, Math.max(payload.editable.tasks.length - 1, 0)));
     setSelectedVariantIndex((current) => Math.min(current, Math.max(payload.editable.variants.length - 1, 0)));
     setSelectedAgentIndex((current) => Math.min(current, Math.max(agentsFrom(payload).length - 1, 0)));
@@ -460,7 +492,7 @@ export function App() {
     setSaveStatus(`已保存并从磁盘重载: ${saved.config_path} / ${saved.tasks_path}`);
   }
 
-  async function saveEditableConfig(message = '已保存配置并刷新执行计划') {
+  async function saveEditableConfig(message = '已保存配置并刷新评测计划') {
     setError('');
     const currentLoaded = loadedRef.current;
     const issues = validateEditableConfig(currentLoaded.editable);
@@ -496,13 +528,15 @@ export function App() {
     if (taskIssueIndex >= 0) {
       setSelectedTaskIndex(taskIssueIndex);
     }
-    const variantIssueMatch = issues.find((issue) => issue.includes('资料包') || issue.includes('上下文方案'));
-    const variantIndex = variantIssueMatch?.match(/^第 (\d+) 个(?:资料包|上下文方案)/)?.[1];
+    const variantIssueMatch = issues.find((issue) => (
+      issue.includes('对比资料') || issue.includes('资料包') || issue.includes('上下文方案')
+    ));
+    const variantIndex = variantIssueMatch?.match(/^第 (\d+) (?:套对比资料|个(?:资料包|上下文方案))/)?.[1];
     if (variantIndex) {
       setSelectedVariantIndex(Math.max(0, Number(variantIndex) - 1));
     }
-    const agentIssueMatch = issues.find((issue) => issue.includes('执行器'));
-    const agentIndex = agentIssueMatch?.match(/^第 (\d+) 个执行器/)?.[1];
+    const agentIssueMatch = issues.find((issue) => issue.includes('本地 AI') || issue.includes('执行器'));
+    const agentIndex = agentIssueMatch?.match(/^第 (\d+) 个(?:本地 AI|执行器)/)?.[1];
     if (agentIndex) {
       setSelectedAgentIndex(Math.max(0, Number(agentIndex) - 1));
     }
@@ -554,7 +588,7 @@ export function App() {
     const duplicate = {
       ...structuredClone(source),
       id: uniqueTaskId(`${source.id || 'task'}-copy`, loaded.editable.tasks),
-      title: source.title ? `${source.title} 副本` : '复制的测试用例',
+      title: source.title ? `${source.title} 副本` : '复制的评测题目',
     };
     updateEditable((editable) => ({ ...editable, tasks: [...editable.tasks, duplicate] }));
     setSelectedTaskIndex(loaded.editable.tasks.length);
@@ -611,13 +645,28 @@ export function App() {
       await loadConfig(payload.config_path || 'context-eval.yaml');
     }
     setSaveStatus('demo 工作区已创建');
+    await checkEnvironment();
+  }
+
+  function confirmProjectSetupOverwrite() {
+    if (!configLoaded && !workspaceState?.has_config) return false;
+    const confirmed = window.confirm(
+      '这会覆盖当前评测配置，重新生成默认题目、对比资料和本地 AI 命令。继续吗？',
+    );
+    if (!confirmed) {
+      setSaveStatus('已取消切换项目');
+      return null;
+    }
+    return true;
   }
 
   async function initializeProject() {
     setError('');
+    const overwrite = confirmProjectSetupOverwrite();
+    if (overwrite === null) return;
     const payload = await apiRequest<BootstrapResponse>('/api/workspace/project', {
       method: 'POST',
-      body: JSON.stringify({ repo_path: projectRepoPath, overwrite: false }),
+      body: JSON.stringify({ repo_path: projectRepoPath, overwrite }),
     });
     setWorkspaceState(payload);
     if (payload.loaded) {
@@ -625,7 +674,70 @@ export function App() {
     } else {
       await loadConfig(payload.config_path || 'context-eval.yaml');
     }
-    setSaveStatus('真实项目配置已创建，请检查执行器命令和测试用例');
+    setSaveStatus('真实项目配置已创建，请检查本地 AI 命令和评测题目');
+    await checkEnvironment(projectRepoPath);
+  }
+
+  async function cloneProject() {
+    setError('');
+    const overwrite = confirmProjectSetupOverwrite();
+    if (overwrite === null) return;
+    setEnvironmentStatus('正在克隆仓库');
+    const payload = await apiRequest<BootstrapResponse>('/api/workspace/project', {
+      method: 'POST',
+      body: JSON.stringify({
+        repo_url: projectRepoUrl,
+        clone_dir: projectCloneDir || undefined,
+        overwrite,
+      }),
+    });
+    setWorkspaceState(payload);
+    if (payload.loaded) {
+      applyLoadedConfig(payload.loaded);
+    } else {
+      await loadConfig(payload.config_path || 'context-eval.yaml');
+    }
+    const repoPath = payload.loaded?.resolved.repo_path;
+    setProjectRepoPath(repoPath || '');
+    setSaveStatus('仓库已克隆，评测配置已创建');
+    await checkEnvironment(repoPath);
+  }
+
+  async function checkEnvironment(repoPath = projectRepoPath || loadedRef.current.resolved.repo_path) {
+    if (serverMode === 'fixture') return null;
+    setEnvironmentStatus('正在检查');
+    try {
+      const params = new URLSearchParams();
+      if (repoPath) {
+        params.set('repo_path', repoPath);
+      }
+      const configForCheck = loadedRef.current.config_path || configPath;
+      if (configForCheck) {
+        params.set('config_path', configForCheck);
+      }
+      const payload = await apiRequest<EnvironmentPayload>(`/api/environment?${params.toString()}`);
+      setEnvironment(payload);
+      setEnvironmentStatus(payload.ok ? '可开始配置' : '有项目需要处理');
+      return payload;
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : String(caught);
+      const payload: EnvironmentPayload = {
+        ok: false,
+        checks: [
+          {
+            id: 'environment',
+            label: '本机检查',
+            status: 'error',
+            summary: '检查失败',
+            detail: message,
+          },
+        ],
+        repo: null,
+      };
+      setEnvironment(payload);
+      setEnvironmentStatus('检查失败');
+      return payload;
+    }
   }
 
   async function runPreflight() {
@@ -734,7 +846,7 @@ export function App() {
     setError('');
     const scope = runScopeRef.current;
     if (scope.task_ids.length === 0 || scope.variants.length === 0 || scope.agents.length === 0) {
-      throw new Error('请至少选择一个测试用例、资料包和执行器');
+      throw new Error('请至少选择一个评测题目、一套对比资料和一个本地 AI');
     }
     setResults(null);
     setSelectedCaseId('');
@@ -799,8 +911,10 @@ export function App() {
         if (health.initial_config_path) {
           setConfigPath(health.initial_config_path);
           await loadConfig(health.initial_config_path);
+          await checkEnvironment();
         } else if (health.workspace?.has_config) {
           await loadConfig(health.workspace.config_path || 'context-eval.yaml');
+          await checkEnvironment();
         } else {
           setConfigLoaded(false);
           const empty = emptyConfig();
@@ -812,6 +926,7 @@ export function App() {
           availableScopeRef.current = emptyRunScope();
           scopeInitializedRef.current = false;
           setRunScope(emptyRunScope());
+          await checkEnvironment();
         }
       } catch {
         if (!cancelled) {
@@ -880,7 +995,7 @@ export function App() {
     connected: '本地服务已连接',
     fixture: '示例数据预览',
   }[serverMode];
-  const runLabel = run ? labelFor(runStatusLabels, run.status) : '待运行';
+  const runLabel = run ? labelFor(runStatusLabels, run.status) : '待开始';
   const isRunActive = Boolean(run && ['queued', 'running', 'stop_requested'].includes(run.status));
   const resultSummary = results
     ? {
@@ -894,11 +1009,11 @@ export function App() {
       : preflightStatus === '待检查'
         ? '自动'
         : preflightStatus;
-  const taskTitle = task?.title || task?.id || '未配置任务';
-  const variantSummary = runScope.variants.join(' vs ') || '未选择资料包';
-  const agentSummary = runScope.agents.join(', ') || cocoAgent?.name || '未配置执行器';
+  const taskTitle = task?.title || task?.id || '未配置题目';
+  const variantSummary = runScope.variants.join(' vs ') || '未选择对比资料';
+  const agentSummary = runScope.agents.join(', ') || cocoAgent?.name || '未配置本地 AI';
   const runBrief = configLoaded
-    ? `用 ${agentSummary} 在 ${variantSummary} 上执行 ${runScope.task_ids.length} 个测试用例，预计 ${visibleCaseCount} 个评测用例。`
+    ? `用 ${agentSummary} 对 ${variantSummary} 执行 ${runScope.task_ids.length} 个题目，预计生成 ${visibleCaseCount} 条结果。`
     : '先试用示例或打开一个本地 Git 项目。';
   const availableBaselineVariants = resultVariants(results);
   const selectedBaselineValue =
@@ -916,7 +1031,7 @@ export function App() {
         <div>
           <p className="eyebrow">context-eval · 只看本地产物</p>
           <h1>AGENTS.md / skills 效果对比</h1>
-          <p className="topbar-subtitle">同一批任务，换不同资料包，比较 AI 执行结果。</p>
+          <p className="topbar-subtitle">同一批题目，换不同 AGENTS.md / docs / skills，比较 AI 执行结果。</p>
         </div>
         <div className="status-pill" aria-label="服务状态">
           {modeLabel}
@@ -929,23 +1044,36 @@ export function App() {
       <WorkflowBand
         steps={[
           ['项目', loaded.resolved.repo_path],
-          ['执行器', cocoAgent?.name || '未配置'],
-          ['运行检查', preflightStepLabel],
-          ['运行', runLabel],
+          ['本地 AI', cocoAgent?.name || '未配置'],
+          ['评测前检查', preflightStepLabel],
+          ['评测状态', runLabel],
           ['结果', results ? '已加载' : '本地'],
         ]}
       />
 
-      <DesignerGuide />
+      <FirstRunPanel
+        title={isFirstRun ? '打开评测项目' : '打开或切换评测项目'}
+        subtitle={
+          isFirstRun
+            ? '先选要评测的代码仓库'
+            : '要换项目时在这里填本地仓库路径或 Git URL；会覆盖当前评测配置'
+        }
+        showDemo={isFirstRun}
+        projectRepoPath={projectRepoPath}
+        projectRepoUrl={projectRepoUrl}
+        projectCloneDir={projectCloneDir}
+        environment={environment}
+        environmentStatus={environmentStatus}
+        onProjectRepoPathChange={setProjectRepoPath}
+        onProjectRepoUrlChange={setProjectRepoUrl}
+        onProjectCloneDirChange={setProjectCloneDir}
+        onBootstrapDemo={() => guarded(bootstrapDemo)}
+        onInitializeProject={() => guarded(initializeProject)}
+        onCloneProject={() => guarded(cloneProject)}
+        onCheckEnvironment={() => guarded(() => checkEnvironment(projectRepoPath).then(() => undefined))}
+      />
 
-      {isFirstRun && (
-        <FirstRunPanel
-          projectRepoPath={projectRepoPath}
-          onProjectRepoPathChange={setProjectRepoPath}
-          onBootstrapDemo={() => guarded(bootstrapDemo)}
-          onInitializeProject={() => guarded(initializeProject)}
-        />
-      )}
+      <DesignerGuide />
 
       {!isFirstRun && (
       <section className="content-grid">
@@ -966,7 +1094,7 @@ export function App() {
           onAddTask={addTask}
           onDuplicateTask={duplicateTask}
           onDeleteTask={deleteTask}
-          onSave={() => guarded(() => saveEditableConfig('已保存测试用例并刷新执行计划'))}
+          onSave={() => guarded(() => saveEditableConfig('已保存评测题目并刷新评测计划'))}
         />
         <VariantEditor
           variants={loaded.editable.variants}
@@ -976,7 +1104,7 @@ export function App() {
           validationErrors={validationBuckets.variantIssues}
           onSelectVariant={setSelectedVariantIndex}
           onUpdateVariants={updateVariants}
-          onSave={() => guarded(() => saveEditableConfig('已保存配置并刷新执行计划'))}
+          onSave={() => guarded(() => saveEditableConfig('已保存配置并刷新评测计划'))}
         />
         <AgentEditor
           agents={agents}
@@ -986,7 +1114,7 @@ export function App() {
           validationErrors={validationBuckets.agentIssues}
           onSelectAgent={setSelectedAgentIndex}
           onUpdateAgents={updateAgents}
-          onSave={() => guarded(() => saveEditableConfig('已保存配置并刷新执行计划'))}
+          onSave={() => guarded(() => saveEditableConfig('已保存配置并刷新评测计划'))}
         />
         <EvaluationSetupPanel />
         <RunControls
@@ -1117,7 +1245,7 @@ export function App() {
                     <strong>复核材料</strong>
                     <p>
                       {evaluationExplanation?.soft_evaluation.meaning ||
-                        '默认只生成复核材料；显式选择 AI 仲裁执行器后，会保存软评分证据。'}
+                        '默认只生成复核材料；显式选择 AI 仲裁命令后，会保存软评分证据。'}
                     </p>
                   </article>
                   <article className="guide-card">
@@ -1138,7 +1266,7 @@ export function App() {
               </div>
               <dl className="metric-grid">
                 <div>
-                  <dt>失败用例</dt>
+                  <dt>失败结果</dt>
                   <dd>{results.overview.failed_count}</dd>
                 </div>
                 <div>
@@ -1180,7 +1308,7 @@ export function App() {
                       </select>
                     </label>
                     <p className="status-line">
-                      对照组是你认为“当前默认”的资料包，其他资料包会和它比较；baseline 通常指当前 AGENTS.md / skills。
+                      对照组是你认为“当前默认”的上下文资料，其他资料会和它比较；baseline 通常指当前 AGENTS.md / skills。
                     </p>
                   </div>
                   {results.baseline_selection_notice && (
@@ -1239,15 +1367,15 @@ export function App() {
                       ))}
                     </div>
                   ) : (
-                    <p className="status-line">当前对照组没有可比对象，至少选择两个资料包后会生成摘要。</p>
+                    <p className="status-line">当前对照组没有可比对象，至少选择两套对比资料后会生成摘要。</p>
                   )}
                 </section>
               )}
               <table>
                 <thead>
                   <tr>
-                    <th>用例</th>
-                    <th>执行器</th>
+                    <th>题目</th>
+                    <th>本地 AI</th>
                     <th>状态</th>
                     <th>验证</th>
                     <th>可信度</th>
@@ -1263,11 +1391,11 @@ export function App() {
                     const evidenceNotes = caseEvidenceNotes(result);
                     return (
                       <tr key={result.case_id} className={selectedCaseId === result.case_id ? 'selected-row' : ''}>
-                        <td data-label="用例">
+                        <td data-label="题目">
                           {result.task_id}
                           <small>{displayVariantName(result.variant)}</small>
                         </td>
-                        <td data-label="执行器">{result.agent_name}</td>
+                        <td data-label="本地 AI">{result.agent_name}</td>
                         <td data-label="状态">{labelFor(resultStatusLabels, result.status)}</td>
                         <td data-label="验证">{labelFor(validationLabels, result.validation_status)}</td>
                         <td data-label="可信度">
@@ -1305,7 +1433,7 @@ export function App() {
                             </small>
                           )}
                           {result.soft_evaluation_runner_agent && (
-                            <small>仲裁执行器 {result.soft_evaluation_runner_agent}</small>
+                            <small>仲裁命令 {result.soft_evaluation_runner_agent}</small>
                           )}
                         </td>
                         <td data-label="复核">
@@ -1333,17 +1461,17 @@ export function App() {
               {caseDetail && (
                 <section className="case-detail-panel">
                   <div className="panel-heading compact-heading">
-                    <h3>用例详情</h3>
+                    <h3>结果详情</h3>
                     <span>{displayVariantName(caseDetail.case.variant)}</span>
                   </div>
                   <div className="detail-grid">
                     <dl className="compact-list">
                       <div>
-                        <dt>用例 ID</dt>
+                        <dt>题目 ID</dt>
                         <dd>{caseDetail.case.case_id}</dd>
                       </div>
                       <div>
-                        <dt>用例类型</dt>
+                        <dt>题目类型</dt>
                         <dd>{formatCaseType(caseDetail.case.case_type)}</dd>
                       </div>
                       <div>
@@ -1410,7 +1538,7 @@ export function App() {
                             </small>
                           )}
                           {caseDetail.case.soft_evaluation_runner_agent && (
-                            <small>仲裁执行器 {caseDetail.case.soft_evaluation_runner_agent}</small>
+                            <small>仲裁命令 {caseDetail.case.soft_evaluation_runner_agent}</small>
                           )}
                         </dd>
                       </div>

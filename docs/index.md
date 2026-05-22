@@ -53,6 +53,9 @@ context variant and review the recorded artifacts.
 - [Real project evaluation support plan](plans/2026-05-21-real-project-evaluation-support.md)
   defines the next local workflow for private production repositories, task
   types, reference evidence, Codex metrics, and review boundaries.
+- [Real project GUI workflow design](plans/2026-05-22-real-project-gui-workflow-design.md)
+  defines the local app setup flow for opening or cloning private repositories
+  and checking Git/Codex readiness before a run.
 - [Release checklist](release-checklist.md) documents release preparation and
   manual publish boundaries.
 

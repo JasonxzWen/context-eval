@@ -80,7 +80,7 @@ export function AgentEditor({
 
   function deleteAgent() {
     if (!agent || agents.length <= 1) return;
-    if (!window.confirm(`删除执行器 "${agent.name}"？`)) return;
+    if (!window.confirm(`删除本地 AI 命令 "${agent.name}"？`)) return;
     onUpdateAgents(agents.filter((_, index) => index !== selectedIndex));
     onSelectAgent(Math.max(0, selectedIndex - 1));
   }
@@ -88,10 +88,12 @@ export function AgentEditor({
   return (
     <section className="panel agent-editor-panel" id="agent-config" aria-label="执行器配置">
       <div className="panel-heading">
-        <h2>3 配执行器</h2>
-        <span>{agents.length} 个执行器</span>
+        <h2>3 选择本地 AI</h2>
+        <span>{agents.length} 个命令</span>
       </div>
-      <p className="panel-note">选择实际跑任务的 agent 命令。</p>
+      <p className="panel-note">
+        执行器就是实际做题的本地 AI 命令。用 Codex CLI 时建议 `codex exec --json`，这样能采集 token、耗时和工具调用。
+      </p>
       {agent ? (
         <div className="editor-split">
           <aside className="task-rail" aria-label="执行器列表">
@@ -134,7 +136,7 @@ export function AgentEditor({
           >
             <div className="form-grid">
               <label htmlFor="agent-name">
-                名称
+                命令名称
                 <input
                   id="agent-name"
                   aria-label="执行器名称"
@@ -144,7 +146,7 @@ export function AgentEditor({
                 />
               </label>
               <label htmlFor="agent-kind">
-                类型
+                AI / 命令类型
                 <select
                   id="agent-kind"
                   aria-label="执行器类型"
@@ -159,7 +161,7 @@ export function AgentEditor({
                 </select>
               </label>
               <label htmlFor="agent-timeout">
-                超时（分钟）
+                最长运行时间（分钟）
                 <input
                   id="agent-timeout"
                   aria-label="执行器超时分钟"
@@ -170,7 +172,7 @@ export function AgentEditor({
                 />
               </label>
               <label htmlFor="agent-network">
-                联网权限
+                是否允许联网
                 <select
                   id="agent-network"
                   aria-label="执行器联网权限"
@@ -202,7 +204,7 @@ export function AgentEditor({
             )}
             <div className="button-row editor-actions">
               <button type="submit" disabled={serverMode !== 'connected'}>
-                保存执行器配置
+                保存本地 AI 配置
               </button>
               <span className="status-line" data-testid="agent-save-status">
                 {saveStatus}
@@ -212,9 +214,9 @@ export function AgentEditor({
         </div>
       ) : (
         <div className="empty-editor">
-          <p className="status-line">当前配置没有执行器。</p>
+          <p className="status-line">当前配置没有本地 AI 命令。</p>
           <button type="button" onClick={addAgent}>
-            新建执行器
+            新建本地 AI 命令
           </button>
         </div>
       )}

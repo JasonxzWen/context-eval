@@ -131,15 +131,19 @@ that boundary.
 
 The planner should see a short, task-oriented flow:
 
-1. **Test cases**: choose case type, name the case, fill "AI task prompt", fill
+1. **Project setup**: open an existing local Git repository, or clone a
+   user-provided Git URL into the local evaluation workspace. Show Git, Codex
+   CLI, and repository readiness before running. Do not read credentials or
+   global logs.
+2. **Test cases**: choose case type, name the case, fill "AI task prompt", fill
    "how humans judge it", optionally set start version and reference evidence.
-2. **Context packages**: add one package for old `AGENTS.md`, another for new
+3. **Context packages**: add one package for old `AGENTS.md`, another for new
    `AGENTS.md` plus docs/wiki. Use labels such as "old context" and "new
    context" instead of unexplained baseline language.
-3. **Runner**: show where the Codex CLI command is configured, whether
+4. **Runner**: show where the Codex CLI command is configured, whether
    structured JSONL capture is enabled, and which executor performs optional AI
    arbitration.
-4. **Run and review**: show case matrix, hard metrics, evidence gaps, reference
+5. **Run and review**: show case matrix, hard metrics, evidence gaps, reference
    evidence, optional AI arbitration output, and the manual 1-5 feedback form.
 
 Default screens should be concise. Reference evidence, automatic checks, and
@@ -161,6 +165,9 @@ soft arbitration details can live in clear expandable sections.
 ## Acceptance
 
 - A planner can configure old-context vs new-context runs without editing YAML.
+- A planner can open a local repo or clone a Git URL from the local app before
+  configuring cases.
+- Git, Codex CLI, and repository readiness are visible before a run.
 - Each case can start from its own Git ref.
 - Reference evidence is saved locally, exported, and available for review, but
   not sent to the agent prompt by default.

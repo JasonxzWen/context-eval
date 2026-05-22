@@ -23,20 +23,20 @@ export function RunPlanPanel({
   return (
     <section className="panel matrix-panel">
       <div className="panel-heading">
-        <h2>执行计划</h2>
+        <h2>评测计划</h2>
         <span data-testid="matrix-count">{visibleCaseCount}</span>
       </div>
       <dl className="metric-grid">
         <div>
-          <dt>执行器</dt>
+          <dt>本地 AI</dt>
           <dd>{runScope.agents.length || agents.length}</dd>
         </div>
         <div>
-          <dt>测试用例</dt>
+          <dt>评测题目</dt>
           <dd>{runScope.task_ids.length || taskCount}</dd>
         </div>
         <div>
-          <dt>资料包</dt>
+          <dt>对比资料</dt>
           <dd>{runScope.variants.length || variants.length}</dd>
         </div>
         <div>
@@ -45,7 +45,7 @@ export function RunPlanPanel({
         </div>
       </dl>
       <p className="panel-note">
-        预计用例数 = 测试用例 × 资料包 × 执行器 × 轮次。
+        预计结果数 = 评测题目 × 对比资料 × 本地 AI × 轮次。
       </p>
       <ul className="check-list">
         {(plan?.cases || []).slice(0, 4).map((caseItem) => (
@@ -58,7 +58,7 @@ export function RunPlanPanel({
               {caseItem.hard_evaluation_enabled ? '硬性检查开启' : '硬性检查关闭'} /{' '}
               {caseItem.soft_evaluation_enabled
                 ? (caseItem.soft_evaluation_mode === 'runner'
-                    ? `AI 仲裁执行器 ${caseItem.soft_evaluation_runner_agent || '同评测执行器'}`
+                    ? `AI 仲裁命令 ${caseItem.soft_evaluation_runner_agent || '同评测用的本地 AI'}`
                     : 'AI 仲裁材料已配置')
                 : '未配置 AI 仲裁维度'}
             </small>
@@ -66,7 +66,7 @@ export function RunPlanPanel({
         ))}
       </ul>
       {!plan && (
-        <p className="panel-note">保存配置或点击“刷新执行计划”后会列出具体评测用例。</p>
+        <p className="panel-note">保存配置或点击“刷新评测计划”后会列出具体评测结果。</p>
       )}
     </section>
   );

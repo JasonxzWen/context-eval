@@ -486,6 +486,95 @@ def test_local_app_initializes_existing_project_without_overwriting(tmp_path: Pa
         service.initialize_project_workspace(repo_path=str(repo))
 
 
+def test_local_app_clones_git_url_inside_workspace(tmp_path: Path) -> None:
+    source = _create_git_repo(tmp_path / "source-repo")
+    service = LocalAppService(workspace_root=tmp_path / "workspace")
+
+    initialized = service.initialize_project_workspace(
+        repo_url=source.as_uri(),
+        clone_dir="SeriaServer",
+    )
+
+    clone_path = tmp_path / "workspace" / "repositories" / "SeriaServer"
+    assert initialized["state"] == "configured"
+    assert (clone_path / ".git").exists()
+    loaded = service.load_config(config_path="context-eval.yaml")
+    assert loaded["editable"]["repo"]["path"] == clone_path.as_posix()
+
+
+def test_local_app_rejects_unsafe_clone_inputs(tmp_path: Path) -> None:
+    source = _create_git_repo(tmp_path / "source-repo")
+    service = LocalAppService(workspace_root=tmp_path / "workspace")
+
+    with pytest.raises(LocalAppError, match="credentials"):
+        service.initialize_project_workspace(
+            repo_url="https://token@code.byted.org/oasis/SeriaServer.git",
+            clone_dir="SeriaServer",
+        )
+
+    with pytest.raises(LocalAppError, match="safe folder"):
+        service.initialize_project_workspace(
+            repo_url=source.as_uri(),
+            clone_dir="../SeriaServer",
+        )
+
+
+def test_local_app_environment_check_reports_tools_and_repo(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo = _create_git_repo(tmp_path / "repo")
+    service = LocalAppService(workspace_root=tmp_path / "workspace")
+    original_run_command = service._run_command
+
+    monkeypatch.setattr("context_eval.local_app.shutil.which", lambda name: f"/bin/{name}")
+
+    def fake_run_command(command: list[str], *, timeout: int = 10) -> dict[str, object]:
+        if command == ["codex", "--version"]:
+            return {"exit_code": 0, "stdout": "codex 0.1.0\n", "stderr": ""}
+        if command == ["codex", "exec", "--help"]:
+            return {"exit_code": 0, "stdout": "Usage: codex exec\n", "stderr": ""}
+        return original_run_command(command, timeout=timeout)
+
+    monkeypatch.setattr(service, "_run_command", fake_run_command)
+
+    payload = service.environment_check(repo_path=repo)
+
+    assert payload["ok"] is True
+    checks = {check["id"]: check for check in payload["checks"]}
+    assert checks["git"]["status"] == "ok"
+    assert checks["codex"]["status"] == "ok"
+    assert checks["repo"]["status"] == "ok"
+    assert payload["repo"]["is_git_repo"] is True
+    assert payload["repo"]["branch"] == "main"
+    assert payload["repo"]["dirty_file_count"] == 0
+
+
+def test_local_app_environment_check_surfaces_codex_execution_errors(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = LocalAppService(workspace_root=tmp_path)
+
+    monkeypatch.setattr("context_eval.local_app.shutil.which", lambda name: f"/bin/{name}")
+
+    def fake_run_command(command: list[str], *, timeout: int = 10) -> dict[str, object]:
+        if command == ["codex", "--version"]:
+            return {"exit_code": None, "stdout": "", "stderr": "Access is denied"}
+        if command == ["git", "--version"]:
+            return {"exit_code": 0, "stdout": "git version test\n", "stderr": ""}
+        return {"exit_code": 0, "stdout": "", "stderr": ""}
+
+    monkeypatch.setattr(service, "_run_command", fake_run_command)
+
+    payload = service.environment_check()
+
+    checks = {check["id"]: check for check in payload["checks"]}
+    assert payload["ok"] is False
+    assert checks["codex"]["status"] == "error"
+    assert checks["codex"]["detail"] == "Access is denied"
+
+
 def test_local_app_save_reloads_and_preserves_raw_unknown_fields(tmp_path: Path) -> None:
     repo = _create_git_repo(tmp_path / "repo")
     _write_eval_files(tmp_path, repo)

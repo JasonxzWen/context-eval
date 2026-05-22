@@ -182,7 +182,7 @@ export function validateEditableConfig(editable: EditableConfig) {
     ...new Set(variantNames.filter((name, index) => name && variantNames.indexOf(name) !== index)),
   ];
   editable.variants.forEach((variant, index) => {
-    const label = `第 ${index + 1} 个资料包`;
+    const label = `第 ${index + 1} 套对比资料`;
     if (!variant.name.trim()) {
       issues.push(`${label}名称不能为空`);
     }
@@ -196,7 +196,7 @@ export function validateEditableConfig(editable: EditableConfig) {
       }
     });
   });
-  duplicateVariants.forEach((name) => issues.push(`资料包名称重复: ${name}`));
+  duplicateVariants.forEach((name) => issues.push(`对比资料名称重复: ${name}`));
 
   const agentProfiles =
     editable.agent_shape === 'agents'
@@ -207,26 +207,26 @@ export function validateEditableConfig(editable: EditableConfig) {
     ...new Set(agentNames.filter((name, index) => name && agentNames.indexOf(name) !== index)),
   ];
   agentProfiles.forEach((agent, index) => {
-    const label = `第 ${index + 1} 个执行器`;
+    const label = `第 ${index + 1} 个本地 AI`;
     if (!agent.name.trim()) {
       issues.push(`${label}名称不能为空`);
     }
     if (!agent.command.trim()) {
-      issues.push(`${label}命令模板不能为空`);
+      issues.push(`${label}命令不能为空`);
     }
     if (!(agent.timeout_minutes > 0)) {
-      issues.push(`${label}超时必须大于 0`);
+      issues.push(`${label}最长运行时间必须大于 0`);
     }
     if (!['disabled', 'enabled'].includes(agent.network)) {
       issues.push(`${label}联网权限必须是“禁止联网”或“允许联网”`);
     }
   });
-  duplicateAgents.forEach((name) => issues.push(`执行器名称重复: ${name}`));
+  duplicateAgents.forEach((name) => issues.push(`本地 AI 名称重复: ${name}`));
 
   const ids = editable.tasks.map((task) => task.id.trim());
   const duplicates = [...new Set(ids.filter((id, index) => id && ids.indexOf(id) !== index))];
   editable.tasks.forEach((task, index) => {
-    const label = task.id.trim() || `第 ${index + 1} 个测试用例`;
+    const label = task.id.trim() || `第 ${index + 1} 个评测题目`;
     if (!task.id.trim()) {
       issues.push(`${label}: 任务 ID 不能为空`);
     }
@@ -256,7 +256,7 @@ export function validateEditableConfig(editable: EditableConfig) {
     });
     if (task.soft_evaluation?.runner_agent) {
       if (!agentNames.includes(task.soft_evaluation.runner_agent.trim())) {
-        issues.push(`${label}: 仲裁执行器必须匹配已有执行器`);
+        issues.push(`${label}: 仲裁命令必须匹配已有本地 AI`);
       }
     }
   });
@@ -277,7 +277,7 @@ export function uniqueTaskId(base: string, tasks: EditableTask[]) {
 export function blankTask(tasks: EditableTask[]): EditableTask {
   return {
     id: uniqueTaskId('new-task', tasks),
-    title: '新的测试用例',
+    title: '新的评测题目',
     case_type: 'bugfix',
     prompt: '',
     repo_ref: null,

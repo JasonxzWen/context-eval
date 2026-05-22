@@ -226,24 +226,22 @@ button:disabled {
   margin: 0 0 10px;
   border: 1px solid #9eb6c8;
   border-radius: 8px;
-  padding: 8px 10px;
+  padding: 10px 12px;
   background: #f7fbfd;
 }
 
 .designer-guide-card {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 12px;
-  align-items: center;
+  display: grid;
+  gap: 8px;
   min-width: 0;
 }
 
-.designer-guide-card strong {
+.designer-guide-card > strong {
   color: var(--blue);
-  font-size: 13px;
+  font-size: 14px;
 }
 
-.designer-guide-card span {
+.designer-guide-card > span {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.25;
@@ -251,7 +249,7 @@ button:disabled {
 
 .designer-guide-steps {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(112px, 1fr));
   gap: 6px;
   margin: 0;
   padding: 0;
@@ -259,17 +257,32 @@ button:disabled {
 }
 
 .designer-guide-steps li {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  gap: 2px;
+  align-content: center;
   min-width: 0;
   border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 5px 9px;
+  border-radius: 8px;
+  padding: 7px 9px;
   background: #ffffff;
+  color: var(--ink);
+}
+
+.designer-guide-steps li strong {
+  overflow: hidden;
   color: var(--ink);
   font-size: 12px;
   font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.designer-guide-steps li span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -312,6 +325,82 @@ button:disabled {
   margin: 8px 0 0;
   color: var(--muted);
   line-height: 1.45;
+}
+
+.setup-option-wide {
+  grid-column: 1 / -1;
+}
+
+.environment-panel {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+
+.environment-check-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.environment-check-row {
+  display: grid;
+  grid-template-columns: minmax(92px, 0.8fr) minmax(56px, auto) minmax(0, 2.2fr);
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-left-width: 4px;
+  border-radius: 8px;
+  padding: 9px 10px;
+  background: #ffffff;
+}
+
+.environment-check-row.ok {
+  border-left-color: var(--teal);
+}
+
+.environment-check-row.warning {
+  border-left-color: #b67800;
+}
+
+.environment-check-row.error {
+  border-left-color: #b42318;
+}
+
+.environment-check-row strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.environment-check-row span {
+  justify-self: start;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px 8px;
+  color: var(--blue);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.environment-check-row small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.environment-check-row em {
+  grid-column: 3;
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1.35;
 }
 
 .panel {
@@ -1976,6 +2065,7 @@ legend {
   .compare-card dl,
   .detail-grid,
   .codex-path-list,
+  .environment-check-row,
   .review-form,
   .hard-check-row,
   .editor-split,
@@ -1990,6 +2080,10 @@ legend {
   .rail-actions,
   .list-row {
     grid-template-columns: 1fr;
+  }
+
+  .environment-check-row em {
+    grid-column: auto;
   }
 }
 

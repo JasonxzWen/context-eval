@@ -62,8 +62,8 @@ export function RunControls({
   return (
     <section className="panel run-brief-panel" id="run-config">
       <div className="panel-heading">
-        <h2>5 本次运行</h2>
-        <span>{results ? '已出结果' : isRunActive ? '运行中' : '待运行'}</span>
+        <h2>5 开始评测</h2>
+        <span>{results ? '已有结果' : isRunActive ? '正在评测' : '待开始'}</span>
       </div>
       <div className="brief-layout">
         <div className="brief-copy">
@@ -72,35 +72,35 @@ export function RunControls({
           <p>{runBrief}</p>
         </div>
         <fieldset className="scope-panel">
-          <legend>运行范围</legend>
+          <legend>本次要评什么</legend>
           <ScopeGroup
-            title="任务"
+            title="评测题目"
             emptyLabel="未配置任务"
             values={tasks.map((task) => task.id).filter(Boolean)}
             selected={runScope.task_ids}
-            labelPrefix="任务"
+            labelPrefix="评测题目"
             onToggle={(value, checked) => onToggleScope('task_ids', value, checked)}
           />
           <ScopeGroup
-            title="资料包"
-            emptyLabel="未配置资料包"
+            title="对比资料"
+            emptyLabel="未配置对比资料"
             values={variants.map((variant) => variant.name).filter(Boolean)}
             selected={runScope.variants}
-            labelPrefix="资料包"
+            labelPrefix="对比资料"
             onToggle={(value, checked) => onToggleScope('variants', value, checked)}
           />
           <ScopeGroup
-            title="执行器"
-            emptyLabel="未配置执行器"
+            title="本地 AI"
+            emptyLabel="未配置本地 AI"
             values={agents.map((agent) => agent.name).filter(Boolean)}
             selected={runScope.agents}
-            labelPrefix="执行器"
+            labelPrefix="本地 AI"
             onToggle={(value, checked) => onToggleScope('agents', value, checked)}
           />
         </fieldset>
         <div className="brief-actions">
           <label htmlFor="cleanup-policy">
-            清理策略
+            工作区保留方式
             <select
               id="cleanup-policy"
               value={cleanupPolicy}
@@ -114,10 +114,10 @@ export function RunControls({
           </label>
           <div className="button-row">
             <button type="button" className="secondary" onClick={onPlan} disabled={!canRun}>
-              刷新执行计划
+              刷新评测计划
             </button>
             <button type="button" onClick={onStart} disabled={!canRun}>
-              {isRunActive ? '运行中' : '开始运行'}
+              {isRunActive ? '正在评测' : '开始评测'}
             </button>
             <button type="button" className="secondary" onClick={onStop} disabled={!isRunActive}>
               停止
@@ -133,12 +133,12 @@ export function RunControls({
         <div>
           <dt>当前选择</dt>
           <dd>
-            {runScope.task_ids.length} 个测试用例 / {runScope.variants.length} 个资料包 /{' '}
-            {runScope.agents.length} 个执行器
+            {runScope.task_ids.length} 个题目 / {runScope.variants.length} 套资料 /{' '}
+            {runScope.agents.length} 个本地 AI
           </dd>
         </div>
         <div>
-          <dt>预计用例</dt>
+          <dt>预计结果数</dt>
           <dd>
             <strong data-testid="planned-case-count">{plannedCount}</strong>
             {!plan && plannedCount > 0 && <small>预计</small>}
@@ -147,7 +147,7 @@ export function RunControls({
       </dl>
       {preflightChecks.length > 0 && (
         <details className="prep-details">
-          <summary>已通过 {preflightChecks.length} 项运行前检查</summary>
+          <summary>已通过 {preflightChecks.length} 项评测前检查</summary>
           <ul className="inline-check-list">
             {preflightChecks.map((check) => (
               <li key={check}>{labelForCheck(check)}</li>
@@ -158,7 +158,7 @@ export function RunControls({
       {results && (
         <div className="result-callout" role="status">
           <div>
-            <strong>结果已生成</strong>
+            <strong>评测结果已生成</strong>
             <span>
               {results.overview.case_count} 个用例，验证失败{' '}
               {resultSummary?.validationFailed ?? 0}，硬性检查失败{' '}
@@ -167,7 +167,7 @@ export function RunControls({
             </span>
           </div>
           <button type="button" className="secondary" onClick={onRevealResults}>
-            查看结果
+            查看结果和反馈
           </button>
         </div>
       )}
