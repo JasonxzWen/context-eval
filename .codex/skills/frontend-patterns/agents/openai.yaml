@@ -1,0 +1,8 @@
+interface:
+  display_name: "Frontend Patterns"
+  short_description: >-
+    General frontend implementation patterns for React, Next.js, state management, forms, routing, accessibility, and responsive UI. Use as the broad frontend engineering baseline. ...
+  default_prompt: "Use $frontend-patterns to help with this task."
+
+policy:
+  allow_implicit_invocation: true

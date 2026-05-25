@@ -1,0 +1,8 @@
+interface:
+  display_name: "Doc Coauthoring"
+  short_description: >-
+    Load when the user wants to collaboratively draft, restructure, or reader-test docs, PRDs, RFCs, proposals, specs, or decision records; do not load for implementation itself.
+  default_prompt: "Use $doc-coauthoring to help with this task."
+
+policy:
+  allow_implicit_invocation: true

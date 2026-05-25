@@ -1,0 +1,8 @@
+interface:
+  display_name: "Answer Workflow"
+  short_description: >-
+    Load when the user asks a read-only question, explanation, evidence lookup, feasibility check, or comparison; answer from repo/source evidence and do not edit files unless the u...
+  default_prompt: "Use $answer-workflow to help with this task."
+
+policy:
+  allow_implicit_invocation: true

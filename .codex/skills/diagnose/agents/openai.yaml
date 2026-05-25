@@ -1,0 +1,8 @@
+interface:
+  display_name: "Diagnose"
+  short_description: >-
+    Diagnose hard bugs and performance regressions through a reproducible feedback loop, ranked hypotheses, targeted instrumentation, a fix, and a regression test. Use when the user...
+  default_prompt: "Use $diagnose to help with this task."
+
+policy:
+  allow_implicit_invocation: true

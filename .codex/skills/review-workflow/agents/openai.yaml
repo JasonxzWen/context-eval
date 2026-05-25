@@ -1,0 +1,8 @@
+interface:
+  display_name: "Review Workflow"
+  short_description: >-
+    Load when the user asks for code, plan, release, UI, or security review; produce findings first and do not implement fixes unless the user explicitly redirects.
+  default_prompt: "Use $review-workflow to help with this task."
+
+policy:
+  allow_implicit_invocation: true

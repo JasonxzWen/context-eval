@@ -1,0 +1,8 @@
+interface:
+  display_name: "Documentation Lookup"
+  short_description: >-
+    Use up-to-date library and framework docs via Context7 MCP instead of training data. Activates for setup questions, API references, code examples, or when the user names a frame...
+  default_prompt: "Use $documentation-lookup to help with this task."
+
+policy:
+  allow_implicit_invocation: true

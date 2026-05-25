@@ -522,15 +522,16 @@ def test_skill_hub_import_documents_refreshed_minimal_profile_skills() -> None:
     text = Path("docs/skill-hub-import.md").read_text(encoding="utf-8")
 
     for term in [
-        "Latest refreshed commit: `42c3065378e1d1d2851ca0e387e915a2841b885e`",
-        "Latest refresh date: `2026-05-14`",
+        "Latest refreshed commit: `d76897b27ff379d525147e43636702321a60c589`",
+        "Latest refresh date: `2026-05-25`",
+        "migrates the current upstream `skills/` set into",
         "`html-work-reports`",
         "`compound-code-review`",
         "`diagnose`",
         "`prototype`",
         "`grill-me`",
-        "does not import `feynman-learning-coach`",
-        "not needed for this project's runtime package",
+        "`feynman-learning-coach`",
+        "does not import Skill Hub CLI lifecycle code",
     ]:
         assert term in text
 
@@ -542,12 +543,15 @@ def test_html_work_reports_skill_assets_are_installed() -> None:
         "compound-code-review",
         "diagnose",
         "grill-me",
-        "html-work-reports",
         "prototype",
     ]:
-        skill_root = Path(".agents/skills") / skill_name
+        skill_root = Path(".codex/skills") / skill_name
         assert (skill_root / "SKILL.md").exists()
         assert (skill_root / "agents/openai.yaml").exists()
+
+    skill_root = Path(".agents/skills/html-work-reports")
+    assert (skill_root / "SKILL.md").exists()
+    assert (skill_root / "agents/openai.yaml").exists()
 
     for relative in [
         "SKILL.md",

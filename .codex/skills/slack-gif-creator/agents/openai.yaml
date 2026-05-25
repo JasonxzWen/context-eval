@@ -1,0 +1,8 @@
+interface:
+  display_name: "Slack Gif Creator"
+  short_description: >-
+    Load when the user asks to create, optimize, or validate an animated GIF for Slack emoji or messages; do not load for static images, video editing, or non-Slack animation targets.
+  default_prompt: "Use $slack-gif-creator to help with this task."
+
+policy:
+  allow_implicit_invocation: true

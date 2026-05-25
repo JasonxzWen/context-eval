@@ -1,0 +1,8 @@
+interface:
+  display_name: "Product Capability"
+  short_description: >-
+    Translate PRD intent, roadmap asks, or product discussions into an implementation-ready capability plan that exposes constraints, invariants, interfaces, and unresolved decision...
+  default_prompt: "Use $product-capability to help with this task."
+
+policy:
+  allow_implicit_invocation: true

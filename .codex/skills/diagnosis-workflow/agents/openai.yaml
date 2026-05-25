@@ -1,0 +1,8 @@
+interface:
+  display_name: "Diagnosis Workflow"
+  short_description: >-
+    Load when the user reports a failing command, runtime bug, flaky behavior, performance regression, or agent/tool failure; reproduce or bound the symptom before fixing.
+  default_prompt: "Use $diagnosis-workflow to help with this task."
+
+policy:
+  allow_implicit_invocation: true

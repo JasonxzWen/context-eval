@@ -1,0 +1,8 @@
+interface:
+  display_name: "Frontend Slides"
+  short_description: >-
+    Create stunning, animation-rich HTML presentations from scratch or by converting PowerPoint files. Use when the user wants to build a presentation, convert a PPT/PPTX to web, or...
+  default_prompt: "Use $frontend-slides to help with this task."
+
+policy:
+  allow_implicit_invocation: true

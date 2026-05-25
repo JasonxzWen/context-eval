@@ -1,0 +1,8 @@
+interface:
+  display_name: "E2e Testing"
+  short_description: >-
+    Use when creating, refactoring, or maintaining durable Playwright E2E test suites: test architecture, Page Object Models, fixtures, CI/CD integration, artifact management, and f...
+  default_prompt: "Use $e2e-testing to help with this task."
+
+policy:
+  allow_implicit_invocation: true

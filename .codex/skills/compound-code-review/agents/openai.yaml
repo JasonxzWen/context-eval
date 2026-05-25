@@ -1,0 +1,8 @@
+interface:
+  display_name: "Compound Code Review"
+  short_description: >-
+    Run a Compound Engineering-inspired code review with structured findings, reviewer lenses, anchored confidence, and fix routing. Use for deep pre-PR review, CE-style review, mul...
+  default_prompt: "Use $compound-code-review to help with this task."
+
+policy:
+  allow_implicit_invocation: true

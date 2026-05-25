@@ -1,0 +1,8 @@
+interface:
+  display_name: "Mcp Builder"
+  short_description: >-
+    Load when the user asks to design, build, review, or test an MCP server for external APIs or services; do not load for ordinary REST clients or non-MCP integrations.
+  default_prompt: "Use $mcp-builder to help with this task."
+
+policy:
+  allow_implicit_invocation: true

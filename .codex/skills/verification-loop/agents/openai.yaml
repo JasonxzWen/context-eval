@@ -1,0 +1,8 @@
+interface:
+  display_name: "Verification Loop"
+  short_description: >-
+    A comprehensive verification system for agent sessions.
+  default_prompt: "Use $verification-loop to help with this task."
+
+policy:
+  allow_implicit_invocation: true

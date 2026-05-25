@@ -1,0 +1,8 @@
+interface:
+  display_name: "Effective Interact"
+  short_description: >-
+    Load when Chinese-first clear complex communication, alignment, multi-option choice, status/incident reporting, long-task fact ledgers, implementation plans, reviews, architectu...
+  default_prompt: "Use $effective-interact to help with this task."
+
+policy:
+  allow_implicit_invocation: true

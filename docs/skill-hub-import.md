@@ -4,9 +4,9 @@ This repository vendors the development capability library from:
 
 - Source: `https://github.com/JasonxzWen/skill-hub`
 - Initial imported commit: `65523f9211a1bf8adaf9247f3dfbc14484251f1e`
-- Latest refreshed commit: `42c3065378e1d1d2851ca0e387e915a2841b885e`
+- Latest refreshed commit: `d76897b27ff379d525147e43636702321a60c589`
 - Import date: `2026-05-08`
-- Latest refresh date: `2026-05-14`
+- Latest refresh date: `2026-05-25`
 
 Imported capability roots:
 
@@ -26,8 +26,12 @@ definitions, focused agent role configs, OpenSpec helpers, Ralph loop scripts,
 and validation utilities. They are not part of the `context_eval` runtime
 package unless explicitly referenced by future packaging changes.
 
-The `2026-05-14` refresh imports the upstream low-noise minimal profile skills
-that were not present in the original snapshot:
+The `2026-05-25` refresh migrates the current upstream `skills/` set into
+`.codex/skills/`. Same-name skills in `.codex/skills/` were overwritten, and
+duplicates that had lived under `.agents/skills/` were removed so each skill has
+one project-local home.
+
+The migrated set includes the earlier low-noise workflow skills:
 
 - `html-work-reports`: self-contained HTML work handoffs with templates,
   source-linked evidence, generator, and validator assets.
@@ -37,10 +41,11 @@ that were not present in the original snapshot:
 - `prototype`: clearly marked throwaway prototypes for one design question.
 - `grill-me`: one-question-at-a-time plan pressure testing.
 
-The refresh intentionally does not import `feynman-learning-coach`, the harness
-template profile, Skill Hub CLI lifecycle code, or the upstream top-level
-`reports/` showcase. Those are either learning/session-specific, target-repo
-installation surfaces, or not needed for this project's runtime package.
+It also includes newer upstream skills such as `effective-interact`,
+`feynman-learning-coach`, `workflow-router`, and `claude-api`. The refresh still
+does not import Skill Hub CLI lifecycle code or the upstream top-level
+`reports/` showcase because those are source-repo tooling, not context-eval
+runtime package inputs.
 
 Most upstream skill-hub documentation was intentionally removed from this
 repository because it describes general skill-pack research, source-project

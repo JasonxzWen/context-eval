@@ -1,0 +1,8 @@
+interface:
+  display_name: "Delivery Workflow"
+  short_description: >-
+    Load when accepted work needs validation closeout, cleanup, handoff, release notes, environment reset, or an effective-interact delivery report; do not start new scope.
+  default_prompt: "Use $delivery-workflow to help with this task."
+
+policy:
+  allow_implicit_invocation: true

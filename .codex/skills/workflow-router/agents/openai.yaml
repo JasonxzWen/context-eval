@@ -1,0 +1,8 @@
+interface:
+  display_name: "Workflow Router"
+  short_description: >-
+    Load when a non-trivial request needs intent recognition before work starts; classify it into exactly one workflow owner, or ask a clarification; do not load for explicit owner-...
+  default_prompt: "Use $workflow-router to help with this task."
+
+policy:
+  allow_implicit_invocation: true
