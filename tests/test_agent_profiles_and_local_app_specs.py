@@ -110,7 +110,7 @@ def test_designer_usability_spec_documents_planner_workflow() -> None:
         "not an agent leaderboard",
         "no hidden OpenAI, Claude, or other LLM judge calls",
         "validation passing means configured checks passed",
-        "AI arbitration runner output is optional soft evidence",
+        "AI arbitration output is secondary soft evidence",
     ]:
         assert term in text
 

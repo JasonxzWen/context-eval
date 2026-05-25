@@ -13,7 +13,7 @@ The first supported real-project workflow should let a planner configure:
    docs folders;
 3. task cases that start from a known Git ref;
 4. expected answers or real fix references for later review;
-5. local validation commands and optional AI arbitration runner output;
+5. local validation commands and default AI arbitration runner output;
 6. manual feedback after reviewing each case result.
 
 ## Product Boundary
@@ -83,7 +83,7 @@ tasks:
         - "Do not include this in the agent prompt by default."
 ```
 
-`reference_evidence` is for human review and optional soft arbitration payloads.
+`reference_evidence` is for human review and default soft arbitration payloads.
 It should appear in exported artifacts and local UI detail panels, but the
 runner must not append it to the agent prompt unless a future explicit option is
 added.
@@ -123,9 +123,9 @@ The payload may include:
 
 The arbitration runner must save stdout, stderr, exit status, duration, raw
 result output, and a parsed JSON result when available. It must not infer a
-score from unstructured prose. The resulting score is optional soft evidence and
-is excluded from the primary comparison ranking unless the maintainer changes
-that boundary.
+score from unstructured prose. The resulting score is secondary soft evidence
+and is excluded from the primary comparison ranking unless the maintainer
+changes that boundary.
 
 ## UI Shape
 
@@ -144,7 +144,7 @@ The planner should see a short, task-oriented flow:
    structured JSONL capture is enabled, and which executor performs optional AI
    arbitration.
 5. **Run and review**: show case matrix, hard metrics, evidence gaps, reference
-   evidence, optional AI arbitration output, and the manual 1-5 feedback form.
+   evidence, AI arbitration output, and the manual 1-5 feedback form.
 
 Default screens should be concise. Reference evidence, automatic checks, and
 soft arbitration details can live in clear expandable sections.
@@ -154,11 +154,11 @@ soft arbitration details can live in clear expandable sections.
 1. Document the real-project workflow, task fields, non-goals, and acceptance
    gates.
 2. Add schema and editor support for `case_type` and `reference_evidence`.
-3. Surface those fields in run plans, soft evaluation payloads, exports, and
+3. Surface those fields in run plans, AI arbitration payloads, exports, and
    local UI detail panels.
 4. Add UI templates for compile diagnosis, known bug fix, incident fix, and
    feature work.
-5. Add explicit local AI arbitration runner support.
+5. Add default same-agent local AI arbitration runner support.
 6. Add E2E coverage for configuring a real-project-style comparison and saving
    human feedback.
 

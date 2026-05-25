@@ -1,6 +1,7 @@
 interface:
   display_name: "Webapp Testing"
-  short_description: "One-off local web app inspection, screenshots, logs, and UI debugging with Playwright."
+  short_description: >-
+    Use for one-off local web application inspection and debugging with Playwright: verifying live frontend behavior, capturing screenshots, reading browser logs, and reproducing UI...
   default_prompt: "Use $webapp-testing to help with this task."
 
 policy:

@@ -1,10 +1,12 @@
 ---
 name: slack-gif-creator
-description: Knowledge and utilities for creating animated GIFs optimized for Slack. Provides constraints, validation tools, and animation concepts. Use when users request animated GIFs for Slack like "make me a GIF of X doing Y for Slack."
+description: Load when the user asks to create, optimize, or validate an animated GIF for Slack emoji or messages; do not load for static images, video editing, or non-Slack animation targets.
 license: Complete terms in LICENSE.txt
+metadata:
+  source: "anthropics/skills skills/slack-gif-creator"
+  upstream_commit: "690f15cac7f7b4c055c5ab109c79ed9259934081"
+  adaptation: "Python utilities moved under scripts/ for Skill Hub layout."
 ---
-
-> Codex adaptation: This skill was ported from Claude Code. Treat remaining Claude/Claude.ai references as Codex or local artifact equivalents. Use Codex native tools: file reads/edits, sandboxed shell commands, `update_plan` for task tracking, and `spawn_agent` only when multi-agent support is available. Ask the user directly in chat instead of using Claude-only question tools.
 
 # Slack GIF Creator
 
@@ -24,7 +26,7 @@ A toolkit providing utilities and knowledge for creating animated GIFs optimized
 ## Core Workflow
 
 ```python
-from core.gif_builder import GIFBuilder
+from scripts.core.gif_builder import GIFBuilder
 from PIL import Image, ImageDraw
 
 # 1. Create builder
@@ -112,7 +114,7 @@ Be creative and detailed! A good Slack GIF should look polished, not like placeh
 
 ## Available Utilities
 
-### GIFBuilder (`core.gif_builder`)
+### GIFBuilder (`scripts.core.gif_builder`)
 Assembles frames and optimizes for Slack:
 ```python
 builder = GIFBuilder(width=128, height=128, fps=10)
@@ -121,10 +123,10 @@ builder.add_frames(frames)  # Add list of frames
 builder.save('out.gif', num_colors=48, optimize_for_emoji=True, remove_duplicates=True)
 ```
 
-### Validators (`core.validators`)
+### Validators (`scripts.core.validators`)
 Check if GIF meets Slack requirements:
 ```python
-from core.validators import validate_gif, is_slack_ready
+from scripts.core.validators import validate_gif, is_slack_ready
 
 # Detailed validation
 passes, info = validate_gif('my.gif', is_emoji=True, verbose=True)
@@ -134,10 +136,10 @@ if is_slack_ready('my.gif'):
     print("Ready!")
 ```
 
-### Easing Functions (`core.easing`)
+### Easing Functions (`scripts.core.easing`)
 Smooth motion instead of linear:
 ```python
-from core.easing import interpolate
+from scripts.core.easing import interpolate
 
 # Progress from 0.0 to 1.0
 t = i / (num_frames - 1)
@@ -149,10 +151,10 @@ y = interpolate(start=0, end=400, t=t, easing='ease_out')
 #           bounce_out, elastic_out, back_out
 ```
 
-### Frame Helpers (`core.frame_composer`)
+### Frame Helpers (`scripts.core.frame_composer`)
 Convenience functions for common needs:
 ```python
-from core.frame_composer import (
+from scripts.core.frame_composer import (
     create_blank_frame,         # Solid color background
     create_gradient_background,  # Vertical gradient
     draw_circle,                # Helper for circles
@@ -254,4 +256,3 @@ Be creative! Combine concepts (bouncing + rotating, pulsing + sliding, etc.) and
 ```bash
 pip install pillow imageio numpy
 ```
-

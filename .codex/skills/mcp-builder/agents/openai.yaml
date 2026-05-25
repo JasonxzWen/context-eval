@@ -1,6 +1,7 @@
 interface:
   display_name: "Mcp Builder"
-  short_description: "Guide for creating high-quality MCP (Model Context Protocol) servers that enable LLMs to interact with external services through well-designed tools. Use whe..."
+  short_description: >-
+    Load when the user asks to design, build, review, or test an MCP server for external APIs or services; do not load for ordinary REST clients or non-MCP integrations.
   default_prompt: "Use $mcp-builder to help with this task."
 
 policy:

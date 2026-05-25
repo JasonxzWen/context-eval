@@ -54,13 +54,11 @@ export function RunPlanPanel({
             <span>{caseItem.expected_outcome_summary || '未配置验收 / 仲裁目标'}</span>
             <small>
               {caseItem.case_type ? `类型 ${formatCaseType(caseItem.case_type)} / ` : ''}
-              {caseItem.reference_evidence_summary ? '参考答案已填写 / ' : ''}
+              {caseItem.reference_evidence_summary ? '真实对照已填写 / ' : ''}
               {caseItem.hard_evaluation_enabled ? '硬性检查开启' : '硬性检查关闭'} /{' '}
               {caseItem.soft_evaluation_enabled
-                ? (caseItem.soft_evaluation_mode === 'runner'
-                    ? `AI 仲裁命令 ${caseItem.soft_evaluation_runner_agent || '同评测用的本地 AI'}`
-                    : 'AI 仲裁材料已配置')
-                : '未配置 AI 仲裁维度'}
+                ? `AI 仲裁：${caseItem.soft_evaluation_runner_agent || '同评测用的本地 AI'}`
+                : 'AI 仲裁关闭'}
             </small>
           </li>
         ))}

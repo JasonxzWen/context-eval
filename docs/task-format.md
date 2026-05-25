@@ -22,11 +22,7 @@ tasks:
       files:
         - "src/mail/attachments.py"
       notes:
-        - "Used for human review and optional soft arbitration payloads."
-    soft_evaluation:
-      enabled: true
-      mode: "payload-only"
-      runner_agent: null
+        - "Used for human review and default local AI arbitration."
 ```
 
 Required fields:
@@ -72,9 +68,9 @@ Supported values:
 - `custom`: keep a one-off task outside the built-in templates.
 
 `reference_evidence` records the maintainer-provided answer, real fix ref, or
-important files for later review. It is not appended to the agent prompt by
-default. It can be included in local exports and optional soft evaluation
-payloads so humans or explicit AI arbitration runners can compare the agent
+important files for later review. It is not appended to the coding-agent prompt
+by default. It is included in local exports and in the default local AI
+arbitration materials so humans and the reviewer run can compare the agent
 result against known evidence.
 
 Supported first-pass fields:
@@ -84,21 +80,23 @@ Supported first-pass fields:
 - `files`: important repo-relative files related to the expected answer.
 - `notes`: reviewer notes or constraints.
 
-## Optional AI Arbitration Runner
+## AI Arbitration Runner
 
-`soft_evaluation.mode` defaults to `payload-only`, which writes
-`soft_evaluation_payload.json` and stops. Set it to `runner` when you explicitly
-want context-eval to run an arbitration executor after the case finishes:
+AI arbitration defaults to local runner mode. After the evaluated case
+finishes, context-eval writes `soft_evaluation_payload.json`, then asks the
+same local agent profile to review the payload and local artifacts:
 
 ```yaml
 soft_evaluation:
   enabled: true
   mode: "runner"
-  runner_agent: "judge-agent"
+  runner_agent: null
 ```
 
 If `runner_agent` is empty, context-eval uses the same agent profile that ran
-the evaluated case. The runner must return machine-readable JSON with at least
+the evaluated case. Advanced YAML can still name a different local agent, but
+the graphical workflow intentionally does not expose arbitration as a planner
+setting. The runner must return machine-readable JSON with at least
 `score`; optional fields include `max_score`, `verdict`, `summary`, and
 `reasons`. The raw output, stdout, stderr, exit status, duration, telemetry, and
 parsed JSON are saved as local soft evidence. The score is not the truth source,

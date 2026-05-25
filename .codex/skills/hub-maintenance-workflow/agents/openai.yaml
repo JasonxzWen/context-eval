@@ -1,0 +1,8 @@
+interface:
+  display_name: "Hub Maintenance Workflow"
+  short_description: >-
+    Load when maintaining Skill Hub itself: evaluating skill sources, routing, capabilities, npm lifecycle, or managed update/remove behavior; preserve local adaptations.
+  default_prompt: "Use $hub-maintenance-workflow to help with this task."
+
+policy:
+  allow_implicit_invocation: true

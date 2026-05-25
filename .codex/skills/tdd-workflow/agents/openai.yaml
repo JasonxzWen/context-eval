@@ -1,0 +1,8 @@
+interface:
+  display_name: "Tdd Workflow"
+  short_description: >-
+    Load when implementing features, fixing confirmed bugs, or refactoring production code with tests; drive one behavior at a time through red-green-refactor. Use diagnose first fo...
+  default_prompt: "Use $tdd-workflow to help with this task."
+
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,8 @@
+interface:
+  display_name: "Sdd Workflow"
+  short_description: >-
+    Load when the user requests a feature, bug fix, refactor, product/spec change, or implementation; run SDD-first lifecycle with embedded TDD and user-aligned spec/acceptance befo...
+  default_prompt: "Use $sdd-workflow to help with this task."
+
+policy:
+  allow_implicit_invocation: true

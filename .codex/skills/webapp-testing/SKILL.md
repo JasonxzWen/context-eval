@@ -4,7 +4,6 @@ description: "Use for one-off local web application inspection and debugging wit
 license: Complete terms in LICENSE.txt
 ---
 
-> Codex adaptation: This skill was ported from Claude Code. Treat remaining Claude/Claude.ai references as Codex or local artifact equivalents. Use Codex native tools: file reads/edits, sandboxed shell commands, `update_plan` for task tracking, and `spawn_agent` only when multi-agent support is available. Ask the user directly in chat instead of using Claude-only question tools.
 
 # Web Application Testing
 
@@ -19,13 +18,13 @@ To test local web applications, write native Python Playwright scripts.
 
 ```
 User task ->Is it static HTML?
-    鈹溾攢 Yes ->Read HTML file directly to identify selectors
-    鈹?        鈹溾攢 Success ->Write Playwright script using selectors
-    鈹?        鈹斺攢 Fails/Incomplete ->Treat as dynamic (below)
-    鈹?    鈹斺攢 No (dynamic webapp) ->Is the server already running?
-        鈹溾攢 No ->Run: python scripts/with_server.py --help
-        鈹?       Then use the helper + write simplified Playwright script
-        鈹?        鈹斺攢 Yes ->Reconnaissance-then-action:
+    鈹溾�?Yes ->Read HTML file directly to identify selectors
+    �?        鈹溾�?Success ->Write Playwright script using selectors
+    �?        鈹斺�?Fails/Incomplete ->Treat as dynamic (below)
+    �?    鈹斺�?No (dynamic webapp) ->Is the server already running?
+        鈹溾�?No ->Run: python scripts/with_server.py --help
+        �?       Then use the helper + write simplified Playwright script
+        �?        鈹斺�?Yes ->Reconnaissance-then-action:
             1. Navigate and wait for networkidle
             2. Take screenshot or inspect DOM
             3. Identify selectors from rendered state

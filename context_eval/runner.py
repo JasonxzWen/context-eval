@@ -29,6 +29,7 @@ from context_eval.models import (
     ContextEvalConfig,
     TaskConfig,
     TaskFile,
+    effective_soft_evaluation_config,
 )
 from context_eval.prompt import render_prompt, write_prompt_file
 from context_eval.reports.markdown import render_markdown_report
@@ -616,10 +617,9 @@ class ContextEvalRunner:
             run_dir=run_dir,
             hard_evaluation=hard_evaluation,
         )
-        config = task.soft_evaluation
+        config = effective_soft_evaluation_config(task)
         if (
             payload_path is None
-            or config is None
             or not config.enabled
             or config.mode != "runner"
         ):
@@ -631,6 +631,7 @@ class ContextEvalRunner:
                 result=result,
                 task=task,
                 run_dir=run_dir,
+                workspace=workspace,
                 payload_path=payload_path,
                 runner_agent=runner_agent,
             )
@@ -643,8 +644,8 @@ class ContextEvalRunner:
         task: TaskConfig,
         case_agent_profile: AgentConfig,
     ) -> AgentConfig:
-        config = task.soft_evaluation
-        if config is None or not config.runner_agent:
+        config = effective_soft_evaluation_config(task)
+        if not config.runner_agent:
             return case_agent_profile
         profiles = self.config.agent_profiles()
         if config.runner_agent not in profiles:

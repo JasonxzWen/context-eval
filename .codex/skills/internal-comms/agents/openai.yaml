@@ -1,8 +1,8 @@
 interface:
   display_name: "Internal Comms"
-  short_description: "A set of resources to help me write all kinds of internal communications, using the formats that my company likes to use. Codex should use this skill whenev..."
+  short_description: >-
+    Load when the user asks to draft or revise internal communications such as status reports, leadership updates, 3P updates, newsletters, FAQs, incident reports, or project update...
   default_prompt: "Use $internal-comms to help with this task."
 
 policy:
   allow_implicit_invocation: true
-

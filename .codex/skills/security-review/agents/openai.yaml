@@ -1,0 +1,8 @@
+interface:
+  display_name: "Security Review"
+  short_description: >-
+    Use this skill when adding authentication, handling user input, working with secrets, creating API endpoints, or implementing payment/sensitive features. Provides comprehensive ...
+  default_prompt: "Use $security-review to help with this task."
+
+policy:
+  allow_implicit_invocation: true

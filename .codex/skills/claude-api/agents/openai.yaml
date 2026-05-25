@@ -1,0 +1,8 @@
+interface:
+  display_name: "Claude Api"
+  short_description: >-
+    Load when the user asks to build, debug, migrate, or tune Claude API or Anthropic SDK code; do not load for provider-neutral, OpenAI, or non-Anthropic model work.
+  default_prompt: "Use $claude-api to help with this task."
+
+policy:
+  allow_implicit_invocation: true

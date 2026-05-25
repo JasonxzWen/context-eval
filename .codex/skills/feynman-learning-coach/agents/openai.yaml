@@ -1,0 +1,8 @@
+interface:
+  display_name: "Feynman Learning Coach"
+  short_description: >-
+    Load when the user explicitly wants to learn, study, master, review, prepare for an exam/interview, build a syllabus, or be coached through a topic with Feynman teach-back check...
+  default_prompt: "Use $feynman-learning-coach to help with this task."
+
+policy:
+  allow_implicit_invocation: true

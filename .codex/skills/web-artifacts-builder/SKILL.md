@@ -1,14 +1,13 @@
 ---
 name: web-artifacts-builder
-description: Suite of tools for creating elaborate, multi-component Codex/local browser HTML artifacts using modern frontend web technologies (React, Tailwind CSS, shadcn/ui). Use for complex artifacts requiring state management, routing, or shadcn/ui components - not for simple single-file HTML/JSX artifacts.
+description: Suite of tools for creating elaborate, multi-component local browser HTML artifacts using modern frontend web technologies (React, Tailwind CSS, shadcn/ui). Use for complex artifacts requiring state management, routing, or shadcn/ui components - not for simple single-file HTML/JSX artifacts.
 license: Complete terms in LICENSE.txt
 ---
 
-> Codex adaptation: This skill was ported from Claude Code. Treat remaining Claude/Claude.ai references as Codex or local artifact equivalents. Use Codex native tools: file reads/edits, sandboxed shell commands, `update_plan` for task tracking, and `spawn_agent` only when multi-agent support is available. Ask the user directly in chat instead of using Claude-only question tools.
 
 # Web Artifacts Builder
 
-To build powerful frontend Codex/local browser artifacts, follow these steps:
+To build powerful frontend local browser artifacts, follow these steps:
 1. Initialize the frontend repo using `scripts/init-artifact.sh`
 2. Develop your artifact by editing the generated code
 3. Bundle all code into a single HTML file using `scripts/bundle-artifact.sh`
@@ -51,7 +50,7 @@ To bundle the React app into a single HTML artifact:
 bash scripts/bundle-artifact.sh
 ```
 
-This creates `bundle.html` - a self-contained artifact with all JavaScript, CSS, and dependencies inlined. This file can be directly shared in Codex conversations as an artifact.
+This creates `bundle.html` - a self-contained artifact with all JavaScript, CSS, and dependencies inlined. This file can be directly shared in Agent conversations as an artifact.
 
 **Requirements**: Your project must have an `index.html` in the root directory.
 
@@ -74,4 +73,3 @@ To test/visualize the artifact, use available tools (including other Skills or b
 ## Reference
 
 - **shadcn/ui components**: https://ui.shadcn.com/docs/components
-

@@ -1,0 +1,8 @@
+interface:
+  display_name: "Handoff"
+  short_description: >-
+    Load when the user asks to hand off current work, compact this conversation for another agent/session, or create restart notes; do not load for visual HTML repo reports or conte...
+  default_prompt: "Use $handoff to help with this task."
+
+policy:
+  allow_implicit_invocation: true

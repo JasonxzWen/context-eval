@@ -559,6 +559,74 @@ def test_runner_executes_explicit_soft_evaluation_runner(tmp_path: Path) -> None
     )
 
 
+def test_runner_default_soft_evaluation_uses_same_agent_workspace(
+    tmp_path: Path,
+) -> None:
+    repo = _create_repo(tmp_path)
+    overlay_source = tmp_path / "ctx" / "AGENTS.md"
+    overlay_source.parent.mkdir()
+    overlay_source.write_text("# Instructions\n", encoding="utf-8")
+
+    agent_script = tmp_path / "agent.py"
+    agent_script.write_text(
+        "import json, sys\n"
+        "from pathlib import Path\n"
+        "prompt = Path(sys.argv[1]).read_text(encoding='utf-8')\n"
+        "readme = Path('README.md')\n"
+        "if 'context-eval AI arbitration' in prompt:\n"
+        "    assert readme.exists()\n"
+        "    assert 'fixed marker' in readme.read_text(encoding='utf-8')\n"
+        "    print(json.dumps({\n"
+        "        'score': 9,\n"
+        "        'max_score': 10,\n"
+        "        'verdict': 'pass',\n"
+        "        'summary': 'same workspace reviewed',\n"
+        "        'reasons': ['README already contains the marker'],\n"
+        "    }))\n"
+        "else:\n"
+        "    current = readme.read_text(encoding='utf-8')\n"
+        "    readme.write_text(current + 'fixed marker\\n', encoding='utf-8')\n",
+        encoding="utf-8",
+    )
+    task_file = TaskFile.model_validate(
+        {
+            "tasks": [
+                {
+                    "id": "default-soft-runner",
+                    "prompt": "Add fixed marker.",
+                    "expected_outcome": {"summary": "README contains fixed marker."},
+                    "reference_evidence": {"summary": "Real fix appends marker."},
+                }
+            ]
+        }
+    )
+    config = _base_config(
+        tmp_path=tmp_path,
+        repo=repo,
+        agent_command=f'"{sys.executable}" "{agent_script}" "{{prompt_file}}"',
+        overlay_source=overlay_source,
+    )
+
+    run_dir = ContextEvalRunner(
+        config=config,
+        tasks=task_file,
+        cleanup_policy="never",
+        console=_quiet_console(),
+    ).run()
+    result = json.loads((run_dir / "results.jsonl").read_text(encoding="utf-8"))
+    artifact = json.loads(
+        (run_dir / result["soft_evaluation_result_path"]).read_text(encoding="utf-8")
+    )
+
+    assert result["soft_evaluation_status"] == "result_available"
+    assert result["soft_evaluation_runner_agent"] == "test-agent"
+    assert result["soft_evaluation_score"] == 9
+    assert Path(artifact["command"]["cwd"]).resolve() == (
+        run_dir / result["workspace_path"]
+    ).resolve()
+    assert artifact["parsed_result"]["summary"] == "same workspace reviewed"
+
+
 def test_runner_hard_evaluation_deduplicates_repeated_snippet_checks(
     tmp_path: Path,
 ) -> None:

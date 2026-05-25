@@ -9,7 +9,7 @@ the focused unattended command shape users can edit.
 Correctness stays hybrid but deterministic-first:
 
 - hard evaluation is computed by context-eval from local artifacts;
-- soft evaluation is payload-only in the first implementation;
+- AI arbitration runs by default through the same local agent profile;
 - validation commands remain project-owned acceptance gates;
 - soft scores are never required for pass/fail.
 
@@ -22,7 +22,8 @@ Correctness stays hybrid but deterministic-first:
 - `hard_evaluation`: enabled flag, validation requirement, changed-file limit,
   required/forbidden paths, snippet checks, and optional insertion/deletion
   bounds.
-- `soft_evaluation`: enabled flag, `payload-only` mode, max score, and rubric.
+- `soft_evaluation`: compatibility field for runner mode, max score, timeout,
+  and optional advanced runner selection.
 
 All repository-relative path fields reject absolute paths and traversal.
 Existing task YAML remains valid because every new field is optional. Task
@@ -50,14 +51,16 @@ Snippet checks prefer retained workspace files when available and fall back to
 the patch text. This preserves useful checks even when workspaces are cleaned
 up, while making missing-file evidence explicit.
 
-## Soft Evaluation
+## AI Arbitration
 
-The first implementation supports only:
+The default implementation writes a payload and then runs local arbitration with
+the same agent profile that executed the case:
 
 ```yaml
 soft_evaluation:
   enabled: true
-  mode: "payload-only"
+  mode: "runner"
+  runner_agent: null
 ```
 
 The runner writes:
@@ -67,13 +70,10 @@ artifacts/<case_id>/soft_evaluation_payload.json
 ```
 
 The payload includes task prompt, expected outcome summary, acceptance points,
-rubric, changed files, patch excerpt, validation status, hard evaluation
-summary, and log/artifact paths. It does not call hosted APIs and does not
-require model credentials.
-
-Command-mode judging is intentionally deferred because it introduces a new
-execution surface and result parser. The data model can add it in a later spec
-without changing payload-only behavior.
+reference evidence, changed files, patch excerpt, validation status, hard
+evaluation summary, and log/artifact paths. It does not call hosted APIs and
+does not require model credentials. The graphical workflow does not expose
+arbitration as a planner setting; it is a default post-run review task.
 
 ## Local App And Frontend
 
@@ -89,7 +89,7 @@ app behavior:
 - `read_artifact` uses existing safe run-relative artifact reads for sidecars.
 
 The React local app adds visible sections for project, Coco agent, variants,
-tasks, expected outcome, hard evaluation, soft evaluation, run plan, progress,
+tasks, expected outcome, hard evaluation, AI arbitration, run plan, progress,
 and result review. The UI remains operational and dense: no hosted dashboard,
 marketing page, or automatic agent installation.
 

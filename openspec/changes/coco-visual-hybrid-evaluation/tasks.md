@@ -11,13 +11,13 @@
       requirement, snippet checks, score summaries, and sidecar artifacts.
 - [x] Implement deterministic hard evaluation and wire it into the runner after
       diff/validation.
-- [x] Add soft evaluation payload tests and implement payload-only artifact
-      generation.
+- [x] Add AI arbitration tests and implement default same-agent runner
+      artifacts.
 - [x] Extend local app API tests for load/save preservation, run plan flags,
       results summaries, and safe sidecar artifact reads.
 - [x] Extend report/export tests for hard/soft fields and implement stable
       report/export summaries.
-- [x] Extend frontend unit/E2E tests for Coco, expected outcome, hard/soft
-      evaluation, run planning, and result review sections.
+- [x] Extend frontend unit/E2E tests for Coco, expected outcome, hard
+      evaluation, AI arbitration, run planning, and result review sections.
 - [x] Add minimal `examples/coco-visual` files and docs links.
 - [x] Run Python, frontend, OpenSpec, diff, and local-e2e verification gates.

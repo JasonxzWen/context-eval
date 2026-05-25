@@ -16,6 +16,7 @@ from context_eval.models import (
     HardEvaluationConfig,
     SnippetCheckConfig,
     TaskConfig,
+    effective_soft_evaluation_config,
 )
 
 HARD_EVALUATION_SCHEMA_VERSION = "1"
@@ -160,8 +161,8 @@ def write_soft_evaluation_payload(
     run_dir: Path,
     hard_evaluation: HardEvaluationArtifact | None,
 ) -> Path | None:
-    config = task.soft_evaluation
-    if config is None or not config.enabled:
+    config = effective_soft_evaluation_config(task)
+    if not config.enabled:
         return None
 
     patch_text = _read_optional_run_path(run_dir, result.patch_path)
@@ -251,17 +252,17 @@ def run_soft_evaluation_runner(
     result: CaseResult,
     task: TaskConfig,
     run_dir: Path,
+    workspace: Path | None,
     payload_path: Path,
     runner_agent: AgentConfig,
 ) -> Path:
-    config = task.soft_evaluation
-    if config is None:
-        raise ValueError("soft evaluation runner requires soft_evaluation config")
+    config = effective_soft_evaluation_config(task)
 
     case_id = result.case_id or f"{result.task_id}__{result.variant}"
     artifact_dir = run_dir / "artifacts" / case_id
     runner_dir = artifact_dir / "soft_evaluation_runner"
     runner_dir.mkdir(parents=True, exist_ok=True)
+    runner_workspace = workspace if workspace is not None and workspace.exists() else runner_dir
     prompt_path = artifact_dir / "soft_evaluation_prompt.md"
     stdout_path = run_dir / "logs" / f"{case_id}.soft-evaluation.stdout.log"
     stderr_path = run_dir / "logs" / f"{case_id}.soft-evaluation.stderr.log"
@@ -276,7 +277,7 @@ def run_soft_evaluation_runner(
 
     runner = CommandTemplateAgent(runner_agent)
     command_result = runner.run(
-        workspace=runner_dir,
+        workspace=runner_workspace,
         prompt=prompt,
         prompt_file=prompt_path,
         task=task,
@@ -291,7 +292,7 @@ def run_soft_evaluation_runner(
     candidate_output = command_result.stdout
     try:
         telemetry = runner.collect_telemetry(
-            workspace=runner_dir,
+            workspace=runner_workspace,
             prompt_file=prompt_path,
             task=task,
             variant=result.variant,
@@ -350,10 +351,11 @@ def run_soft_evaluation_runner(
 def _soft_evaluation_prompt(*, payload: str, max_score: float) -> str:
     return "\n".join(
         [
-            "# context-eval optional AI arbitration",
+            "# context-eval AI arbitration",
             "",
-            "You are an optional soft-evidence reviewer for a local context-eval run.",
+            "You are a soft-evidence reviewer for a local context-eval run.",
             "Use only the JSON payload below and any local artifact paths it names.",
+            "Run as a reviewer only. Do not modify files or implement the task again.",
             "Do not treat validation success as absolute task correctness.",
             "Do not rank agents globally. Score only this one case as review evidence.",
             "",

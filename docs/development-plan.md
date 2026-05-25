@@ -30,7 +30,7 @@ package.
   local loopback app, not a hosted or multi-user dashboard.
 - The next active capability is `coco-visual-hybrid-evaluation`: a Coco-first
   local app workflow for authoring tasks, expected outcomes, deterministic hard
-  checks, optional soft evaluation payloads, run execution, and result review.
+  checks, default local AI arbitration, run execution, and result review.
 - The active roadmap does not include an LLM judge, hosted or multi-user web
   dashboard, issue miner, real network isolation, automatic agent installation,
   provider account management, or automatic commits.
@@ -118,14 +118,14 @@ loss of SDD/TDD discipline.
 13. PR M: Real Project Evaluation Support, after the designer workflow can
     save and reload local configuration. This makes private production
     repository cases practical with task types, per-case start refs, reference
-    evidence, Codex JSONL metrics, optional AI arbitration runner output, and
+    evidence, Codex JSONL metrics, AI arbitration output, and
     planner-friendly review screens.
 
 Current active capability: `coco-visual-hybrid-evaluation`, after the local app
 server and frontend workflow are in place. This adds
 `docs/coco-visual-hybrid-evaluation.md`, `kind: "coco"`, structured task
-authoring, expected outcomes, deterministic hard checks, optional soft
-evaluation payload generation, and local artifact review.
+authoring, expected outcomes, deterministic hard checks, default local AI
+arbitration, and local artifact review.
 
 Current follow-up capability: `real-project-evaluation-support`, specified in
 `docs/plans/2026-05-21-real-project-evaluation-support.md`. This adds
@@ -984,13 +984,13 @@ plus project wiki docs.
   ref, important files, and review notes without sending that evidence to the
   coding agent by default.
 - Include task type and reference evidence in config editing, run planning,
-  soft evaluation payloads, exports, and result detail screens.
+  AI arbitration payloads, exports, and result detail screens.
 - Keep Codex metrics sourced from local structured JSONL artifacts. Missing
   tokens, tool calls, command calls, model data, or final replies must remain
   visible evidence gaps instead of guessed values.
-- Add an explicit AI arbitration runner that can default to the same executor as
-  the evaluated case while saving local stdout, stderr, exit status, duration,
-  and parsed JSON output as soft evidence.
+- Run AI arbitration by default with the same local executor as the evaluated
+  case while saving local stdout, stderr, exit status, duration, and parsed JSON
+  output as soft evidence.
 - Improve the planner UI around old-context vs new-context packages, task
   templates, reference answers, hard metrics, soft arbitration payloads, and
   manual one-to-five feedback.
@@ -1016,9 +1016,9 @@ plus project wiki docs.
 - Reference evidence is saved, reloaded, exported, and shown for review, but
   not appended to the agent prompt by default.
 - Soft evaluation can either stop after local evidence payload generation or run
-  an explicit local arbitration executor.
+  the same local arbitration executor as the evaluated case.
 - Codex JSONL metrics, missing evidence, changed files, validation, hard
-  checks, manual feedback, and optional AI arbitration evidence are visible in
+  checks, manual feedback, and AI arbitration evidence are visible in
   results.
 
 ### Suggested Ralph Stories
@@ -1029,8 +1029,8 @@ plus project wiki docs.
 - US-M3: Add local app UI templates for compile diagnosis, known bug fix,
   incident fix, and feature work.
 - US-M4: Surface reference evidence and Codex metric gaps in run plans,
-  result details, soft payloads, and exports.
-- US-M5: Add explicit AI arbitration runner execution and artifacts.
+  result details, AI arbitration payloads, and exports.
+- US-M5: Add default same-agent AI arbitration execution and artifacts.
 - US-M6: Add Playwright E2E coverage for a real-project-style setup and manual
   feedback review.
 
@@ -1039,7 +1039,7 @@ plus project wiki docs.
 - Spec tests for the real project plan, task format, and local-only boundaries.
 - Model and config-editor tests for schema validation and YAML round trips.
 - Runner/evaluator tests proving reference evidence is not sent to prompts but
-  is included in soft payloads and exports.
+  is included in AI arbitration payloads and exports.
 - Frontend unit tests for task templates, starting version, reference evidence,
   and validation messages.
 - Playwright E2E tests for configuring a private-project-style comparison,

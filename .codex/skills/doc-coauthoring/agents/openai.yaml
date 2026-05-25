@@ -1,6 +1,7 @@
 interface:
   display_name: "Doc Coauthoring"
-  short_description: "Guide users through a structured workflow for co-authoring documentation. Use when user wants to write documentation, proposals, technical specs, decision do..."
+  short_description: >-
+    Load when the user wants to collaboratively draft, restructure, or reader-test docs, PRDs, RFCs, proposals, specs, or decision records; do not load for implementation itself.
   default_prompt: "Use $doc-coauthoring to help with this task."
 
 policy:

@@ -8,7 +8,6 @@ metadata:
   generatedBy: "1.2.0"
 ---
 
-> Codex adaptation: This skill was ported from Claude Code. Treat remaining Claude/Claude.ai references as Codex or local artifact equivalents. Use Codex native tools: file reads/edits, sandboxed shell commands, `update_plan` for task tracking, and `spawn_agent` only when multi-agent support is available. Ask the user directly in chat instead of using Claude-only question tools.
 
 Implement tasks from an OpenSpec change.
 
@@ -23,7 +22,7 @@ Implement tasks from an OpenSpec change.
    - Auto-select if only one active change exists
    - If ambiguous, run `openspec list --json` to get available changes and use the **ask the user directly in the conversation** to let the user select
 
-   Always announce: "Using change: <name>" and how to override (e.g., `ask Codex to use $openspec-apply-change <other>`).
+   Always announce: "Using change: <name>" and how to override (e.g., `ask the agent to use $openspec-apply-change <other>`).
 
 2. **Check status to understand the schema**
    ```bash
@@ -154,5 +153,4 @@ This skill supports the "actions on a change" model:
 
 - **Can be invoked anytime**: Before all artifacts are done (if tasks exist), after partial implementation, interleaved with other actions
 - **Allows artifact updates**: If implementation reveals design issues, suggest updating artifacts - not phase-locked, work fluidly
-
 

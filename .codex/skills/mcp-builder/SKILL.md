@@ -1,10 +1,12 @@
 ---
 name: mcp-builder
-description: Guide for creating high-quality MCP (Model Context Protocol) servers that enable LLMs to interact with external services through well-designed tools. Use when building MCP servers to integrate external APIs or services, whether in Python (FastMCP) or Node/TypeScript (MCP SDK).
+description: "Load when the user asks to design, build, review, or test an MCP server for external APIs or services; do not load for ordinary REST clients or non-MCP integrations."
 license: Complete terms in LICENSE.txt
+metadata:
+  source: "anthropics/skills skills/mcp-builder"
+  upstream_commit: "690f15cac7f7b4c055c5ab109c79ed9259934081"
+  adaptation: "Spoke directory normalized to references/ and host-specific fetch tool wording removed."
 ---
-
-> Codex adaptation: This skill was ported from Claude Code. Treat remaining Claude/Claude.ai references as Codex or local artifact equivalents. Use Codex native tools: file reads/edits, sandboxed shell commands, `update_plan` for task tracking, and `spawn_agent` only when multi-agent support is available. Ask the user directly in chat instead of using Claude-only question tools.
 
 # MCP Server Development Guide
 
@@ -16,7 +18,7 @@ Create MCP (Model Context Protocol) servers that enable LLMs to interact with ex
 
 # Process
 
-## 馃殌 High-Level Workflow
+## 🚀 High-Level Workflow
 
 Creating a high-quality MCP server involves four main phases:
 
@@ -25,7 +27,7 @@ Creating a high-quality MCP server involves four main phases:
 #### 1.1 Understand Modern MCP Design
 
 **API Coverage vs. Workflow Tools:**
-Balance comprehensive API endpoint coverage with specialized workflow tools. Workflow tools can be more convenient for specific tasks, while comprehensive coverage gives agents flexibility to compose operations. Performance varies by client - some clients benefit from code execution that combines basic tools, while others work better with higher-level workflows. When uncertain, prioritize comprehensive API coverage.
+Balance comprehensive API endpoint coverage with specialized workflow tools. Workflow tools can be more convenient for specific tasks, while comprehensive coverage gives agents flexibility to compose operations. Performance varies by client—some clients benefit from code execution that combines basic tools, while others work better with higher-level workflows. When uncertain, prioritize comprehensive API coverage.
 
 **Tool Naming and Discoverability:**
 Clear, descriptive tool names help agents find the right tools quickly. Use consistent prefixes (e.g., `github_create_issue`, `github_list_repos`) and action-oriented naming.
@@ -57,20 +59,20 @@ Key pages to review:
 
 **Load framework documentation:**
 
-- **MCP Best Practices**: [馃搵 View Best Practices](./reference/mcp_best_practices.md) - Core guidelines
+- **MCP Best Practices**: [📋 View Best Practices](./references/mcp_best_practices.md) - Core guidelines
 
 **For TypeScript (recommended):**
-- **TypeScript SDK**: Use the available web or browser tool to load `https://raw.githubusercontent.com/modelcontextprotocol/typescript-sdk/main/README.md`
-- [TypeScript Guide](./reference/node_mcp_server.md) - TypeScript patterns and examples
+- **TypeScript SDK**: Fetch or open the current source at `https://raw.githubusercontent.com/modelcontextprotocol/typescript-sdk/main/README.md`
+- [⚡ TypeScript Guide](./references/node_mcp_server.md) - TypeScript patterns and examples
 
 **For Python:**
-- **Python SDK**: Use the available web or browser tool to load `https://raw.githubusercontent.com/modelcontextprotocol/python-sdk/main/README.md`
-- [馃悕 Python Guide](./reference/python_mcp_server.md) - Python patterns and examples
+- **Python SDK**: Fetch or open the current source at `https://raw.githubusercontent.com/modelcontextprotocol/python-sdk/main/README.md`
+- [🐍 Python Guide](./references/python_mcp_server.md) - Python patterns and examples
 
 #### 1.4 Plan Your Implementation
 
 **Understand the API:**
-Review the service's API documentation to identify key endpoints, authentication requirements, and data models. Use web search and available web or browser tooling as needed.
+Review the service's API documentation to identify key endpoints, authentication requirements, and data models. Use current official docs or source repositories as needed.
 
 **Tool Selection:**
 Prioritize comprehensive API coverage. List endpoints to implement, starting with the most common operations.
@@ -82,8 +84,8 @@ Prioritize comprehensive API coverage. List endpoints to implement, starting wit
 #### 2.1 Set Up Project Structure
 
 See language-specific guides for project setup:
-- [TypeScript Guide](./reference/node_mcp_server.md) - Project structure, package.json, tsconfig.json
-- [馃悕 Python Guide](./reference/python_mcp_server.md) - Module organization, dependencies
+- [⚡ TypeScript Guide](./references/node_mcp_server.md) - Project structure, package.json, tsconfig.json
+- [🐍 Python Guide](./references/python_mcp_server.md) - Module organization, dependencies
 
 #### 2.2 Implement Core Infrastructure
 
@@ -154,7 +156,7 @@ See language-specific guides for detailed testing approaches and quality checkli
 
 After implementing your MCP server, create comprehensive evaluations to test its effectiveness.
 
-**Load [CorrectEvaluation Guide](./reference/evaluation.md) for complete evaluation guidelines.**
+**Load [✅ Evaluation Guide](./references/evaluation.md) for complete evaluation guidelines.**
 
 #### 4.1 Understand Evaluation Purpose
 
@@ -197,13 +199,13 @@ Create an XML file with this structure:
 
 # Reference Files
 
-## 馃摎 Documentation Library
+## 📚 Documentation Library
 
 Load these resources as needed during development:
 
 ### Core MCP Documentation (Load First)
 - **MCP Protocol**: Start with sitemap at `https://modelcontextprotocol.io/sitemap.xml`, then fetch specific pages with `.md` suffix
-- [馃搵 MCP Best Practices](./reference/mcp_best_practices.md) - Universal MCP guidelines including:
+- [📋 MCP Best Practices](./references/mcp_best_practices.md) - Universal MCP guidelines including:
   - Server and tool naming conventions
   - Response format guidelines (JSON vs Markdown)
   - Pagination best practices
@@ -215,14 +217,14 @@ Load these resources as needed during development:
 - **TypeScript SDK**: Fetch from `https://raw.githubusercontent.com/modelcontextprotocol/typescript-sdk/main/README.md`
 
 ### Language-Specific Implementation Guides (Load During Phase 2)
-- [馃悕 Python Implementation Guide](./reference/python_mcp_server.md) - Complete Python/FastMCP guide with:
+- [🐍 Python Implementation Guide](./references/python_mcp_server.md) - Complete Python/FastMCP guide with:
   - Server initialization patterns
   - Pydantic model examples
   - Tool registration with `@mcp.tool`
   - Complete working examples
   - Quality checklist
 
-- [TypeScript Implementation Guide](./reference/node_mcp_server.md) - Complete TypeScript guide with:
+- [⚡ TypeScript Implementation Guide](./references/node_mcp_server.md) - Complete TypeScript guide with:
   - Project structure
   - Zod schema patterns
   - Tool registration with `server.registerTool`
@@ -230,10 +232,9 @@ Load these resources as needed during development:
   - Quality checklist
 
 ### Evaluation Guide (Load During Phase 4)
-- [CorrectEvaluation Guide](./reference/evaluation.md) - Complete evaluation creation guide with:
+- [✅ Evaluation Guide](./references/evaluation.md) - Complete evaluation creation guide with:
   - Question creation guidelines
   - Answer verification strategies
   - XML format specifications
   - Example questions and answers
   - Running an evaluation with the provided scripts
-

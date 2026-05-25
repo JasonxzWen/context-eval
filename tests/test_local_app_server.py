@@ -947,9 +947,16 @@ def test_local_app_plan_and_results_include_hybrid_evaluation(tmp_path: Path) ->
     repo = _create_git_repo(tmp_path / "repo")
     agent_script = tmp_path / "agent.py"
     agent_script.write_text(
+        "import json, sys\n"
         "from pathlib import Path\n"
+        "prompt = Path(sys.argv[1]).read_text(encoding='utf-8')\n"
         "p = Path('README.md')\n"
-        "p.write_text(p.read_text(encoding='utf-8') + 'fixed marker\\n', encoding='utf-8')\n",
+        "if 'context-eval AI arbitration' in prompt:\n"
+        "    result = {'score': 8, 'max_score': 10, 'verdict': 'pass'}\n"
+        "    result['summary'] = 'reviewed'\n"
+        "    print(json.dumps(result))\n"
+        "else:\n"
+        "    p.write_text(p.read_text(encoding='utf-8') + 'fixed marker\\n', encoding='utf-8')\n",
         encoding="utf-8",
     )
     context_dir = tmp_path / "contexts" / "baseline"
@@ -982,17 +989,6 @@ def test_local_app_plan_and_results_include_hybrid_evaluation(tmp_path: Path) ->
                                 {"path": "README.md", "snippets": ["fixed marker"]}
                             ],
                         },
-                        "soft_evaluation": {
-                            "enabled": True,
-                            "mode": "payload-only",
-                            "rubric": [
-                                {
-                                    "name": "quality",
-                                    "weight": 1,
-                                    "description": "Patch is clear.",
-                                }
-                            ],
-                        },
                         "x_unknown_task_field": "keep-me",
                     }
                 ]
@@ -1011,7 +1007,7 @@ def test_local_app_plan_and_results_include_hybrid_evaluation(tmp_path: Path) ->
                         "kind": "coco",
                         "command": (
                             f'"{Path(sys.executable).as_posix()}" '
-                            f'"{agent_script.as_posix()}"'
+                            f'"{agent_script.as_posix()}" "{{prompt_file}}"'
                         ),
                         "timeout_minutes": 1,
                         "network": "disabled",
@@ -1051,7 +1047,7 @@ def test_local_app_plan_and_results_include_hybrid_evaluation(tmp_path: Path) ->
     assert case["expected_outcome_summary"] == "README contains fixed marker."
     assert case["hard_evaluation_enabled"] is True
     assert case["soft_evaluation_enabled"] is True
-    assert case["soft_evaluation_mode"] == "payload-only"
+    assert case["soft_evaluation_mode"] == "runner"
     assert case["soft_evaluation_runner_agent"] is None
 
     started = service.start_run(
@@ -1072,12 +1068,13 @@ def test_local_app_plan_and_results_include_hybrid_evaluation(tmp_path: Path) ->
     assert result_case["case_type"] == "bugfix"
     assert result_case["reference_evidence"]["fix_ref"] == "real-fix-ref"
     assert result_case["hard_evaluation_score"] == result_case["hard_evaluation_max_score"]
-    assert result_case["soft_evaluation_status"] == "payload_generated"
+    assert result_case["soft_evaluation_status"] == "result_available"
     assert result_case["hard_evaluation"]["passed"] is True
     assert result_case["soft_evaluation"]["payload_path"].endswith(
         "soft_evaluation_payload.json"
     )
-    assert result_case["soft_evaluation"]["runner_agent"] is None
+    assert result_case["soft_evaluation"]["runner_agent"] == "coco"
+    assert result_case["soft_evaluation"]["score"] == 8
 
     hard_artifact = service.read_artifact(
         run_dir=status["run_dir"],

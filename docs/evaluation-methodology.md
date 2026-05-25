@@ -66,11 +66,11 @@ The evaluation model has three layers:
    logs, diff stats, and optional structured telemetry.
 2. Deterministic project checks: validation commands and hard evaluation rules
    derived from task configuration and local artifacts.
-3. Optional soft review payloads: structured JSON for later human or local
-   judge review.
+3. Local AI arbitration: structured JSON reviewed by the same local agent as
+   secondary soft evidence.
 
 Validation commands and hard evaluation are the primary machine-checkable
-signals. Soft grading is optional review evidence and does not replace tests,
+signals. Soft grading is secondary review evidence and does not replace tests,
 hard checks, or human review.
 
 ## Validation Defines Confidence
@@ -105,19 +105,20 @@ When a hard check cannot be evaluated because a workspace was cleaned up and
 the patch does not contain enough evidence, the check is marked `skipped` with
 an explicit message instead of guessing.
 
-## Optional Soft Grading
+## AI Arbitration
 
-Soft grading starts as `payload-only`. context-eval writes a
+Soft grading starts as local runner arbitration. context-eval writes a
 `soft_evaluation_payload.json` sidecar that includes the prompt, expected
-outcome, rubric, changed files, patch excerpt, validation status, hard
-evaluation summary, and artifact links.
+outcome, changed files, patch excerpt, validation status, hard evaluation
+summary, and artifact links. It then asks the same local agent profile to read
+that payload in the case workspace and return JSON soft evidence.
 
-The first implementation does not call hosted model APIs, does not require
-provider keys, and does not make soft scores mandatory for pass/fail.
+This does not call hosted model APIs directly, does not require provider keys,
+and does not make soft scores mandatory for pass/fail.
 
-Manual review is separate from soft payload generation. A saved manual review
-records the human reviewer's evidence, confidence, and notes; it is not an
-automatic score and does not prove absolute task correctness.
+Manual review is separate from AI arbitration. A saved manual review records
+the human reviewer's evidence, confidence, and notes; it is not an automatic
+score and does not prove absolute task correctness.
 
 ## Telemetry And Metrics
 

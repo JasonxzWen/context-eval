@@ -8,7 +8,6 @@ metadata:
   generatedBy: "1.2.0"
 ---
 
-> Codex adaptation: This skill was ported from Claude Code. Treat remaining Claude/Claude.ai references as Codex or local artifact equivalents. Use Codex native tools: file reads/edits, sandboxed shell commands, `update_plan` for task tracking, and `spawn_agent` only when multi-agent support is available. Ask the user directly in chat instead of using Claude-only question tools.
 
 Propose a new change - create the change and generate all artifacts in one step.
 
@@ -17,7 +16,7 @@ I'll create a change with artifacts:
 - design.md (how)
 - tasks.md (implementation steps)
 
-When ready to implement, run ask Codex to use $openspec-apply-change
+When ready to implement, run ask the agent to use $openspec-apply-change
 
 ---
 
@@ -91,7 +90,7 @@ After completing all artifacts, summarize:
 - Change name and location
 - List of artifacts created with brief descriptions
 - What's ready: "All artifacts created! Ready for implementation."
-- Prompt: "Run `ask Codex to use $openspec-apply-change` or ask me to implement to start working on the tasks."
+- Prompt: "Run `ask the agent to use $openspec-apply-change` or ask me to implement to start working on the tasks."
 
 **Artifact Creation Guidelines**
 
@@ -109,5 +108,4 @@ After completing all artifacts, summarize:
 - If context is critically unclear, ask the user - but prefer making reasonable decisions to keep momentum
 - If a change with that name already exists, ask if user wants to continue it or create a new one
 - Verify each artifact file exists after writing before proceeding to next
-
 

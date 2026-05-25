@@ -1,12 +1,9 @@
 import type {
   CommandCheck,
-  EditableAgent,
   EditableTask,
   ExpectedOutcome,
   HardEvaluation,
   ReferenceEvidence,
-  SoftEvaluation,
-  SoftRubricItem,
   TaskCaseType,
 } from '../types';
 import { caseTypeOptions } from '../caseTypes';
@@ -14,7 +11,6 @@ import { HelpTip } from './HelpTip';
 
 type TaskEditorProps = {
   tasks: EditableTask[];
-  agents: EditableAgent[];
   selectedTaskIndex: number;
   saveStatus: string;
   serverMode: 'checking' | 'connected' | 'fixture';
@@ -51,13 +47,6 @@ const emptyHardEvaluation: HardEvaluation = {
   command_checks: [],
 };
 
-const emptySoftEvaluation: SoftEvaluation = {
-  enabled: true,
-  mode: 'payload-only',
-  max_score: 10,
-  rubric: [],
-};
-
 const categoryOptions = [
   { value: 'bugfix', label: '缺陷修复' },
   { value: 'feature', label: '功能' },
@@ -83,7 +72,6 @@ const changeTypeOptions = [
 
 export function TaskEditor({
   tasks,
-  agents,
   selectedTaskIndex,
   saveStatus,
   serverMode,
@@ -101,7 +89,6 @@ export function TaskEditor({
       <section className="panel task-editor-panel">
         <div className="panel-heading">
           <h2>评测题目</h2>
-          <span>0 个题目</span>
         </div>
         <p className="status-line">当前配置没有评测题目。新建一个题目后再保存。</p>
         <button type="button" onClick={onAddTask}>
@@ -114,7 +101,6 @@ export function TaskEditor({
   const expected = task.expected_outcome || emptyExpectedOutcome;
   const referenceEvidence = task.reference_evidence || emptyReferenceEvidence;
   const hard = task.hard_evaluation || emptyHardEvaluation;
-  const soft = task.soft_evaluation || emptySoftEvaluation;
 
   function updateTask(patch: Partial<EditableTask>) {
     onUpdateTask(selectedTaskIndex, { ...task, ...patch });
@@ -134,25 +120,19 @@ export function TaskEditor({
     updateTask({ hard_evaluation: { ...emptyHardEvaluation, ...hard, ...patch } });
   }
 
-  function updateSoft(patch: Partial<SoftEvaluation>) {
-    updateTask({ soft_evaluation: { ...emptySoftEvaluation, ...soft, ...patch } });
-  }
-
   const acceptancePoints = expected.acceptance_points || [];
   const expectedFiles = expected.files || [];
   const referenceFiles = referenceEvidence.files || [];
   const referenceNotes = referenceEvidence.notes || [];
   const validationCommands = task.validation_commands || [];
   const commandChecks = hard.command_checks || [];
-  const rubric = soft.rubric || [];
 
   return (
     <section className="panel task-editor-panel" id="task-config" aria-label="测试用例配置">
       <div className="panel-heading">
         <h2>1 写评测题目</h2>
-        <span>{tasks.length} 个题目</span>
       </div>
-      <p className="panel-note">这里定义 AI 要做什么、从哪个版本开始，以及最后怎样判断结果。</p>
+      <p className="panel-note">这里定义测试任务、起始版本和评分依据。</p>
 
       <div className="task-editor-layout">
         <aside className="task-rail" aria-label="测试用例列表">
@@ -199,13 +179,7 @@ export function TaskEditor({
           }}
         >
           <fieldset>
-            <legend>给 AI 的题目</legend>
-            <SegmentedField
-              label="题目类型"
-              value={task.case_type || 'custom'}
-              options={caseTypeOptions}
-              onChange={(value) => updateTask({ case_type: value as TaskCaseType })}
-            />
+            <legend>测试任务</legend>
             <div className="form-grid simplified-grid">
               <label htmlFor="task-title">
                 题目名称
@@ -217,12 +191,18 @@ export function TaskEditor({
                 />
               </label>
             </div>
+            <SegmentedField
+              label="题目类型"
+              value={task.case_type || 'custom'}
+              options={caseTypeOptions}
+              onChange={(value) => updateTask({ case_type: value as TaskCaseType })}
+            />
             <label htmlFor="task-prompt">
-              AI 要执行什么
+              发给 AI 的任务提示词
               <textarea
                 id="task-prompt"
-                aria-label="AI 要做什么"
-                placeholder="写给 coding agent 的任务。说明目标、限制和重点即可。"
+                aria-label="发给 AI 的任务提示词"
+                placeholder="写清目标、限制和验收重点；运行时会作为任务 prompt 交给 coding agent。"
                 value={task.prompt}
                 onChange={(event) => updateTask({ prompt: event.target.value })}
               />
@@ -232,7 +212,7 @@ export function TaskEditor({
               <input
                 id="task-repo-ref"
                 aria-label="起始版本"
-                placeholder="留空则使用项目默认版本；例如 before-fix-commit"
+                placeholder="留空则使用最新版本；例如 before-fix-commit"
                 value={task.repo_ref || ''}
                 onChange={(event) => updateTask({ repo_ref: event.target.value || null })}
               />
@@ -240,27 +220,30 @@ export function TaskEditor({
           </fieldset>
 
           <fieldset>
-            <legend>判断结果</legend>
+            <legend>评分依据</legend>
+            <p className="field-help">
+              人和 AI 仲裁共用这组材料；不会发给做题 AI。
+            </p>
             <label htmlFor="expected-summary">
-              成功标准
+              期望结果
               <textarea
                 id="expected-summary"
-                aria-label="怎样算完成"
-                placeholder="给人和 AI 仲裁看的成功标准。"
+                aria-label="期望结果"
+                placeholder="描述理想答案、修复效果或排查结论。"
                 value={expected.summary || ''}
                 onChange={(event) => updateExpected({ summary: event.target.value })}
               />
             </label>
             <ListEditor
-              title="逐条检查点"
+              title="逐条检查点（可选）"
               values={acceptancePoints}
               placeholder="例如：问候语包含正确标点"
               onChange={(values) => updateExpected({ acceptance_points: values })}
             />
-            <div className="reference-evidence-box" aria-label="参考答案">
+            <div className="reference-evidence-box" aria-label="真实对照材料">
               <div className="subsection-heading">
-                <strong>参考答案（默认不给做题 AI）</strong>
-                <span className="inline-help">用于人工复核和可选 AI 仲裁材料</span>
+                <strong>真实对照材料（可选）</strong>
+                <span className="inline-help">非空内容会进入 AI 仲裁提示词</span>
               </div>
               <label htmlFor="reference-summary">
                 真实结果 / 修复说明
@@ -300,7 +283,7 @@ export function TaskEditor({
           </fieldset>
 
           <details className="advanced-inline">
-            <summary>更多设置：自动检查 / AI 仲裁</summary>
+            <summary>更多设置：自动检查 / 题目信息</summary>
             <fieldset>
               <legend>自动检查命令</legend>
               <ListEditor
@@ -373,60 +356,9 @@ export function TaskEditor({
                 onChange={(checks) => updateHard({ command_checks: checks })}
               />
             </fieldset>
-            <fieldset>
-              <legend>AI 仲裁维度</legend>
-              <p className="field-help">
-                默认只生成复核材料；选择运行 AI 仲裁后，会用下面的本地命令读取材料并输出软评分。
-              </p>
-              <label className="checkbox-label" htmlFor="soft-enabled">
-                <input
-                  id="soft-enabled"
-                  type="checkbox"
-                  checked={soft.enabled}
-                  onChange={(event) => updateSoft({ enabled: event.target.checked })}
-                />
-                启用 AI 仲裁材料
-              </label>
-              <label htmlFor="soft-mode">
-                仲裁方式
-                <select
-                  id="soft-mode"
-                  aria-label="仲裁方式"
-                  value={soft.mode}
-                  onChange={(event) => {
-                    const mode = event.target.value as SoftEvaluation['mode'];
-                    updateSoft({
-                      mode,
-                      runner_agent: mode === 'runner' ? soft.runner_agent || null : null,
-                    });
-                  }}
-                >
-                  <option value="payload-only">只生成材料</option>
-                  <option value="runner">运行 AI 仲裁</option>
-                </select>
-              </label>
-              <label htmlFor="soft-runner-agent">
-                仲裁命令
-                <select
-                  id="soft-runner-agent"
-                  aria-label="仲裁命令"
-                  value={soft.runner_agent || ''}
-                  onChange={(event) => updateSoft({ runner_agent: event.target.value || null })}
-                  disabled={soft.mode !== 'runner'}
-                >
-                  <option value="">同评测用的本地 AI</option>
-                  {agents.map((agent) => (
-                    <option key={agent.name} value={agent.name}>
-                      {agent.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <RubricEditor items={rubric} onChange={(items) => updateSoft({ rubric: items })} />
-            </fieldset>
-            <div className="arbitration-material-note" aria-label="AI 仲裁材料说明">
-              <strong>AI 仲裁材料</strong>
-              <span>只生成材料时不会调用 AI；运行仲裁时保存结果 JSON，仍只是软证据。</span>
+            <div className="arbitration-material-note" aria-label="AI 仲裁说明">
+              <strong>AI 仲裁</strong>
+              <span>默认在评测 agent 结束后，用同一个本地 AI 读取评分依据和本地产物；结果只是软证据。</span>
             </div>
           </details>
 
@@ -665,76 +597,6 @@ function CommandCheckEditor({ checks, onChange }: CommandCheckEditorProps) {
         </div>
       ))}
       {checks.length === 0 && <p className="status-line">未添加命令检查。</p>}
-    </div>
-  );
-}
-
-type RubricEditorProps = {
-  items: SoftRubricItem[];
-  onChange: (items: SoftRubricItem[]) => void;
-};
-
-function RubricEditor({ items, onChange }: RubricEditorProps) {
-  return (
-    <div className="list-editor">
-      <div className="subsection-heading">
-        <strong className="label-with-help">
-          仲裁维度
-          <HelpTip text="AI 仲裁和人工反馈共用。" />
-        </strong>
-        <button
-          type="button"
-          className="secondary compact-button"
-          onClick={() => onChange([...items, { name: '', description: '', weight: 1 }])}
-        >
-          添加
-        </button>
-      </div>
-      {items.map((item, index) => (
-        <div className="structured-row rubric-row" key={`rubric:${index}`}>
-          <label>
-            名称
-            <input
-              aria-label={`评分规则名称 ${index + 1}`}
-              value={item.name}
-              onChange={(event) =>
-                onChange(items.map((entry, itemIndex) => (itemIndex === index ? { ...entry, name: event.target.value } : entry)))
-              }
-            />
-          </label>
-          <label>
-            说明
-            <textarea
-              aria-label={`评分规则说明 ${index + 1}`}
-              value={item.description}
-              onChange={(event) =>
-                onChange(items.map((entry, itemIndex) => (itemIndex === index ? { ...entry, description: event.target.value } : entry)))
-              }
-            />
-          </label>
-          <label>
-            权重
-            <input
-              aria-label={`评分规则权重 ${index + 1}`}
-              type="number"
-              min="0.1"
-              step="0.1"
-              value={item.weight}
-              onChange={(event) =>
-                onChange(items.map((entry, itemIndex) => (itemIndex === index ? { ...entry, weight: Number(event.target.value) } : entry)))
-              }
-            />
-          </label>
-          <button
-            type="button"
-            className="secondary compact-button"
-            onClick={() => onChange(items.filter((_, itemIndex) => itemIndex !== index))}
-          >
-            移除
-          </button>
-        </div>
-      ))}
-      {items.length === 0 && <p className="status-line">未添加评分规则。</p>}
     </div>
   );
 }

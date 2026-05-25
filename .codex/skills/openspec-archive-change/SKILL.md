@@ -8,7 +8,6 @@ metadata:
   generatedBy: "1.2.0"
 ---
 
-> Codex adaptation: This skill was ported from Claude Code. Treat remaining Claude/Claude.ai references as Codex or local artifact equivalents. Use Codex native tools: file reads/edits, sandboxed shell commands, `update_plan` for task tracking, and `spawn_agent` only when multi-agent support is available. Ask the user directly in chat instead of using Claude-only question tools.
 
 Archive a completed change in the experimental workflow.
 
@@ -64,7 +63,7 @@ Archive a completed change in the experimental workflow.
    - If changes needed: "Sync now (recommended)", "Archive without syncing"
    - If already synced: "Archive now", "Sync anyway", "Cancel"
 
-   If user chooses sync, use `spawn_agent` tool (subagent_type: "general-purpose", prompt: "Use Codex skill invocation to invoke openspec-sync-specs for change '<name>'. Delta spec analysis: <include the analyzed delta spec summary>"). Proceed to archive regardless of choice.
+   If user chooses sync, use `spawn_agent` tool (subagent_type: "general-purpose", prompt: "Use skill invocation to invoke openspec-sync-specs for change '<name>'. Delta spec analysis: <include the analyzed delta spec summary>"). Proceed to archive regardless of choice.
 
 5. **Perform the archive**
 
@@ -113,5 +112,4 @@ All artifacts complete. All tasks complete.
 - Show clear summary of what happened
 - If sync is requested, use openspec-sync-specs approach (agent-driven)
 - If delta specs exist, always run the sync assessment and show the combined summary before prompting
-
 

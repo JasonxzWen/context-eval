@@ -15,9 +15,9 @@ checks as the correctness anchor.
   `soft_evaluation` sections.
 - Generate deterministic per-case hard evaluation artifacts from local patches,
   touched paths, validation results, retained workspaces, and task criteria.
-- Generate optional soft evaluation payload artifacts for later human or local
-  judge review without calling hosted model APIs.
-- Surface hard/soft evaluation summaries in local app planning, results,
+- Generate AI arbitration payload/result artifacts for later human review
+  without calling hosted model APIs.
+- Surface hard evaluation and AI arbitration summaries in local app planning, results,
   Markdown report, exports, and the React local app workflow.
 - Add a minimal Coco-focused example using fake/local execution for tests.
 
@@ -26,16 +26,16 @@ checks as the correctness anchor.
 ### New Capabilities
 
 - `coco-visual-hybrid-evaluation`: Coco-first visual authoring, expected
-  outcome modeling, deterministic hard checks, optional soft payload generation,
-  local app review, and artifact/report/export integration.
+  outcome modeling, deterministic hard checks, default same-agent AI
+  arbitration, local app review, and artifact/report/export integration.
 
 ### Modified Capabilities
 
 - `agent-profiles`: Accept `kind: "coco"` as a first-class local profile kind
   and keep executable preflight side-effect-free.
-- `local-app-workflow`: Add structured expected outcome, hard evaluation, soft
-  payload, run planning, execution, and result review requirements to the local
-  app workflow.
+- `local-app-workflow`: Add structured expected outcome, hard evaluation, AI
+  arbitration, run planning, execution, and result review requirements to the
+  local app workflow.
 
 ## Impact
 

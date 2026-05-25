@@ -1,6 +1,7 @@
 interface:
   display_name: "Theme Factory"
-  short_description: "Toolkit for styling artifacts with a theme. These artifacts can be slides, docs, reportings, HTML landing pages, etc. There are 10 pre-set themes with colors..."
+  short_description: >-
+    Load when the user asks to apply or choose a coherent visual theme for slides, docs, reports, HTML artifacts, or landing pages; do not load for product UI implementation or acce...
   default_prompt: "Use $theme-factory to help with this task."
 
 policy:
