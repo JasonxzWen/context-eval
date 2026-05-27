@@ -57,6 +57,11 @@ assistant's final reply. The `codex-jsonl` collector normalizes usage, model,
 tool, and command-call data from those local artifacts. Missing fields stay
 unavailable rather than guessed.
 
+Global Codex Desktop session logs under `.codex/sessions/` are a separate
+diagnostics artifact family. They can support local operational summaries, but
+they must not be treated as context-eval run results or as case-local
+`codex-jsonl` telemetry.
+
 Collectors must be local-only. They must not call a hosted API, upload logs,
 perform cost estimation through a remote service, or execute agent commands on
 their own.
