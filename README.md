@@ -56,6 +56,8 @@ diff stats, or generated prose alone.
   comparisons can and cannot support.
 - [Artifact model](docs/artifact-model.md) describes the local files used for
   reproducibility, review, debugging, and exports.
+- [Codex session diagnostics](docs/codex-session-diagnostics.md) describes the
+  read-only summary path for local Codex Desktop session JSONL files.
 - [FAQ](docs/faq.md) answers common scope, confidence, static UI, local app,
   and artifact inspection questions.
 

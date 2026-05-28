@@ -42,6 +42,8 @@ context variant and review the recorded artifacts.
   evaluated and how confidence should be interpreted.
 - [Artifact model](artifact-model.md) describes the local files produced by a
   run and how they support reproducibility, debugging, review, and exports.
+- [Codex session diagnostics](codex-session-diagnostics.md) describes the
+  read-only summary path for local Codex Desktop session JSONL files.
 - [FAQ](faq.md) answers the most common boundary and workflow questions.
 - [Local app workflow](local-app-workflow.md) documents the explicit loopback
   local app mode.

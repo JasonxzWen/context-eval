@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Annotated
 
 import typer
 from rich.console import Console
 
+from context_eval.codex_sessions import CodexSessionSummary, summarize_codex_sessions
 from context_eval.compare import compare_run
 from context_eval.config import ConfigError, filter_tasks, validate_config_files
 from context_eval.dry_run import render_dry_run
@@ -217,6 +219,94 @@ def export_command(
         console.print(f"[red]Error:[/red] {exc}")
         raise typer.Exit(code=1) from exc
     console.print(f"[green]Export written:[/green] {output}")
+
+
+@app.command("codex-session-summary")
+def codex_session_summary_command(
+    paths: Annotated[
+        list[str],
+        typer.Argument(help="Codex Desktop session .jsonl files or glob patterns."),
+    ],
+    summary_format: Annotated[
+        str,
+        typer.Option("--format", help="Output format: text or json."),
+    ] = "text",
+) -> None:
+    """Summarize local Codex Desktop session JSONL files."""
+    try:
+        summary = summarize_codex_sessions(paths)
+        if summary_format == "text":
+            console.print(_render_codex_session_summary(summary), soft_wrap=True)
+        elif summary_format == "json":
+            typer.echo(json.dumps(summary.to_dict(), indent=2, sort_keys=True))
+        else:
+            raise ValueError(f"unsupported Codex session summary format: {summary_format}")
+    except ValueError as exc:
+        console.print(f"[red]Error:[/red] {exc}", soft_wrap=True)
+        raise typer.Exit(code=1) from exc
+
+
+def _render_codex_session_summary(summary: CodexSessionSummary) -> str:
+    latest_total = (
+        summary.latest_token_usage.get("total_tokens")
+        if summary.latest_token_usage is not None
+        else None
+    )
+    max_total = (
+        summary.max_token_usage.get("total_tokens") if summary.max_token_usage is not None else None
+    )
+    lines = [
+        "Codex session diagnostics",
+        "Local observations only; sourced from Codex Desktop session JSONL files.",
+        f"Sessions: {summary.total_files}",
+        f"Events: {summary.total_events}",
+        f"Turns: {summary.total_turns}",
+        f"Bytes: {summary.total_bytes}",
+        "Token observations: "
+        f"{summary.token_observation_count} "
+        f"latest_total_tokens={_format_optional_int(latest_total)} "
+        f"max_total_tokens={_format_optional_int(max_total)}",
+        "Diagnostics: "
+        f"rate_limit_observations={summary.rate_limit_observation_count} "
+        f"malformed_lines={summary.malformed_line_count} "
+        f"diagnostic_signals={summary.diagnostic_signal_count}",
+        f"Row types: {_format_counter(summary.row_type_counts)}",
+        f"Payload types: {_format_counter(summary.payload_type_counts)}",
+        f"Calls: {_format_counter(summary.call_counts_by_name)}",
+        f"Call payloads: {_format_counter(summary.call_counts_by_type)}",
+        f"Output statuses: {_format_counter(summary.output_status_counts)}",
+        f"Diagnostic signals: {_format_counter(summary.diagnostic_signal_counts)}",
+    ]
+    if summary.top_sessions_by_diagnostic_signal:
+        lines.append("Top sessions by diagnostic signal:")
+        for session in summary.top_sessions_by_diagnostic_signal:
+            lines.append(
+                "- "
+                f"{session['path']} "
+                f"diagnostic_signals={session['diagnostic_signal_count']} "
+                f"malformed_lines={session['malformed_line_count']} "
+                f"bytes={session['byte_size']}"
+            )
+    if summary.top_sessions_by_size:
+        lines.append("Top sessions by size:")
+        for session in summary.top_sessions_by_size:
+            lines.append(
+                "- "
+                f"{session['path']} "
+                f"bytes={session['byte_size']} "
+                f"diagnostic_signals={session['diagnostic_signal_count']}"
+            )
+    return "\n".join(lines)
+
+
+def _format_counter(counter: dict[str, int]) -> str:
+    if not counter:
+        return "-"
+    return ", ".join(f"{key}={counter[key]}" for key in sorted(counter))
+
+
+def _format_optional_int(value: int | None) -> str:
+    return "-" if value is None else str(value)
 
 
 @app.command("ui")

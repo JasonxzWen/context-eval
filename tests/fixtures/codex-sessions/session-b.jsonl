@@ -1,0 +1,8 @@
+{"timestamp":"2026-05-27T02:00:00Z","type":"session_meta","payload":{"id":"session-b","cwd":"D:\\context-eval"}}
+{"timestamp":"2026-05-27T02:00:01Z","type":"turn_context","payload":{"cwd":"D:\\context-eval","approval_policy":"never"}}
+{"timestamp":"2026-05-27T02:00:02Z","type":"response_item","payload":{"type":"reasoning","summary":[{"text":"SECRET_REASONING"}],"encrypted_content":"SECRET_ENCRYPTED_REASONING"}}
+{"timestamp":"2026-05-27T02:00:03Z","type":"response_item","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":150,"cached_input_tokens":25,"output_tokens":40,"reasoning_output_tokens":9,"total_tokens":190},"last_token_usage":{"input_tokens":50,"cached_input_tokens":5,"output_tokens":10,"reasoning_output_tokens":1,"total_tokens":60},"model_context_window":258400},"rate_limits":{"limit_id":"codex","primary":{"used_percent":100.0},"rate_limit_reached_type":"primary"}}}
+{"timestamp":"2026-05-27T02:00:04Z","type":"response_item","payload":{"type":"custom_tool_call","name":"view_image","arguments":"SECRET_CUSTOM_TOOL_ARGUMENT"}}
+{"timestamp":"2026-05-27T02:00:05Z","type":"response_item","payload":{"type":"custom_tool_call_output","status":"success","output":"SECRET_CUSTOM_TOOL_OUTPUT"}}
+{"timestamp":"2026-05-27T02:00:06Z","type":"event_msg","payload":{"type":"task_complete","status":"failed","message":"SECRET_TASK_COMPLETE_MESSAGE"}}
+{"timestamp":"2026-05-27T02:00:07Z","type":"response_item","payload":{"type":"future_payload","status":"ok","content":"SECRET_UNKNOWN_CONTENT"}}
