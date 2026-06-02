@@ -67,6 +67,19 @@ function buildAgentCommand(kind: string, extraArgs: string = defaultAgentArgs(ki
   return `${parts.prefix}${trimmed ? ` ${trimmed}` : ''}${parts.suffix}`;
 }
 
+function defaultAgentTelemetry(kind: string) {
+  if (kind === 'codex-cli') {
+    return {
+      collector: 'codex-jsonl',
+      file: 'codex-events.jsonl',
+    };
+  }
+  return {
+    collector: 'none',
+    file: 'telemetry.json',
+  };
+}
+
 function agentExtraArgs(agent: EditableAgent) {
   const parts = commandTemplateParts(agent.kind);
   const command = agent.command.trim();
@@ -94,6 +107,7 @@ function blankAgent(agents: EditableAgent[]): EditableAgent {
     command: buildAgentCommand(kind),
     timeout_minutes: 60,
     network: 'disabled',
+    telemetry: defaultAgentTelemetry(kind),
   };
 }
 
@@ -121,6 +135,9 @@ export function AgentEditor({
     const next: Partial<EditableAgent> = { kind };
     if (generatedCommandKinds.has(kind)) {
       next.command = buildAgentCommand(kind);
+    }
+    if (kind === 'codex-cli' || agent?.telemetry?.collector === 'codex-jsonl') {
+      next.telemetry = defaultAgentTelemetry(kind);
     }
     updateAgent(next);
   }

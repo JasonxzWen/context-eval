@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { apiRequest } from './api';
 import { AdvancedConfigDetails } from './components/AdvancedConfigDetails';
 import { AgentEditor } from './components/AgentEditor';
+import { CodexRunConsole } from './components/CodexRunConsole';
 import { FirstRunPanel } from './components/FirstRunPanel';
 import { RunPlanPanel } from './components/RunPlanPanel';
 import { RunControls } from './components/RunControls';
@@ -26,6 +27,7 @@ import {
 import type {
   BootstrapResponse,
   CaseDetailPayload,
+  CodexProfileDiagnostic,
   CompareGroup,
   EditableAgent,
   EditableConfig,
@@ -364,6 +366,7 @@ function DesignerGuide() {
 
 function TopNav({ hasResults }: { hasResults: boolean }) {
   const links = [
+    ['#run-console', '运行台'],
     ['#task-config', '评测题目'],
     ['#context-config', '对比资料'],
     ['#agent-config', '本地 AI'],
@@ -400,6 +403,7 @@ export function App() {
   const [saveStatus, setSaveStatus] = useState('尚未保存');
   const [preflightStatus, setPreflightStatus] = useState('待检查');
   const [preflightChecks, setPreflightChecks] = useState<string[]>([]);
+  const [codexDiagnostics, setCodexDiagnostics] = useState<CodexProfileDiagnostic[]>([]);
   const [plan, setPlan] = useState<RunPlan | null>(null);
   const [run, setRun] = useState<RunStatus | null>(null);
   const [logs, setLogs] = useState<LogPayload | null>(null);
@@ -462,6 +466,7 @@ export function App() {
     setConfigYaml(payload.config_yaml);
     setTasksYaml(payload.tasks_yaml);
     setTaskValidationErrors([]);
+    setCodexDiagnostics([]);
     setProjectRepoPath(payload.resolved.repo_path || payload.editable.repo.path || '');
     setSelectedTaskIndex((current) => Math.min(current, Math.max(payload.editable.tasks.length - 1, 0)));
     setSelectedVariantIndex((current) => Math.min(current, Math.max(payload.editable.variants.length - 1, 0)));
@@ -763,11 +768,15 @@ export function App() {
 
   async function runPreflight() {
     setPreflightStatus('正在检查配置和本地执行条件');
-    const payload = await apiRequest<{ checks: string[] }>('/api/preflight', {
+    const payload = await apiRequest<{
+      checks: string[];
+      codex_profile_diagnostics?: CodexProfileDiagnostic[];
+    }>('/api/preflight', {
       method: 'POST',
       body: JSON.stringify({ config_path: loaded.config_path || configPath, check_agents: true }),
     });
     setPreflightChecks(payload.checks);
+    setCodexDiagnostics(payload.codex_profile_diagnostics ?? []);
     setPreflightStatus('运行前检查通过');
     return payload.checks;
   }
@@ -788,6 +797,7 @@ export function App() {
       body: JSON.stringify(runRequestBody(path, scope)),
     });
     setPlan(payload);
+    setCodexDiagnostics(payload.codex_profile_diagnostics ?? []);
     return payload;
   }
 
@@ -1075,6 +1085,8 @@ export function App() {
         ]}
       />
 
+      {isFirstRun && (
+      <>
       <FirstRunPanel
         title={isFirstRun ? '打开评测项目' : '打开或切换评测项目'}
         subtitle={
@@ -1098,6 +1110,8 @@ export function App() {
       />
 
       <DesignerGuide />
+      </>
+      )}
 
       {!isFirstRun && (
       <section className="content-grid">
@@ -1106,6 +1120,44 @@ export function App() {
             <div>{scopeNotice}</div>
           </div>
         )}
+        <CodexRunConsole
+          agents={agents}
+          configLoaded={configLoaded}
+          diagnostics={codexDiagnostics}
+          environment={environment}
+          environmentStatus={environmentStatus}
+          isRunActive={isRunActive}
+          plan={plan}
+          preflightStatus={preflightStatus}
+          projectPath={loaded.resolved.repo_path || loaded.editable.repo.path}
+          results={results}
+          runLabel={runLabel}
+          runScope={runScope}
+          visibleCaseCount={visibleCaseCount}
+        />
+        <FirstRunPanel
+          title="打开或切换评测项目"
+          subtitle="要换项目时在这里填本地仓库路径或 Git URL；会覆盖当前评测配置"
+          showDemo={false}
+          projectRepoPath={projectRepoPath}
+          projectRepoUrl={projectRepoUrl}
+          projectCloneDir={projectCloneDir}
+          environment={environment}
+          environmentStatus={environmentStatus}
+          onProjectRepoPathChange={setProjectRepoPath}
+          onProjectRepoUrlChange={setProjectRepoUrl}
+          onProjectCloneDirChange={setProjectCloneDir}
+          onBootstrapDemo={() => guarded(bootstrapDemo)}
+          onInitializeProject={() => guarded(initializeProject)}
+          onCloneProject={() => guarded(cloneProject)}
+          onCheckEnvironment={() => guarded(() => checkEnvironment(projectRepoPath).then(() => undefined))}
+        />
+        <details className="advanced-workbench config-editor-workbench">
+          <summary data-testid="config-editors-toggle">
+            <span>高级配置编辑</span>
+            <small>任务、对比资料、执行器和保存动作</small>
+          </summary>
+          <div className="advanced-grid">
         <TaskEditor
           tasks={loaded.editable.tasks}
           selectedTaskIndex={selectedTaskIndex}
@@ -1139,6 +1191,8 @@ export function App() {
           onUpdateAgents={updateAgents}
           onSave={() => guarded(() => saveEditableConfig('已保存配置并刷新评测计划'))}
         />
+          </div>
+        </details>
         <RunControls
           cleanupPolicy={cleanupPolicy}
           isRunActive={isRunActive}

@@ -12,6 +12,7 @@ from context_eval.config_editor import (
     export_editable_yaml,
     validate_editable_model,
 )
+from context_eval.models import AgentTelemetryConfig
 
 
 def test_editable_model_includes_supported_fields_from_basic_example() -> None:
@@ -194,6 +195,144 @@ tasks:
     config_path.write_text(exported.config_yaml, encoding="utf-8")
     round_tripped_config, _ = validate_config_files(config_path)
     assert list(round_tripped_config.agent_profiles()) == ["codex", "coco", "trae"]
+
+
+def test_editable_model_round_trips_agent_telemetry(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    context_dir = tmp_path / "contexts" / "baseline"
+    context_dir.mkdir(parents=True)
+    (context_dir / "AGENTS.md").write_text("# Instructions\n", encoding="utf-8")
+    config_path = tmp_path / "context-eval.yaml"
+    config_path.write_text(
+        """
+repo:
+  path: "./repo"
+agents:
+  codex:
+    kind: "codex-cli"
+    command: "codex exec --json - < {prompt_file}"
+    telemetry:
+      collector: "codex-jsonl"
+      file: "codex-events.jsonl"
+  custom:
+    kind: "custom"
+    command: "agent -p {prompt_file}"
+    telemetry:
+      collector: "json-file"
+      file: "agent-telemetry.json"
+      environment_variable: "AGENT_TELEMETRY"
+tasks: "./tasks.yaml"
+variants:
+  baseline:
+    description: "Baseline"
+    overlays:
+      - source: "./contexts/baseline/AGENTS.md"
+        target: "AGENTS.md"
+""",
+        encoding="utf-8",
+    )
+    tasks_path = tmp_path / "tasks.yaml"
+    tasks_path.write_text(
+        """
+tasks:
+  - id: "task-1"
+    prompt: "Fix the bug."
+""",
+        encoding="utf-8",
+    )
+    config, tasks = validate_config_files(config_path)
+    model = build_editable_model(config, tasks)
+
+    assert model.agents[0].telemetry is not None
+    assert model.agents[0].telemetry.collector == "codex-jsonl"
+    assert model.agents[0].telemetry.file == "codex-events.jsonl"
+    assert model.agents[1].telemetry is not None
+    assert model.agents[1].telemetry.environment_variable == "AGENT_TELEMETRY"
+
+    exported = export_editable_yaml(model)
+    config_data = yaml.safe_load(exported.config_yaml)
+
+    assert config_data["agents"]["codex"]["telemetry"] == {
+        "collector": "codex-jsonl",
+        "file": "codex-events.jsonl",
+    }
+    assert config_data["agents"]["custom"]["telemetry"] == {
+        "collector": "json-file",
+        "file": "agent-telemetry.json",
+        "environment_variable": "AGENT_TELEMETRY",
+    }
+
+
+def test_editable_export_defaults_codex_cli_to_codex_jsonl_telemetry() -> None:
+    config, tasks = validate_config_files(Path("examples/basic/context-eval.yaml"))
+    model = build_editable_model(config, tasks)
+    model.agent_shape = "agents"
+    model.agent.name = "codex"
+    model.agent.kind = "codex-cli"
+    model.agent.command = (
+        'codex exec --json --output-last-message "{output_dir}/codex-final-message.md" '
+        '-C "{workspace}" - < "{prompt_file}"'
+    )
+    model.agent.telemetry = None
+    model.agents = [model.agent]
+
+    exported = export_editable_yaml(model)
+    config_data = yaml.safe_load(exported.config_yaml)
+
+    assert config_data["agents"]["codex"]["telemetry"] == {
+        "collector": "codex-jsonl",
+        "file": "codex-events.jsonl",
+    }
+
+
+def test_editable_export_clears_existing_telemetry_when_agent_sets_none(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    context_dir = tmp_path / "contexts" / "baseline"
+    context_dir.mkdir(parents=True)
+    (context_dir / "AGENTS.md").write_text("# Instructions\n", encoding="utf-8")
+    config_path = tmp_path / "context-eval.yaml"
+    config_path.write_text(
+        """
+repo:
+  path: "./repo"
+agent:
+  name: "codex"
+  kind: "codex-cli"
+  command: "codex exec --json - < {prompt_file}"
+  telemetry:
+    collector: "codex-jsonl"
+    file: "codex-events.jsonl"
+tasks: "./tasks.yaml"
+variants:
+  baseline:
+    description: "Baseline"
+    overlays:
+      - source: "./contexts/baseline/AGENTS.md"
+        target: "AGENTS.md"
+""",
+        encoding="utf-8",
+    )
+    tasks_path = tmp_path / "tasks.yaml"
+    tasks_path.write_text(
+        """
+tasks:
+  - id: "task-1"
+    prompt: "Fix the bug."
+""",
+        encoding="utf-8",
+    )
+    config, tasks = validate_config_files(config_path)
+    model = build_editable_model(config, tasks)
+    model.agent.kind = "custom"
+    model.agent.command = "agent -p {prompt_file}"
+    model.agent.telemetry = AgentTelemetryConfig(collector="none")
+
+    exported = export_editable_yaml(model)
+    config_data = yaml.safe_load(exported.config_yaml)
+
+    assert "telemetry" not in config_data["agent"]
 
 
 def test_editable_model_round_trips_hybrid_task_fields_and_unknowns(tmp_path: Path) -> None:

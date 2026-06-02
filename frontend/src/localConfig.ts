@@ -20,6 +20,19 @@ export function defaultSoftEvaluation(): SoftEvaluation {
   };
 }
 
+function defaultAgentTelemetry(kind: string) {
+  if (kind === 'codex-cli') {
+    return {
+      collector: 'codex-jsonl',
+      file: 'codex-events.jsonl',
+    };
+  }
+  return {
+    collector: 'none',
+    file: 'telemetry.json',
+  };
+}
+
 export function normalizeEditableForSave(editable: EditableConfig): EditableConfig {
   return {
     ...editable,
@@ -37,6 +50,7 @@ export function fallbackConfig(): LoadedConfig {
     command: agent.command,
     timeout_minutes: 60,
     network: 'disabled',
+    telemetry: defaultAgentTelemetry(agent.kind),
   }));
   const fallbackTasks: EditableTask[] = localAppFixture.tasks.map((task) => ({
     id: task,
@@ -164,6 +178,7 @@ function emptyEditableConfig(): EditableConfig {
       command: '',
       timeout_minutes: 60,
       network: 'disabled',
+      telemetry: defaultAgentTelemetry('custom'),
     },
     agent_shape: 'agent',
     agents: [],

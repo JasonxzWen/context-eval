@@ -729,8 +729,54 @@ def test_local_app_saves_editable_variants_and_agent_profiles(
         "file": "telemetry.json",
     }
     assert saved_config["agents"]["backup-agent"]["kind"] == "codex-cli"
+    assert saved_config["agents"]["backup-agent"]["telemetry"] == {
+        "collector": "codex-jsonl",
+        "file": "codex-events.jsonl",
+    }
     assert saved["reloaded"]["editable"]["variants"][0]["description"] == (
         "Edited structured baseline"
+    )
+
+
+def test_local_app_preflight_reports_codex_profile_diagnostics(tmp_path: Path) -> None:
+    repo = _create_git_repo(tmp_path / "repo")
+    _write_eval_files(tmp_path, repo)
+    config_path = tmp_path / "context-eval.yaml"
+    config_data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    primary_agent = config_data.pop("agent")
+    config_data["agents"] = {
+        "codex": {
+            **primary_agent,
+            "kind": "codex-cli",
+            "command": 'codex exec -C "{workspace}" - < "{prompt_file}"',
+        }
+    }
+    config_path.write_text(yaml.safe_dump(config_data, sort_keys=False), encoding="utf-8")
+    service = LocalAppService(workspace_root=tmp_path)
+
+    preflight = service.preflight(
+        config_path="context-eval.yaml",
+        check_agents=False,
+    )
+    plan = service.plan_run(config_path="context-eval.yaml", cleanup_policy="successful")
+
+    preflight_codes = {
+        diagnostic["code"] for diagnostic in preflight["codex_profile_diagnostics"]
+    }
+    plan_codes = {diagnostic["code"] for diagnostic in plan["codex_profile_diagnostics"]}
+    expected = {
+        "codex_json_output_missing",
+        "codex_jsonl_collector_missing",
+        "codex_final_message_missing",
+    }
+
+    assert preflight_codes == expected
+    assert plan_codes == expected
+    assert all(
+        diagnostic["agent_name"] == "codex"
+        and diagnostic["severity"] == "warning"
+        and diagnostic["next_step"]
+        for diagnostic in preflight["codex_profile_diagnostics"]
     )
 
 

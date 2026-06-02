@@ -133,6 +133,14 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+function openConfigEditors() {
+  const toggle = screen.getByTestId('config-editors-toggle');
+  const workbench = toggle.closest('details');
+  if (!workbench?.hasAttribute('open')) {
+    fireEvent.click(toggle);
+  }
+}
+
 describe('App workflow shell', () => {
   it('renders deterministic fixture fallback when the local server is unavailable', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('no server')));
@@ -143,10 +151,9 @@ describe('App workflow shell', () => {
     expect(screen.getByRole('heading', { name: 'AGENTS.md / skills 效果对比' })).toBeVisible();
     expect(screen.getByText(/同一批题目，换不同 AGENTS.md/)).toBeVisible();
     await waitFor(() => expect(screen.getAllByText('示例数据预览').length).toBeGreaterThan(0));
-    expect(screen.getByText(/这页用来回答一个问题/)).toBeVisible();
-    expect(screen.getByText('写评测题')).toBeVisible();
-    expect(screen.getByText('放对比资料')).toBeVisible();
-    expect(screen.getByText('看结果反馈')).toBeVisible();
+    expect(screen.getByTestId('codex-run-console')).toBeVisible();
+    expect(screen.getByTestId('codex-next-action')).toHaveTextContent('切换到 Codex CLI');
+    openConfigEditors();
     expect(screen.getAllByRole('heading', { name: '1 写评测题目' }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole('heading', { name: '2 准备对比资料' }).length).toBeGreaterThan(0);
     expect(screen.getByText(/一套方案就是运行时给 AI 看的资料/)).toBeVisible();
@@ -190,9 +197,11 @@ describe('App workflow shell', () => {
 
     fireEvent.click(screen.getByText('配置与任务细节'));
     await waitFor(() => expect(screen.getByRole('heading', { name: '打开或切换评测项目' })).toBeVisible());
+    expect(screen.getByTestId('codex-run-console')).toBeVisible();
     expect(screen.getByLabelText('本地仓库路径')).toHaveValue('./fixture-repo');
     expect(screen.getByText('从 Git URL 克隆')).toBeVisible();
     await waitFor(() => expect(screen.getByLabelText('仓库路径')).toHaveValue('./fixture-repo'));
+    openConfigEditors();
     const taskTab = screen.getByRole('button', { name: /Fix greeting punctuation/ });
     expect(within(taskTab).getByText('Fix greeting punctuation')).toBeVisible();
     expect(within(taskTab).getByText('ID: fix-greeting-punctuation')).toBeVisible();
@@ -271,7 +280,9 @@ describe('App workflow shell', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: '克隆并创建配置' }));
 
-    await waitFor(() => expect(screen.getByRole('heading', { name: '1 写评测题目' })).toBeVisible());
+    await waitFor(() => expect(screen.getByTestId('codex-run-console')).toBeVisible());
+    openConfigEditors();
+    expect(screen.getByRole('heading', { name: '1 写评测题目' })).toBeVisible();
     expect(screen.getAllByText(/仓库已克隆/).length).toBeGreaterThan(0);
   });
 
@@ -416,6 +427,7 @@ describe('App workflow shell', () => {
     render(<App />);
 
     await waitFor(() => expect(screen.getByLabelText('发给 AI 的任务提示词')).toHaveValue('Fix it.'));
+    openConfigEditors();
     expect(screen.getByRole('radiogroup', { name: '题目类型' })).toBeVisible();
     expect(screen.getByRole('radio', { name: '修 Bug' })).toHaveAttribute('aria-checked', 'true');
     expect(screen.getByLabelText('起始版本')).toHaveValue('main');
@@ -555,6 +567,7 @@ describe('App workflow shell', () => {
     render(<App />);
 
     await waitFor(() => expect(screen.getByLabelText('资料包名称')).toHaveValue('Baseline'));
+    openConfigEditors();
     fireEvent.change(screen.getByLabelText('资料包名称'), {
       target: { value: 'Edited baseline instructions' },
     });
@@ -605,6 +618,7 @@ describe('App workflow shell', () => {
     render(<App />);
 
     await waitFor(() => expect(screen.getByLabelText('发给 AI 的任务提示词')).toHaveValue('Fix it.'));
+    openConfigEditors();
     fireEvent.change(screen.getByLabelText('发给 AI 的任务提示词'), { target: { value: ' ' } });
     fireEvent.change(screen.getByLabelText('命令 1'), { target: { value: ' ' } });
     fireEvent.click(screen.getByRole('button', { name: '保存评测题目' }));
@@ -641,6 +655,7 @@ describe('App workflow shell', () => {
     render(<App />);
 
     await waitFor(() => expect(screen.getByLabelText('资料包 ID')).toHaveValue('baseline'));
+    openConfigEditors();
     fireEvent.change(screen.getByLabelText('资料包 ID'), { target: { value: ' ' } });
     fireEvent.change(screen.getByLabelText('资料来源路径 1'), { target: { value: ' ' } });
     fireEvent.change(screen.getByLabelText('执行器类型'), { target: { value: 'custom' } });
@@ -665,6 +680,61 @@ describe('App workflow shell', () => {
       '/api/config/save-editable',
       expect.anything(),
     );
+  });
+
+  it('saves codex-cli agents with codex-jsonl telemetry', async () => {
+    const fetchMock = vi.fn((url: string | URL | Request, init?: RequestInit) => {
+      const target = String(url);
+      if (target.startsWith('/api/environment')) {
+        return jsonResponse(environmentPayload);
+      }
+      if (target === '/api/health') {
+        return jsonResponse({ ok: true, initial_config_path: 'context-eval.yaml' });
+      }
+      if (target === '/api/config/load') {
+        return jsonResponse(loadedPayload);
+      }
+      if (target === '/api/config/save-editable') {
+        const body = JSON.parse(String(init?.body));
+        expect(body.editable.agent.kind).toBe('codex-cli');
+        expect(body.editable.agent.telemetry).toEqual({
+          collector: 'codex-jsonl',
+          file: 'codex-events.jsonl',
+        });
+        expect(body.editable.agents[0].telemetry).toEqual({
+          collector: 'codex-jsonl',
+          file: 'codex-events.jsonl',
+        });
+        return jsonResponse({ ok: true, reloaded: loadedPayload });
+      }
+      if (target === '/api/run-plan') {
+        return jsonResponse({
+          ok: true,
+          case_count: 1,
+          cleanup_policy: 'successful',
+          jobs: 1,
+          trials: 1,
+          output_dir: './runs',
+          agents: ['coco'],
+          tasks: ['fix-greeting-punctuation'],
+          variants: ['baseline'],
+          cases: [],
+          codex_profile_diagnostics: [],
+        });
+      }
+      throw new Error(`unexpected request: ${target}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByLabelText('执行器类型')).toHaveValue('coco'));
+    fireEvent.change(screen.getByLabelText('执行器类型'), { target: { value: 'codex-cli' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存本地 AI 配置' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('agent-save-status')).toHaveTextContent('已保存配置并刷新评测计划');
+    });
   });
 
   it('passes selected task, variant, and agent scope into plan and run requests', async () => {

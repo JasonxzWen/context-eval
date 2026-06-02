@@ -315,10 +315,13 @@ The local app API endpoints are:
   YAML. This endpoint is for the visual case editor path.
 - `POST /api/preflight`: run side-effect-free validation for schema, task IDs,
   Git refs, overlay paths, prompt templates, command variables, optional agent
-  executable availability, and output directory writability.
+  executable availability, and output directory writability. The response also
+  includes `codex_profile_diagnostics` warnings when a `codex-cli` profile is
+  missing `--json`, `--output-last-message`, or the `codex-jsonl` telemetry
+  collector needed for structured Codex evidence.
 - `POST /api/run-plan`: return the selected agent x task x variant x trial
-  matrix, command previews, cleanup policy, jobs, and output directory before
-  any agent command can run.
+  matrix, command previews, cleanup policy, jobs, output directory, and selected
+  `codex_profile_diagnostics` before any agent command can run.
 - `POST /api/runs`: start a local run only when the request includes explicit
   confirmation.
 - `GET /api/runs/{id}`: return run lifecycle state, run directory, progress

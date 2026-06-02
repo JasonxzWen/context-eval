@@ -8,6 +8,7 @@ import yaml
 from pydantic import BaseModel, Field
 
 from context_eval.models import (
+    AgentTelemetryConfig,
     ContextEvalConfig,
     ExpectedOutcomeConfig,
     HardEvaluationConfig,
@@ -29,6 +30,7 @@ class EditableAgent(BaseModel):
     command: str
     timeout_minutes: int
     network: str
+    telemetry: AgentTelemetryConfig | None = None
 
 
 class EditableOverlay(BaseModel):
@@ -93,6 +95,7 @@ def build_editable_model(
             command=profile.command,
             timeout_minutes=profile.timeout_minutes,
             network=profile.network,
+            telemetry=profile.telemetry,
         )
         for profile in profiles.values()
     ]
@@ -275,7 +278,36 @@ def _agent_to_yaml_data(
     }
     if include_name:
         updates["name"] = agent.name
-    return _merged_mapping(source, updates)
+    data = _merged_mapping(source, updates)
+    telemetry = _telemetry_for_export(agent)
+    if telemetry is None:
+        if (
+            agent.telemetry is not None
+            and agent.telemetry.collector == "none"
+        ) or not (isinstance(source, dict) and "telemetry" in source):
+            data.pop("telemetry", None)
+    else:
+        source_telemetry = source.get("telemetry") if isinstance(source, dict) else None
+        data["telemetry"] = _merged_mapping(
+            source_telemetry,
+            telemetry.model_dump(mode="json", exclude_defaults=True),
+        )
+    return data
+
+
+def _telemetry_for_export(agent: EditableAgent) -> AgentTelemetryConfig | None:
+    if agent.kind == "codex-cli" and (
+        agent.telemetry is None or agent.telemetry.collector == "none"
+    ):
+        return AgentTelemetryConfig(
+            collector="codex-jsonl",
+            file="codex-events.jsonl",
+        )
+    if agent.telemetry is None:
+        return None
+    if agent.telemetry.collector == "none":
+        return None
+    return agent.telemetry
 
 
 def _agent_export_models(model: EditableConfigModel) -> list[EditableAgent]:
