@@ -4,6 +4,13 @@ export type EditableAgent = {
   command: string;
   timeout_minutes: number;
   network: string;
+  telemetry?: AgentTelemetry | null;
+};
+
+export type AgentTelemetry = {
+  collector: string;
+  file: string;
+  environment_variable?: string | null;
 };
 
 export type SnippetCheck = {
@@ -165,6 +172,7 @@ export type RunPlan = {
   agents: string[];
   tasks: string[];
   variants: string[];
+  codex_profile_diagnostics?: CodexProfileDiagnostic[];
   cases: {
     case_id: string;
     agent_name: string;
@@ -182,6 +190,15 @@ export type RunPlan = {
     soft_evaluation_mode?: 'payload-only' | 'runner' | null;
     soft_evaluation_runner_agent?: string | null;
   }[];
+};
+
+export type CodexProfileDiagnostic = {
+  code: string;
+  severity: string;
+  agent_name: string;
+  agent_kind: string;
+  message: string;
+  next_step: string;
 };
 
 export type RunScope = {

@@ -112,6 +112,10 @@ Built-in presets help users start, but they remain editable templates:
   `codex-jsonl` telemetry collector reads only those case-local artifacts under
   `{output_dir}`. This is still a user-editable command template; context-eval
   does not install Codex, validate credentials, or read global Codex logs.
+  When a visual editor creates or converts a profile to `codex-cli`, it defaults
+  missing or `none` telemetry to `collector: codex-jsonl` with
+  `file: codex-events.jsonl` so structured Codex evidence is captured by
+  default.
 - `claude-code`: a Claude Code noninteractive command template.
 - `traecli`: a traecli noninteractive command template such as
   `traecli -p "{prompt}"`.

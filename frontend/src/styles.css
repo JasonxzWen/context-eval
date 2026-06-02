@@ -165,6 +165,7 @@ button:disabled {
 #task-config,
 #context-config,
 #agent-config,
+#run-console,
 #run-config,
 #results {
   scroll-margin-top: 72px;
@@ -423,6 +424,118 @@ button:disabled {
   background: linear-gradient(180deg, #ffffff, #f6fbf8);
 }
 
+.codex-console-panel {
+  border-color: color-mix(in srgb, var(--blue) 42%, var(--line));
+  background: linear-gradient(180deg, #ffffff, #f4f8fb);
+}
+
+.codex-console-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.console-card {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 11px 12px;
+  background: #ffffff;
+}
+
+.console-card span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.console-card strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.console-card small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.codex-readiness-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.codex-readiness-grid > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-left-width: 4px;
+  border-radius: 8px;
+  padding: 8px 9px;
+  background: #ffffff;
+}
+
+.codex-readiness-grid > .ready {
+  border-left-color: var(--teal);
+}
+
+.codex-readiness-grid > .warn {
+  border-left-color: var(--amber);
+}
+
+.codex-readiness-grid strong {
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.codex-readiness-grid span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.codex-diagnostic-list {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.codex-diagnostic-list li {
+  display: grid;
+  gap: 4px;
+  border: 1px solid color-mix(in srgb, var(--amber) 40%, var(--line));
+  border-radius: 8px;
+  padding: 9px 10px;
+  background: #fffaf1;
+}
+
+.codex-diagnostic-list strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.codex-diagnostic-list span {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .brief-layout {
   display: grid;
   grid-template-columns: 1fr;
@@ -563,6 +676,15 @@ button:disabled {
   grid-column: span 6;
 }
 
+.advanced-grid > .task-editor-panel {
+  grid-column: span 12;
+}
+
+.advanced-grid > .variant-editor-panel,
+.advanced-grid > .agent-editor-panel {
+  grid-column: span 12;
+}
+
 .advanced-grid > .yaml-panel {
   grid-column: span 12;
 }
@@ -577,45 +699,55 @@ button:disabled {
   order: 1;
 }
 
-.content-grid > .task-editor-panel {
+.content-grid > .codex-console-panel {
   grid-column: span 12;
   order: 2;
 }
 
+.content-grid > .task-editor-panel {
+  grid-column: span 12;
+  order: 20;
+}
+
 .content-grid > .variant-editor-panel {
   grid-column: span 12;
-  order: 3;
+  order: 21;
 }
 
 .content-grid > .agent-editor-panel {
   grid-column: span 12;
-  order: 4;
+  order: 22;
 }
 
 .content-grid > .run-brief-panel {
   grid-column: span 7;
-  order: 5;
+  order: 3;
 }
 
 .content-grid > .matrix-panel {
   grid-column: span 5;
-  order: 6;
+  order: 4;
 }
 
 .content-grid > .advanced-editor-shell {
   grid-column: span 12;
-  order: 7;
+  order: 20;
 }
 
 .content-grid > .results-panel {
   grid-column: span 12;
-  order: 9;
+  order: 6;
   overflow-x: auto;
 }
 
 .content-grid > .run-panel {
   grid-column: span 12;
-  order: 8;
+  order: 5;
+}
+
+.content-grid > .first-run-panel {
+  grid-column: span 12;
+  order: 7;
 }
 
 .content-grid > .project-panel {
@@ -1989,6 +2121,8 @@ legend {
   .metric-grid,
   .run-prep-summary,
   .brief-layout,
+  .codex-console-grid,
+  .codex-readiness-grid,
   .scope-panel,
   .advanced-grid,
   .two-column-list,
@@ -2010,6 +2144,7 @@ legend {
   #task-config,
   #context-config,
   #agent-config,
+  #run-console,
   #run-config,
   #results {
     scroll-margin-top: 112px;
@@ -2022,6 +2157,8 @@ legend {
   .content-grid > .panel,
   .content-grid > .project-panel,
   .content-grid > .run-brief-panel,
+  .content-grid > .codex-console-panel,
+  .content-grid > .first-run-panel,
   .content-grid > .yaml-panel,
   .content-grid > .run-panel,
   .content-grid > .results-panel,

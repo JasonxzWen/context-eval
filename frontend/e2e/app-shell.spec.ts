@@ -35,6 +35,15 @@ async function fulfillJson(route: Route, data: unknown, status = 200) {
   });
 }
 
+async function openConfigEditors(page: Page) {
+  const toggle = page.getByTestId('config-editors-toggle');
+  await expect(toggle).toBeVisible();
+  const isOpen = await toggle.evaluate((element) => element.closest('details')?.hasAttribute('open') ?? false);
+  if (!isOpen) {
+    await toggle.click();
+  }
+}
+
 const environmentPayload = {
   ok: true,
   checks: [
@@ -296,6 +305,8 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
     await expect(page.getByLabel('仓库路径', { exact: true })).toHaveValue('./demo-repo');
 
     await expect(page.locator('.run-brief-panel')).toContainText('baseline vs experiment');
+    await expect(page.getByTestId('codex-run-console')).toBeVisible();
+    await openConfigEditors(page);
     await expect(page.getByRole('heading', { name: '1 写评测题目' })).toBeVisible();
     await page.evaluate(() => window.scrollTo(0, 1400));
     await page.waitForTimeout(100);
@@ -386,6 +397,8 @@ test('empty workspace can open a real local project and surfaces bad project pat
 
     await page.getByLabel('本地仓库路径').fill(fixture);
     await page.getByRole('button', { name: '打开并创建配置' }).click();
+    await expect(page.getByTestId('codex-run-console')).toBeVisible();
+    await openConfigEditors(page);
     await expect(page.getByRole('heading', { name: '1 写评测题目' })).toBeVisible();
     await page.getByText('配置与任务细节').click();
     await expect(page.getByLabel('仓库路径', { exact: true })).toHaveValue(toPosix(fixture));
@@ -413,6 +426,8 @@ test('empty workspace can clone a project from Git URL', async ({ page }) => {
     await page.getByLabel('本地文件夹名').fill('SeriaServer');
     await page.getByRole('button', { name: '克隆并创建配置' }).click();
 
+    await expect(page.getByTestId('codex-run-console')).toBeVisible();
+    await openConfigEditors(page);
     await expect(page.getByRole('heading', { name: '1 写评测题目' })).toBeVisible();
     await page.getByText('配置与任务细节').click();
     const clonedPath = path.join(workspace, 'repositories', 'SeriaServer');
@@ -436,6 +451,8 @@ test('structured editors copy, delete, save, and reject unsafe overlay paths', a
   try {
     await page.goto(server.url);
     await page.getByRole('button', { name: '试用示例' }).click();
+    await expect(page.getByTestId('codex-run-console')).toBeVisible();
+    await openConfigEditors(page);
     await expect(page.getByRole('heading', { name: '1 写评测题目' })).toBeVisible();
 
     const variantPanel = page.getByLabel('对比资料配置');
@@ -500,7 +517,9 @@ test('renders the fixture-backed Coco hybrid shell', async ({ page }) => {
   await page.goto('/');
 
   await expect(page.getByRole('heading', { name: 'AGENTS.md / skills 效果对比' })).toBeVisible();
+  await expect(page.getByTestId('codex-run-console')).toBeVisible();
   await expect(page.getByTestId('matrix-count')).toHaveText('8');
+  await openConfigEditors(page);
   await page.locator('summary', { hasText: '更多设置：自动检查 / 题目信息' }).click();
   await page.getByText('配置与任务细节').click();
   await expect(page.getByRole('heading', { name: '本地 AI 命令', exact: true })).toBeVisible();

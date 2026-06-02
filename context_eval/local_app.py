@@ -511,6 +511,9 @@ class LocalAppService:
             "agents": list(config.agent_profiles().keys()),
             "variants": list(config.variants.keys()),
             "output_dir": str(config.output_dir),
+            "codex_profile_diagnostics": self._codex_profile_diagnostics(
+                list(config.agent_profiles().values())
+            ),
         }
 
     def plan_run(
@@ -620,6 +623,7 @@ class LocalAppService:
             "tasks": [task.id for task in selected_tasks],
             "variants": variant_names,
             "cases": cases,
+            "codex_profile_diagnostics": self._codex_profile_diagnostics(agent_profiles),
         }
 
     def start_run(
@@ -1420,6 +1424,92 @@ class LocalAppService:
             output_dir=output_dir,
             telemetry_file=telemetry_file,
         )
+
+    def _codex_profile_diagnostics(
+        self,
+        agent_profiles: list[AgentConfig],
+    ) -> list[dict[str, Any]]:
+        diagnostics: list[dict[str, Any]] = []
+        for profile in agent_profiles:
+            if profile.kind != "codex-cli":
+                continue
+            command = profile.command.casefold()
+            if "codex exec" not in command:
+                diagnostics.append(
+                    self._codex_profile_diagnostic(
+                        profile,
+                        code="codex_exec_command_missing",
+                        message=(
+                            "Codex profile should run through `codex exec` so "
+                            "context-eval can execute it noninteractively."
+                        ),
+                        next_step=(
+                            "Use a Codex command template starting with "
+                            "`codex exec --json`."
+                        ),
+                    )
+                )
+            if "--json" not in command:
+                diagnostics.append(
+                    self._codex_profile_diagnostic(
+                        profile,
+                        code="codex_json_output_missing",
+                        message=(
+                            "Codex profile is missing `--json`, so structured "
+                            "token, tool-call, command-call, and model evidence "
+                            "will not be available."
+                        ),
+                        next_step="Add `--json` to the Codex command template.",
+                    )
+                )
+            if "--output-last-message" not in command:
+                diagnostics.append(
+                    self._codex_profile_diagnostic(
+                        profile,
+                        code="codex_final_message_missing",
+                        message=(
+                            "Codex profile does not save the final assistant "
+                            "message as a case-local artifact."
+                        ),
+                        next_step=(
+                            "Add `--output-last-message "
+                            '"{output_dir}/codex-final-message.md"`.'
+                        ),
+                    )
+                )
+            if profile.telemetry.collector != "codex-jsonl":
+                diagnostics.append(
+                    self._codex_profile_diagnostic(
+                        profile,
+                        code="codex_jsonl_collector_missing",
+                        message=(
+                            "Codex profile is not configured with the "
+                            "`codex-jsonl` telemetry collector."
+                        ),
+                        next_step=(
+                            "Set `telemetry.collector` to `codex-jsonl` and "
+                            "`telemetry.file` to `codex-events.jsonl`."
+                        ),
+                    )
+                )
+        return diagnostics
+
+    @staticmethod
+    def _codex_profile_diagnostic(
+        profile: AgentConfig,
+        *,
+        code: str,
+        message: str,
+        next_step: str,
+    ) -> dict[str, Any]:
+        return {
+            "code": code,
+            "severity": "warning",
+            "agent_name": profile.name,
+            "agent_kind": profile.kind,
+            "message": message,
+            "next_step": next_step,
+        }
 
     def _run_worker(self, record: _RunRecord, options: dict[str, Any]) -> None:
         try:
