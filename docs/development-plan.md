@@ -14,7 +14,7 @@ package.
 - `context_eval/` is the runtime Python package.
 - `.agents/`, `.codex/skills/`, `openspec/`, and `scripts/` are maintainer
   capability library files, not runtime package modules.
-- Deleted general-purpose skill-hub documents must not be restored.
+- Deleted general-purpose Harness Hub source documents must not be restored.
 - Active `.codex/config.toml` must not be committed; maintainers can copy
   `.codex/config.example.toml` locally.
 - context-eval remains a local engineering tool for comparing context variants,
@@ -158,7 +158,7 @@ validation failures that explain exactly what to fix.
 - Do not implement real network isolation.
 - Do not run target repository validation commands during config validation.
 - Do not add remote repo cloning, issue mining, or hosted validation services.
-- Do not change the runtime package boundary or restore skill-hub docs.
+- Do not change the runtime package boundary or restore Harness Hub source docs.
 
 ### Merge Acceptance Criteria
 
@@ -851,7 +851,7 @@ preflight, run control, validation review, and result exploration.
   agent summaries, risk signals, validation output, patches, touched paths, and
   exports.
 - Keep static UI export available for offline sharing of completed run views.
-- Document the minimal harness-readiness reference from Skill Hub without
+- Document the minimal harness-readiness reference from Harness Hub without
   copying its repository structure or installing its assets.
 
 ### Non-Goals

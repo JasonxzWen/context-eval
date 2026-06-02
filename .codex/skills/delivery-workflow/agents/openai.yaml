@@ -1,7 +1,7 @@
 interface:
   display_name: "Delivery Workflow"
   short_description: >-
-    Load when accepted work needs validation closeout, cleanup, handoff, release notes, environment reset, or an effective-interact delivery report; do not start new scope.
+    Load when workflow-router selects the delivery state for validation closeout, PR status triage, cleanup, handoff, release notes, environment reset, or reporting...
   default_prompt: "Use $delivery-workflow to help with this task."
 
 policy:

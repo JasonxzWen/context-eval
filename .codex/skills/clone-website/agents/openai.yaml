@@ -1,0 +1,8 @@
+interface:
+  display_name: "Clone Website"
+  short_description: >-
+    Load when the user explicitly asks to clone, reverse-engineer, or rebuild a website they own or are authorized to reproduce; do not load for generic redesign,...
+  default_prompt: "Use $clone-website to help with this task."
+
+policy:
+  allow_implicit_invocation: true

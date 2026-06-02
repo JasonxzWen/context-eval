@@ -178,7 +178,8 @@ tasks:
 
 ## Maintainer Tooling
 
-Project-local skills and agent role configs from `skill-hub` are vendored for
-maintainers, but active Codex configuration is opt-in. Copy
+Project-local skills and agent role configs from Harness Hub, formerly
+`skill-hub`, are vendored for maintainers, but active Codex configuration is
+opt-in. Copy
 `.codex/config.example.toml` to `.codex/config.toml` locally only when you want
 to enable those workflows.

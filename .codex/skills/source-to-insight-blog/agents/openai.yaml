@@ -1,0 +1,8 @@
+interface:
+  display_name: "Source To Insight Blog"
+  short_description: >-
+    Load when turning an external article, blog, release note, interview, or report into a source-backed insight blog with Chinese fidelity, media references,...
+  default_prompt: "Use $source-to-insight-blog to help with this task."
+
+policy:
+  allow_implicit_invocation: true

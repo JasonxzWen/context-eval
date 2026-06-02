@@ -191,20 +191,30 @@ do not need to operate the command line after installation.
 
 ### Requirement: Harness readiness reference
 
-The system SHALL use the current `JasonxzWen/skill-hub` repository only as a
-selective reference for explicit build/test/validate gates and readiness
-analysis boundaries.
+The system SHALL use the current `JasonxzWen/harness-hub` repository, formerly
+`skill-hub`, only as a selective reference for explicit build/test/validate
+gates, harness validation patterns, Codex skill setup, and readiness analysis
+boundaries.
 
-#### Scenario: Reference gates are documented without copying Skill Hub
+#### Scenario: Reference gates are documented without copying Harness Hub
 
 - **WHEN** local app harness readiness is documented
 - **THEN** the documentation compares context-eval's Python, frontend,
-  OpenSpec, and diff-check gates against Skill Hub's explicit build, test,
-  validate, release-validate, acceptance, and readiness patterns
+  OpenSpec, diff-check, and skill-validation gates against Harness Hub's
+  explicit build, test, validate, release-validate, validate-harness,
+  acceptance, and readiness patterns
+
+#### Scenario: Codex local and worktree skills are validated
+
+- **WHEN** the harness reference is applied to context-eval maintainer tooling
+- **THEN** the tracked `.codex/skills/` tree, current Harness Hub standard
+  skills, and per-skill `agents/openai.yaml` metadata are available from both
+  the main checkout and a fresh git worktree
 
 #### Scenario: Reference scope stays local and non-mutating
 
 - **WHEN** the harness reference is applied in this change
-- **THEN** it does not install Codex, Claude Code, traecli, coco, or Skill Hub
-  assets, and it does not add a hosted dashboard, remote database, leaderboard,
-  or automatic target-repository commits
+- **THEN** it does not install Codex, Claude Code, traecli, coco, or Harness Hub
+  assets into users' target repositories, does not run `init-harness` as a
+  default setup step, and does not add a hosted dashboard, remote database,
+  leaderboard, or automatic target-repository commits

@@ -1,0 +1,8 @@
+interface:
+  display_name: "Karpathy Guidelines"
+  short_description: >-
+    Load when a workflow-router-selected owner workflow needs a coding behavior baseline for writing, reviewing, or refactoring code: surface assumptions, avoid overcomp...
+  default_prompt: "Use $karpathy-guidelines to help with this task."
+
+policy:
+  allow_implicit_invocation: true

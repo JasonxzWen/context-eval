@@ -1,6 +1,6 @@
 ---
 name: sdd-workflow
-description: Load when the user requests a feature, bug fix, refactor, product/spec change, or implementation; run SDD-first lifecycle with embedded TDD and user-aligned spec/acceptance before coding.
+description: Load when workflow-router selects the sdd-change state for feature, bug fix, refactor, product/spec change, or implementation work; run SDD-first lifecycle with embedded TDD.
 ---
 
 # SDD Workflow
@@ -19,6 +19,8 @@ Do not start implementation until the user-visible gates are aligned.
 6. **Implement**: make the smallest scoped change that satisfies the accepted spec.
 7. **Test and accept**: run agreed unit, integration, E2E, or deterministic checks.
 8. **Deliver report**: use `effective-interact` for material work, with changes, evidence, validation, risks, and next actions.
+
+During implementation, update the active task's `Spec updates` only for decision-level changes that alter assumptions, acceptance criteria, allowed paths, validation commands, user-visible behavior, or risk. Do not turn it into a progress log; progress belongs in the harness progress file when a repo harness is active.
 
 ## TDD
 
