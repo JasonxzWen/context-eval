@@ -1,31 +1,37 @@
 # Local App Harness Readiness Reference
 
-This note records the selective Skill Hub reference used for the Chinese local
-app configuration editor phase.
+This note records the selective Harness Hub reference used for the Chinese
+local app configuration editor phase.
 
-- Source: `https://github.com/JasonxzWen/skill-hub`
-- Inspected commit: `42c3065378e1d1d2851ca0e387e915a2841b885e`
+- Source: `https://github.com/JasonxzWen/harness-hub`
+- Former source name: `JasonxzWen/skill-hub`
+- Inspected commit: `586950abb086828bca7361ec3f17c5397bdd05c3`
 - Use: reference for local app readiness; maintainer-only skill refresh for
   development workflows, with no `context_eval` runtime package import.
 
 ## Borrowed Patterns
 
-Skill Hub keeps its routine gates explicit:
+Harness Hub keeps its routine gates explicit:
 
 - `build`: produce the distributable entrypoint before release checks.
 - `test`: run the repository's fixture-backed automated tests.
 - `validate`: compose typecheck, tests, and skill validation into one local
   gate.
 - `validate:release`: add build, CLI smoke, and package dry-run checks.
+- `validate-harness`: inspect a target repo's root harness files, QA boundary,
+  skill trigger hygiene, verification-command detection, and lifecycle state
+  without mutating files.
 
-Its `html-work-reports` skill also adds a useful reporting discipline for
-maintainer handoffs:
+Its current `effective-interact` and delivery workflow skills add a useful
+reporting discipline for maintainer handoffs:
 
 - conclusion-first, self-contained static HTML reports;
 - pre-rendered Markdown, Mermaid, code snippets, and diffs for primary content;
 - source-linked file evidence and verification status blocks;
 - validation that can report degraded browser coverage instead of claiming a
-  false pass.
+  false pass;
+- PR closeout that checks mergeability, CI/check runs, conflicts, and branch
+  protection blockers after a pushed PR branch settles.
 
 For context-eval, the equivalent gate matrix is:
 
@@ -36,10 +42,21 @@ For context-eval, the equivalent gate matrix is:
 | Lint | `.\.venv\Scripts\python.exe -m ruff check .` | Python style and import hygiene |
 | Spec | `openspec validate --all --no-interactive` | active and archived OpenSpec consistency |
 | Diff | `git diff --check` | whitespace and patch hygiene |
+| Skill library | `powershell -ExecutionPolicy Bypass -File scripts\validate-skills.ps1 -SkipExternal` | local Codex/worktree skill availability and host metadata |
+
+Codex local mode uses the tracked `.codex/skills/` tree plus optional
+`.codex/config.example.toml`. A fresh git worktree gets the same tracked skill
+tree without a machine-specific setup command. Worktree smoke should confirm:
+
+- `.codex\skills\workflow-router\SKILL.md` exists;
+- newer Harness Hub skills such as `clone-website`, `design-taste-frontend`,
+  `karpathy-guidelines`, `source-to-insight-blog`, and `stop-slop` exist;
+- each skill has `agents\openai.yaml` for local Codex activation metadata;
+- `scripts\validate-skills.ps1 -SkipExternal` passes from the worktree root.
 
 ## Readiness Shape
 
-Skill Hub's agent-readiness analysis is useful because it stays read-only,
+Harness Hub's agent-readiness analysis is useful because it stays read-only,
 category-based, evidence-backed, and scoreless. The local app should use the
 same shape when deciding whether the harness is ready for broader automation:
 
@@ -57,7 +74,13 @@ This repository should keep readiness as a document/test entry for now. It
 should not add a scoring model, hosted dashboard, remote database, external
 agent installer, or automatic target-repository commit workflow.
 
-The HTML report skill is maintainer tooling only. It can improve review,
-handoff, and architecture-explainer artifacts, but it must not replace the
-existing `context-eval ui` static export or add JavaScript build requirements to
-the Python runtime package.
+Harness Hub root harness initialization is source reference only in
+context-eval. This repository should not run `init-harness` against itself as a
+default setup step, should not add upstream `.harness-hub/state` files, and
+should not install Harness Hub assets into users' target repositories through
+the context-eval runtime.
+
+The HTML and rich-interaction report skills are maintainer tooling only. They
+can improve review, handoff, and architecture-explainer artifacts, but they must
+not replace the existing `context-eval ui` static export or add JavaScript build
+requirements to the Python runtime package.

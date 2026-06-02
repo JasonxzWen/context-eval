@@ -493,17 +493,29 @@ def test_readme_documents_agent_executable_preflight() -> None:
         assert term in text
 
 
-def test_local_app_harness_readiness_documents_skill_hub_reference() -> None:
+def test_local_app_harness_readiness_documents_harness_hub_reference() -> None:
     text = Path("docs/local-app-harness-readiness.md").read_text(encoding="utf-8")
 
     for term in [
-        "https://github.com/JasonxzWen/skill-hub",
-        "42c3065378e1d1d2851ca0e387e915a2841b885e",
+        "https://github.com/JasonxzWen/harness-hub",
+        "Former source name: `JasonxzWen/skill-hub`",
+        "586950abb086828bca7361ec3f17c5397bdd05c3",
         "`build`",
         "`test`",
         "`validate`",
         "`validate:release`",
-        "html-work-reports",
+        "`validate-harness`",
+        "effective-interact",
+        "PR closeout",
+        "Skill library",
+        ".codex\\skills\\workflow-router\\SKILL.md",
+        "clone-website",
+        "design-taste-frontend",
+        "karpathy-guidelines",
+        "source-to-insight-blog",
+        "stop-slop",
+        "agents\\openai.yaml",
+        "worktree root",
         "self-contained static HTML reports",
         "source-linked file evidence",
         "degraded browser coverage",
@@ -512,26 +524,37 @@ def test_local_app_harness_readiness_documents_skill_hub_reference() -> None:
         "category-based",
         "scoreless",
         "maintainer tooling only",
+        "should not run `init-harness`",
         "should not add a scoring model",
         "automatic target-repository commit workflow",
     ]:
         assert term in text
 
 
-def test_skill_hub_import_documents_refreshed_minimal_profile_skills() -> None:
-    text = Path("docs/skill-hub-import.md").read_text(encoding="utf-8")
+def test_harness_hub_import_documents_refreshed_standard_skills() -> None:
+    text = Path("docs/harness-hub-import.md").read_text(encoding="utf-8")
 
     for term in [
-        "Latest refreshed commit: `d76897b27ff379d525147e43636702321a60c589`",
-        "Latest refresh date: `2026-05-25`",
+        "Source: `https://github.com/JasonxzWen/harness-hub`",
+        "Former source name: `JasonxzWen/skill-hub`",
+        "Latest refreshed commit: `586950abb086828bca7361ec3f17c5397bdd05c3`",
+        "Latest refresh date: `2026-06-02`",
         "migrates the current upstream `skills/` set into",
+        "syncs the current Harness Hub standard `skills/` set",
         "`html-work-reports`",
         "`compound-code-review`",
         "`diagnose`",
         "`prototype`",
         "`grill-me`",
         "`feynman-learning-coach`",
-        "does not import Skill Hub CLI lifecycle code",
+        "`clone-website`",
+        "`design-taste-frontend`",
+        "`karpathy-guidelines`",
+        "`source-to-insight-blog`",
+        "`stop-slop`",
+        "does not import Harness Hub npm CLI lifecycle code",
+        "`harness/minimal` root harness files",
+        "Codex local mode and git worktrees use the tracked `.codex/skills/` tree",
     ]:
         assert term in text
 
@@ -540,10 +563,15 @@ def test_html_work_reports_skill_assets_are_installed() -> None:
     root = Path(".agents/skills/html-work-reports")
 
     for skill_name in [
+        "clone-website",
         "compound-code-review",
+        "design-taste-frontend",
         "diagnose",
         "grill-me",
+        "karpathy-guidelines",
         "prototype",
+        "source-to-insight-blog",
+        "stop-slop",
     ]:
         skill_root = Path(".codex/skills") / skill_name
         assert (skill_root / "SKILL.md").exists()

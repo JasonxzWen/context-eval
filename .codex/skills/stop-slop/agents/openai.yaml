@@ -1,0 +1,8 @@
+interface:
+  display_name: "Stop Slop"
+  short_description: >-
+    Load when the user asks to draft, edit, or review English prose for AI-writing tells; do not load for code explanation, Chinese output,...
+  default_prompt: "Use $stop-slop to help with this task."
+
+policy:
+  allow_implicit_invocation: true

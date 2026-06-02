@@ -1,7 +1,7 @@
 interface:
   display_name: "Hub Maintenance Workflow"
   short_description: >-
-    Load when maintaining Skill Hub itself: evaluating skill sources, routing, capabilities, npm lifecycle, or managed update/remove behavior; preserve local adaptations.
+    Load when workflow-router selects the harness-hub-maintenance state for Harness Hub source evaluation, routing, capabilities, npm lifecycle, or managed update/remove behavior...
   default_prompt: "Use $hub-maintenance-workflow to help with this task."
 
 policy:

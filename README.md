@@ -582,19 +582,22 @@ The release-state check catches hidden local release blockers before building pa
 ## Development Capability Library
 
 This repository includes a vendored project-local skill and workflow library
-from `JasonxzWen/skill-hub` under `.agents/`, `.codex/`, `openspec/`, and
-`scripts/`. It provides reusable development skills, focused agent role configs,
-OpenSpec helpers, Ralph loop utilities, and skill validation scripts for
-maintainers working on context-eval. The refreshed maintainer skill set includes
-HTML work reports, deep code review, reproducible diagnosis, throwaway
-prototyping, and plan pressure testing; these support development handoffs and
-reviews but are not runtime package features.
+from `JasonxzWen/harness-hub`, formerly `skill-hub`, under `.agents/`,
+`.codex/`, `openspec/`, and `scripts/`. It provides reusable development
+skills, focused agent role configs, OpenSpec helpers, workflow utilities, and
+skill validation scripts for maintainers working on context-eval. The refreshed
+maintainer skill set includes workflow routing, Harness Hub maintenance,
+delivery closeout, deep code review, reproducible diagnosis, frontend taste
+checks, authorized website-clone guidance, source-backed insight writing, and
+plan pressure testing; these support development handoffs and reviews but are
+not runtime package features.
 
-The upstream `AGENTS.md`, `README.md`, and general-purpose skill-hub research
+The upstream `AGENTS.md`, `README.md`, npm CLI lifecycle, root harness template,
+Claude plugin package, site output, and general-purpose Harness Hub research
 docs are intentionally not included. Optional Codex configuration is provided as
 `.codex/config.example.toml`; copy it to `.codex/config.toml` locally only when
 you want to opt in to those maintainer workflows. See
-`docs/skill-hub-import.md` for provenance and import scope.
+`docs/harness-hub-import.md` for provenance and import scope.
 
 ## Roadmap
 

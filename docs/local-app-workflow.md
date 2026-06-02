@@ -347,28 +347,34 @@ create run workspaces.
 
 ## Harness Readiness Reference
 
-This phase uses `https://github.com/JasonxzWen/skill-hub` as a selective
-reference and maintainer-skill source, not as runtime app code. The inspected
-reference commit for this PR is
-`42c3065378e1d1d2851ca0e387e915a2841b885e`.
+This phase uses `https://github.com/JasonxzWen/harness-hub`, formerly
+`skill-hub`, as a selective reference and maintainer-skill source, not as
+runtime app code. The inspected reference commit for this PR is
+`586950abb086828bca7361ec3f17c5397bdd05c3`.
 
 Useful patterns to borrow:
 
 - explicit `build`, `test`, `validate`, and release-validation gates;
+- side-effect-free `validate-harness` checks for root harness files, QA
+  boundaries, trigger hygiene, verification commands, and lifecycle state;
 - a readable acceptance matrix that distinguishes local API, frontend,
   browser, OpenSpec, lint, and diff checks;
 - readiness analysis that is evidence-backed, category-based, and read-only
   instead of a single score;
-- HTML work-report generation that keeps primary report content pre-rendered,
-  self-contained, source-linked, and validator-checked;
+- `effective-interact` and delivery handoffs that keep primary report content
+  pre-rendered, self-contained, source-linked, validator-checked, and PR-state
+  aware;
+- Codex self-bootstrap and worktree setup patterns that prove local skills can
+  be regenerated or validated from the repository root;
 - fixture repositories and fake/local agents before any real external-agent
   smoke is considered.
 
 Out of scope for this repository phase:
 
-- installing Skill Hub assets into target repositories or external coding
+- installing Harness Hub assets into target repositories or external coding
   agents;
-- copying Skill Hub's repository structure into the `context_eval` runtime;
+- copying Harness Hub's repository structure into the `context_eval` runtime;
+- running Harness Hub `init-harness` as a default setup step for context-eval;
 - hosted dashboards, remote databases, or agent leaderboards;
 - automatic commits to a user's target repository.
 

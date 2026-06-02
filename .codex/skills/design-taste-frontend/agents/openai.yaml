@@ -1,0 +1,8 @@
+interface:
+  display_name: "Design Taste Frontend"
+  short_description: >-
+    Load when a workflow-router-selected owner workflow needs anti-template frontend visual direction, design-read calibration, or pre-flight critique for landing pages, portfolios, marketing...
+  default_prompt: "Use $design-taste-frontend to help with this task."
+
+policy:
+  allow_implicit_invocation: true

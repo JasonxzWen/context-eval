@@ -3,7 +3,7 @@
 After classification, hand off with this compact structure.
 
 ```text
-STATE: <question | sdd-change | diagnosis | review | delivery | skill-hub-maintenance | clarify | none>
+STATE: <question | sdd-change | diagnosis | review | delivery | harness-hub-maintenance | clarify | none>
 CONFIDENCE: <high | medium | low>
 REASON: <one sentence grounded in the user request>
 OWNER: <skill name or none>
@@ -20,8 +20,8 @@ EFFECTIVE_INTERACT: <required | default-consider | not-needed>
 | sdd-change | Align user need before spec, plan, cleanup, implementation, and tests. |
 | diagnosis | Reproduce or bound the symptom before fixing. |
 | review | Gather review evidence and report findings first. |
-| delivery | Verify acceptance and residual risks before declaring done. |
-| skill-hub-maintenance | Gather source, capability, and lifecycle evidence before changing Skill Hub. |
+| delivery | Verify acceptance, PR status when relevant, and residual risks before declaring done. |
+| harness-hub-maintenance | Gather source, capability, and lifecycle evidence before changing Harness Hub. |
 | clarify | Ask one concise question. |
 
 ## Examples
