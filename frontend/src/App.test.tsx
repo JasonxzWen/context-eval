@@ -141,7 +141,214 @@ function openConfigEditors() {
   }
 }
 
+async function openAdvancedWorkbench() {
+  if (!screen.queryByTestId('codex-run-console')) {
+    fireEvent.click(await screen.findByRole('button', { name: '高级工作台' }));
+  }
+  await waitFor(() => expect(screen.getByTestId('codex-run-console')).toBeVisible());
+}
+
+async function openProjectSetup() {
+  fireEvent.click(await screen.findByRole('button', { name: '我已经有项目' }));
+  await waitFor(() => expect(screen.getByRole('heading', { name: '我已经有项目' })).toBeVisible());
+}
+
 describe('App workflow shell', () => {
+  it('starts empty connected workspaces on the onboarding home without advanced setup controls', async () => {
+    const fetchMock = vi.fn((url: string | URL | Request) => {
+      const target = String(url);
+      if (target === '/api/health') {
+        return jsonResponse({
+          ok: true,
+          workspace: {
+            state: 'empty',
+            has_config: false,
+            default_config_path: 'context-eval.yaml',
+          },
+        });
+      }
+      throw new Error(`unexpected request: ${target}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByTestId('onboarding-home')).toBeVisible());
+    expect(screen.getByRole('button', { name: '运行一次 demo 评测' })).toBeVisible();
+    expect(screen.queryByLabelText('本地仓库路径')).toBeNull();
+    expect(screen.queryByText('Git URL')).toBeNull();
+    expect(screen.queryByLabelText('context-eval.yaml')).toBeNull();
+    expect(screen.queryByRole('heading', { name: '1 写评测题目' })).toBeNull();
+    expect(screen.queryByLabelText('执行器命令模板')).toBeNull();
+  });
+
+  it('runs the demo from onboarding and reveals full evidence only after request', async () => {
+    const demoLoaded = {
+      ...loadedPayload,
+      editable: {
+        ...loadedPayload.editable,
+        variants: [
+          loadedPayload.editable.variants[0],
+          { name: 'experiment', description: 'Experiment', overlays: [] },
+        ],
+      },
+      resolved: {
+        ...loadedPayload.resolved,
+        variants: ['baseline', 'experiment'],
+      },
+    };
+    const fetchMock = vi.fn((url: string | URL | Request, init?: RequestInit) => {
+      const target = String(url);
+      if (target === '/api/health') {
+        return jsonResponse({
+          ok: true,
+          workspace: {
+            state: 'empty',
+            has_config: false,
+            default_config_path: 'context-eval.yaml',
+          },
+        });
+      }
+      if (target === '/api/demo/bootstrap') {
+        return jsonResponse({
+          ok: true,
+          state: 'configured',
+          has_config: true,
+          default_config_path: 'context-eval.yaml',
+          config_path: 'context-eval.yaml',
+          tasks_path: 'tasks.yaml',
+          loaded: demoLoaded,
+        });
+      }
+      if (target.startsWith('/api/environment')) {
+        return jsonResponse(environmentPayload);
+      }
+      if (target === '/api/preflight') {
+        return jsonResponse({ ok: true, checks: ['schema', 'repo'] });
+      }
+      if (target === '/api/run-plan') {
+        return jsonResponse({
+          ok: true,
+          case_count: 2,
+          cleanup_policy: 'successful',
+          jobs: 1,
+          trials: 1,
+          output_dir: './runs',
+          agents: ['coco'],
+          tasks: ['fix-greeting-punctuation'],
+          variants: ['baseline', 'experiment'],
+          cases: [],
+        });
+      }
+      if (target === '/api/runs') {
+        const body = JSON.parse(String(init?.body || '{}'));
+        expect(body.variants).toEqual(['baseline', 'experiment']);
+        return jsonResponse({
+          ok: true,
+          app_run_id: 'demo-run',
+          status: 'completed',
+          run_dir: './runs/demo-run',
+          case_count: 2,
+          completed_cases: 2,
+        });
+      }
+      if (target === '/api/runs/demo-run/logs') {
+        return jsonResponse({ ok: true, console: ['done'], files: [] });
+      }
+      if (target.startsWith('/api/results')) {
+        return jsonResponse({
+          ok: true,
+          overview: {
+            case_count: 2,
+            failed_count: 0,
+            timeout_count: 0,
+            low_confidence_count: 0,
+            telemetry_gap_count: 0,
+          },
+          selected_baseline_variant: 'baseline',
+          cases: [
+            {
+              case_id: 'fix-greeting-punctuation__baseline__coco',
+              agent_name: 'coco',
+              task_id: 'fix-greeting-punctuation',
+              variant: 'baseline',
+              trial_index: 1,
+              status: 'completed',
+              validation_status: 'passed',
+              confidence: 'high',
+              telemetry_status: 'collected',
+              telemetry_source: 'codex-jsonl',
+              agent_duration_seconds: 40,
+              total_tokens: 1200,
+              reasoning_tokens: 200,
+              cached_input_tokens: 0,
+              tool_call_count: 8,
+              changed_files: 4,
+              hard_evaluation_status: 'passed',
+              hard_evaluation_score: 4,
+              hard_evaluation_max_score: 4,
+              soft_evaluation_status: 'result_available',
+              soft_evaluation_score: 7,
+              soft_evaluation_max_score: 10,
+              soft_evaluation_verdict: 'pass',
+              telemetry_evidence_gaps: [],
+              codex_events_path: 'artifacts/baseline/codex-events.jsonl',
+              codex_final_message_path: 'artifacts/baseline/codex-final-message.md',
+            },
+            {
+              case_id: 'fix-greeting-punctuation__experiment__coco',
+              agent_name: 'coco',
+              task_id: 'fix-greeting-punctuation',
+              variant: 'experiment',
+              trial_index: 1,
+              status: 'completed',
+              validation_status: 'passed',
+              confidence: 'high',
+              telemetry_status: 'collected',
+              telemetry_source: 'codex-jsonl',
+              agent_duration_seconds: 18,
+              total_tokens: 700,
+              reasoning_tokens: 80,
+              cached_input_tokens: 50,
+              tool_call_count: 3,
+              changed_files: 1,
+              hard_evaluation_status: 'passed',
+              hard_evaluation_score: 4,
+              hard_evaluation_max_score: 4,
+              soft_evaluation_status: 'result_available',
+              soft_evaluation_score: 9,
+              soft_evaluation_max_score: 10,
+              soft_evaluation_verdict: 'pass',
+              telemetry_evidence_gaps: [],
+              codex_events_path: 'artifacts/experiment/codex-events.jsonl',
+              codex_final_message_path: 'artifacts/experiment/codex-final-message.md',
+            },
+          ],
+        });
+      }
+      throw new Error(`unexpected request: ${target}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '运行一次 demo 评测' }));
+
+    await waitFor(() => expect(screen.getByRole('heading', { name: '综合分' })).toBeVisible());
+    expect(screen.getByText('推荐方案：experiment')).toBeVisible();
+    expect(screen.getByText('baseline score')).toBeVisible();
+    expect(screen.getByText('experiment score')).toBeVisible();
+    expect(screen.getByText('耗时')).toBeVisible();
+    expect(screen.getByText('tokens')).toBeVisible();
+    expect(screen.getByText('tool calls')).toBeVisible();
+    expect(screen.getByText('修改文件')).toBeVisible();
+    expect(screen.getByText('证据可信度')).toBeVisible();
+    expect(screen.queryByTestId('codex-run-console')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: '查看完整证据' }));
+    await waitFor(() => expect(screen.getByTestId('codex-run-console')).toBeVisible());
+  });
+
   it('renders deterministic fixture fallback when the local server is unavailable', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('no server')));
 
@@ -151,6 +358,7 @@ describe('App workflow shell', () => {
     expect(screen.getByRole('heading', { name: 'AGENTS.md / skills 效果对比' })).toBeVisible();
     expect(screen.getByText(/同一批题目，换不同 AGENTS.md/)).toBeVisible();
     await waitFor(() => expect(screen.getAllByText('示例数据预览').length).toBeGreaterThan(0));
+    await openAdvancedWorkbench();
     expect(screen.getByTestId('codex-run-console')).toBeVisible();
     expect(screen.getByTestId('codex-next-action')).toHaveTextContent('切换到 Codex CLI');
     openConfigEditors();
@@ -195,7 +403,7 @@ describe('App workflow shell', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByText('配置与任务细节'));
+    await openAdvancedWorkbench();
     await waitFor(() => expect(screen.getByRole('heading', { name: '打开或切换评测项目' })).toBeVisible());
     expect(screen.getByTestId('codex-run-console')).toBeVisible();
     expect(screen.getByLabelText('本地仓库路径')).toHaveValue('./fixture-repo');
@@ -268,7 +476,7 @@ describe('App workflow shell', () => {
 
     render(<App />);
 
-    await waitFor(() => expect(screen.getByRole('heading', { name: '打开评测项目' })).toBeVisible());
+    await openProjectSetup();
     expect(screen.getByRole('heading', { name: '本机检查' })).toBeVisible();
     expect(screen.getByText('Codex CLI')).toBeVisible();
 
@@ -319,7 +527,7 @@ describe('App workflow shell', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByText('配置与任务细节'));
+    await openAdvancedWorkbench();
     await waitFor(() => expect(screen.getByLabelText('tasks.yaml')).toHaveValue(loadedPayload.tasks_yaml));
     fireEvent.change(screen.getByLabelText('tasks.yaml'), {
       target: { value: tasksWithUnknown },
@@ -426,6 +634,7 @@ describe('App workflow shell', () => {
 
     render(<App />);
 
+    await openAdvancedWorkbench();
     await waitFor(() => expect(screen.getByLabelText('发给 AI 的任务提示词')).toHaveValue('Fix it.'));
     openConfigEditors();
     expect(screen.getByRole('radiogroup', { name: '题目类型' })).toBeVisible();
@@ -566,6 +775,7 @@ describe('App workflow shell', () => {
 
     render(<App />);
 
+    await openAdvancedWorkbench();
     await waitFor(() => expect(screen.getByLabelText('资料包名称')).toHaveValue('Baseline'));
     openConfigEditors();
     fireEvent.change(screen.getByLabelText('资料包名称'), {
@@ -617,6 +827,7 @@ describe('App workflow shell', () => {
 
     render(<App />);
 
+    await openAdvancedWorkbench();
     await waitFor(() => expect(screen.getByLabelText('发给 AI 的任务提示词')).toHaveValue('Fix it.'));
     openConfigEditors();
     fireEvent.change(screen.getByLabelText('发给 AI 的任务提示词'), { target: { value: ' ' } });
@@ -654,6 +865,7 @@ describe('App workflow shell', () => {
 
     render(<App />);
 
+    await openAdvancedWorkbench();
     await waitFor(() => expect(screen.getByLabelText('资料包 ID')).toHaveValue('baseline'));
     openConfigEditors();
     fireEvent.change(screen.getByLabelText('资料包 ID'), { target: { value: ' ' } });
@@ -728,6 +940,7 @@ describe('App workflow shell', () => {
 
     render(<App />);
 
+    await openAdvancedWorkbench();
     await waitFor(() => expect(screen.getByLabelText('执行器类型')).toHaveValue('coco'));
     fireEvent.change(screen.getByLabelText('执行器类型'), { target: { value: 'codex-cli' } });
     fireEvent.click(screen.getByRole('button', { name: '保存本地 AI 配置' }));
@@ -869,6 +1082,7 @@ describe('App workflow shell', () => {
 
     render(<App />);
 
+    await openAdvancedWorkbench();
     await waitFor(() => expect(screen.getByLabelText('评测题目 second-task')).toBeChecked());
     fireEvent.click(screen.getByLabelText('评测题目 fix-greeting-punctuation'));
     fireEvent.click(screen.getByLabelText('对比资料 baseline'));
@@ -907,6 +1121,7 @@ describe('App workflow shell', () => {
 
     render(<App />);
 
+    await openAdvancedWorkbench();
     await waitFor(() => expect(screen.getByLabelText('发给 AI 的任务提示词')).toHaveValue('Fix it.'));
     fireEvent.click(screen.getByRole('button', { name: '保存评测题目' }));
 
@@ -1194,6 +1409,7 @@ describe('App workflow shell', () => {
 
     render(<App />);
 
+    await openAdvancedWorkbench();
     await waitFor(() => expect(screen.getAllByText('Fix greeting punctuation').length).toBeGreaterThan(0));
     fireEvent.click(screen.getByRole('button', { name: '开始评测' }));
     await waitFor(() => expect(screen.getByTestId('preflight-status')).toHaveTextContent('运行前检查通过'));

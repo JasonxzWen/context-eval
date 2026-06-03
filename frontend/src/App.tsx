@@ -4,6 +4,7 @@ import { AdvancedConfigDetails } from './components/AdvancedConfigDetails';
 import { AgentEditor } from './components/AgentEditor';
 import { CodexRunConsole } from './components/CodexRunConsole';
 import { FirstRunPanel } from './components/FirstRunPanel';
+import { OnboardingHome, type OnboardingHomeState } from './components/OnboardingHome';
 import { RunPlanPanel } from './components/RunPlanPanel';
 import { RunControls } from './components/RunControls';
 import { TaskEditor } from './components/TaskEditor';
@@ -437,6 +438,8 @@ export function App() {
   const [environment, setEnvironment] = useState<EnvironmentPayload | null>(null);
   const [environmentStatus, setEnvironmentStatus] = useState('');
   const [configLoaded, setConfigLoaded] = useState(false);
+  const [projectSetupVisible, setProjectSetupVisible] = useState(false);
+  const [workbenchVisible, setWorkbenchVisible] = useState(false);
 
   const fixtureCaseCount = useMemo(() => plannedCaseCount(localAppFixture), []);
   const agents = agentsFrom(loaded);
@@ -665,13 +668,18 @@ export function App() {
       body: JSON.stringify({ overwrite: false }),
     });
     setWorkspaceState(payload);
+    let scope = runScopeRef.current;
     if (payload.loaded) {
-      applyLoadedConfig(payload.loaded);
+      scope = applyLoadedConfig(payload.loaded);
     } else {
-      await loadConfig(payload.config_path || 'context-eval.yaml');
+      scope = await loadConfig(payload.config_path || 'context-eval.yaml');
     }
     setSaveStatus('demo 工作区已创建');
     await checkEnvironment();
+    return {
+      path: payload.loaded?.config_path || payload.config_path || loadedRef.current.config_path || 'context-eval.yaml',
+      scope,
+    };
   }
 
   function confirmProjectSetupOverwrite() {
@@ -702,6 +710,8 @@ export function App() {
     }
     setSaveStatus('真实项目配置已创建，请检查本地 AI 命令和评测题目');
     await checkEnvironment(projectRepoPath);
+    setProjectSetupVisible(false);
+    setWorkbenchVisible(true);
   }
 
   async function cloneProject() {
@@ -727,6 +737,8 @@ export function App() {
     setProjectRepoPath(repoPath || '');
     setSaveStatus('仓库已克隆，评测配置已创建');
     await checkEnvironment(repoPath);
+    setProjectSetupVisible(false);
+    setWorkbenchVisible(true);
   }
 
   async function checkEnvironment(repoPath = projectRepoPath || loadedRef.current.resolved.repo_path) {
@@ -766,14 +778,14 @@ export function App() {
     }
   }
 
-  async function runPreflight() {
+  async function runPreflight(path = loadedRef.current.config_path || configPath) {
     setPreflightStatus('正在检查配置和本地执行条件');
     const payload = await apiRequest<{
       checks: string[];
       codex_profile_diagnostics?: CodexProfileDiagnostic[];
     }>('/api/preflight', {
       method: 'POST',
-      body: JSON.stringify({ config_path: loaded.config_path || configPath, check_agents: true }),
+      body: JSON.stringify({ config_path: path, check_agents: true }),
     });
     setPreflightChecks(payload.checks);
     setCodexDiagnostics(payload.codex_profile_diagnostics ?? []);
@@ -873,9 +885,8 @@ export function App() {
     return status;
   }
 
-  async function startRun() {
+  async function startRunWith(path = loadedRef.current.config_path || configPath, scope = runScopeRef.current) {
     setError('');
-    const scope = runScopeRef.current;
     if (scope.task_ids.length === 0 || scope.variants.length === 0 || scope.agents.length === 0) {
       throw new Error('请至少选择一个评测题目、一套对比资料和一个本地 AI');
     }
@@ -888,12 +899,12 @@ export function App() {
     setPlan(null);
     shouldRevealResultsRef.current = true;
     try {
-      await runPreflight();
-      await planRun(loaded.config_path || configPath, scope);
+      await runPreflight(path);
+      await planRun(path, scope);
       const payload = await apiRequest<RunStatus>('/api/runs', {
         method: 'POST',
         body: JSON.stringify({
-          ...runRequestBody(loaded.config_path || configPath, scope),
+          ...runRequestBody(path, scope),
           confirm: true,
         }),
       });
@@ -903,6 +914,19 @@ export function App() {
       setPreflightStatus('运行前准备失败');
       throw caught;
     }
+  }
+
+  async function startRun() {
+    await startRunWith();
+  }
+
+  async function runPrimaryOnboardingAction() {
+    if (!configLoaded) {
+      const demo = await bootstrapDemo();
+      await startRunWith(demo.path, demo.scope);
+      return;
+    }
+    await startRunWith();
   }
 
   async function stopRun() {
@@ -1057,7 +1081,15 @@ export function App() {
   const detailEvidenceNotes = caseDetail ? caseEvidenceNotes(caseDetail.case) : [];
   const validationBuckets = validationIssueBuckets(loaded.editable, taskValidationErrors);
 
-  const isFirstRun = serverMode === 'connected' && workspaceState?.state === 'empty' && !configLoaded;
+  const onboardingState: OnboardingHomeState = results
+    ? 'completed'
+    : isRunActive
+      ? 'running'
+      : run?.status === 'failed' || run?.status === 'internal_error'
+        ? 'failed'
+        : configLoaded
+          ? 'ready'
+          : 'empty';
 
   return (
     <main className="app-shell" data-testid="local-app-shell">
@@ -1071,7 +1103,7 @@ export function App() {
           {modeLabel}
         </div>
       </header>
-      <TopNav hasResults={Boolean(results)} />
+      {workbenchVisible && <TopNav hasResults={Boolean(results)} />}
 
       {error && <div className="notice error">错误: {error}</div>}
 
@@ -1085,35 +1117,45 @@ export function App() {
         ]}
       />
 
-      {isFirstRun && (
-      <>
-      <FirstRunPanel
-        title={isFirstRun ? '打开评测项目' : '打开或切换评测项目'}
-        subtitle={
-          isFirstRun
-            ? '先选要评测的代码仓库'
-            : '要换项目时在这里填本地仓库路径或 Git URL；会覆盖当前评测配置'
-        }
-        showDemo={isFirstRun}
-        projectRepoPath={projectRepoPath}
-        projectRepoUrl={projectRepoUrl}
-        projectCloneDir={projectCloneDir}
-        environment={environment}
-        environmentStatus={environmentStatus}
-        onProjectRepoPathChange={setProjectRepoPath}
-        onProjectRepoUrlChange={setProjectRepoUrl}
-        onProjectCloneDirChange={setProjectCloneDir}
-        onBootstrapDemo={() => guarded(bootstrapDemo)}
-        onInitializeProject={() => guarded(initializeProject)}
-        onCloneProject={() => guarded(cloneProject)}
-        onCheckEnvironment={() => guarded(() => checkEnvironment(projectRepoPath).then(() => undefined))}
+      <OnboardingHome
+        state={onboardingState}
+        run={run}
+        results={results}
+        runBrief={runBrief}
+        visibleCaseCount={visibleCaseCount}
+        primaryDisabled={serverMode !== 'connected' || isRunActive}
+        onPrimaryAction={() => guarded(runPrimaryOnboardingAction)}
+        onOpenProject={() => setProjectSetupVisible((current) => !current)}
+        onAdvancedWorkbench={() => setWorkbenchVisible(true)}
+        onViewEvidence={() => {
+          setWorkbenchVisible(true);
+          window.setTimeout(() => {
+            resultsPanelRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+          }, 0);
+        }}
       />
 
-      <DesignerGuide />
-      </>
+      {projectSetupVisible && (
+        <FirstRunPanel
+          title="我已经有项目"
+          subtitle="打开本地仓库或从 Git URL 克隆后，会生成默认评测配置"
+          showDemo={false}
+          projectRepoPath={projectRepoPath}
+          projectRepoUrl={projectRepoUrl}
+          projectCloneDir={projectCloneDir}
+          environment={environment}
+          environmentStatus={environmentStatus}
+          onProjectRepoPathChange={setProjectRepoPath}
+          onProjectRepoUrlChange={setProjectRepoUrl}
+          onProjectCloneDirChange={setProjectCloneDir}
+          onBootstrapDemo={() => guarded(async () => { await bootstrapDemo(); })}
+          onInitializeProject={() => guarded(initializeProject)}
+          onCloneProject={() => guarded(cloneProject)}
+          onCheckEnvironment={() => guarded(() => checkEnvironment(projectRepoPath).then(() => undefined))}
+        />
       )}
 
-      {!isFirstRun && (
+      {workbenchVisible && (
       <section className="content-grid">
         {scopeNotice && (
           <div className="notice validation-notice scope-notice" role="alert">
@@ -1147,7 +1189,7 @@ export function App() {
           onProjectRepoPathChange={setProjectRepoPath}
           onProjectRepoUrlChange={setProjectRepoUrl}
           onProjectCloneDirChange={setProjectCloneDir}
-          onBootstrapDemo={() => guarded(bootstrapDemo)}
+          onBootstrapDemo={() => guarded(async () => { await bootstrapDemo(); })}
           onInitializeProject={() => guarded(initializeProject)}
           onCloneProject={() => guarded(cloneProject)}
           onCheckEnvironment={() => guarded(() => checkEnvironment(projectRepoPath).then(() => undefined))}
