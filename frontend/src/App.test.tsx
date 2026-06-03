@@ -145,6 +145,7 @@ async function openAdvancedWorkbench() {
   if (!screen.queryByTestId('codex-run-console')) {
     fireEvent.click(await screen.findByRole('button', { name: '高级工作台' }));
   }
+  await waitFor(() => expect(screen.getByTestId('advanced-workbench')).toBeVisible());
   await waitFor(() => expect(screen.getByTestId('codex-run-console')).toBeVisible());
 }
 
@@ -180,6 +181,7 @@ describe('App workflow shell', () => {
     expect(screen.queryByLabelText('context-eval.yaml')).toBeNull();
     expect(screen.queryByRole('heading', { name: '1 写评测题目' })).toBeNull();
     expect(screen.queryByLabelText('执行器命令模板')).toBeNull();
+    expect(screen.queryByTestId('advanced-workbench')).toBeNull();
   });
 
   it('runs the demo from onboarding and reveals full evidence only after request', async () => {
@@ -344,8 +346,10 @@ describe('App workflow shell', () => {
     expect(screen.getByText('修改文件')).toBeVisible();
     expect(screen.getByText('证据可信度')).toBeVisible();
     expect(screen.queryByTestId('codex-run-console')).toBeNull();
+    expect(screen.queryByTestId('advanced-workbench')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: '查看完整证据' }));
+    await waitFor(() => expect(screen.getByTestId('advanced-workbench')).toBeVisible());
     await waitFor(() => expect(screen.getByTestId('codex-run-console')).toBeVisible());
   });
 

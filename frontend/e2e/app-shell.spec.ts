@@ -54,6 +54,7 @@ async function openAdvancedWorkbench(page: Page) {
   if (!(await consolePanel.isVisible().catch(() => false))) {
     await page.getByRole('button', { name: '高级工作台' }).click();
   }
+  await expect(page.getByTestId('advanced-workbench')).toBeVisible();
   await expect(consolePanel).toBeVisible();
 }
 
@@ -351,7 +352,9 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
     await expect(page.getByText('证据可信度')).toBeVisible();
     await expect(page.getByText(/推荐方案：|无明显胜出/)).toBeVisible();
     await expect(page.getByTestId('codex-run-console')).toHaveCount(0);
+    await expect(page.getByTestId('advanced-workbench')).toHaveCount(0);
     await page.getByRole('button', { name: '查看完整证据' }).click();
+    await expect(page.getByTestId('advanced-workbench')).toBeVisible();
     await expect(page.getByTestId('codex-run-console')).toBeVisible();
     await expect(page.getByLabel('仓库路径', { exact: true })).toHaveValue('./demo-repo');
 

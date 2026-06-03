@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { apiRequest } from './api';
 import { AdvancedConfigDetails } from './components/AdvancedConfigDetails';
+import { AdvancedWorkbench } from './components/AdvancedWorkbench';
 import { AgentEditor } from './components/AgentEditor';
 import { CodexRunConsole } from './components/CodexRunConsole';
 import { FirstRunPanel } from './components/FirstRunPanel';
@@ -1156,13 +1157,13 @@ export function App() {
       )}
 
       {workbenchVisible && (
-      <section className="content-grid">
-        {scopeNotice && (
-          <div className="notice validation-notice scope-notice" role="alert">
-            <div>{scopeNotice}</div>
-          </div>
-        )}
-        <CodexRunConsole
+        <AdvancedWorkbench>
+          {scopeNotice && (
+            <div className="notice validation-notice scope-notice" role="alert">
+              <div>{scopeNotice}</div>
+            </div>
+          )}
+          <CodexRunConsole
           agents={agents}
           configLoaded={configLoaded}
           diagnostics={codexDiagnostics}
@@ -1948,7 +1949,7 @@ export function App() {
             </pre>
           )}
         </section>
-      </section>
+        </AdvancedWorkbench>
       )}
     </main>
   );

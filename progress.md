@@ -2,40 +2,29 @@
 
 ## Current State
 
-- Active task is PR B for the onboarding shell plan on
-  `codex/onboarding-home-shell`.
-- PR A was merged as PR #62; `frontend/src/scoring.ts` is available on `main`
-  and is now used by the onboarding summary.
-- `tasks/current-task.md` records the PR B scope, allowed paths, forbidden
+- Active task is PR C for the onboarding shell plan on
+  `codex/onboarding-advanced-workbench`.
+- PR A was merged as PR #62 and PR B was merged as PR #63; the onboarding home
+  and score summary are now on `main`.
+- `tasks/current-task.md` records the PR C scope, allowed paths, forbidden
   paths, acceptance criteria, and validation commands.
-- The default frontend entry point now renders `OnboardingHome`; the old
-  workbench, local path/Git URL controls, YAML editors, task editor, command
-  template, and run console stay hidden until the user opens project setup,
-  advanced workbench, or full evidence.
-- Empty connected workspaces expose `运行一次 demo 评测`; configured workspaces
-  expose `运行一次评测`; running state shows linear progress.
-- Completed runs render `RunScoreSummary`, which calls `scoreRunResults` and
-  shows `综合分`, baseline score, experiment score, recommendation/no clear
-  winner, duration, tokens, tool calls, changed files, and evidence confidence.
-- Existing detailed workbench behavior is still covered through explicit
-  `高级工作台` / `查看完整证据` reveal paths.
+- `frontend/src/components/AdvancedWorkbench.tsx` now provides an explicit
+  boundary for the old detailed workbench.
+- `App.tsx` renders `AdvancedWorkbench` only when the user opens
+  `高级工作台` or `查看完整证据`.
+- Unit and Playwright tests now assert the old workbench boundary is absent on
+  the default onboarding viewport and appears only after a reveal action.
 
-## PR B Validation
+## PR C Validation
 
 - `node scripts\harness-validate.mjs` passed.
-- Browser smoke against `npm run preview` on a temporary local port passed:
-  onboarding home was visible and old setup/workbench controls were absent on
-  the default first viewport.
-- `cd frontend; npm run test` passed: 21 Vitest tests.
-- `cd frontend; npm run e2e -- e2e/app-shell.spec.ts` passed: 16 Playwright
-  tests.
 - `cd frontend; npm run validate` passed:
   - TypeScript check passed.
   - Vitest passed: 21 tests.
   - Vite build passed.
   - Playwright E2E passed: 16 tests.
 - Vitest still prints existing React `act(...)` warnings in `App.test.tsx`;
-  the suite passes and these warnings are not caused by PR B.
+  the suite passes and these warnings are not caused by PR C.
 
 ## Harness Install State
 
