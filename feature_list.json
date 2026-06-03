@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "features": [
+    {
+      "id": "harness-hub-minimal-install",
+      "status": "installed",
+      "summary": "Standard Harness Hub minimal harness installed for local Codex workflow continuity.",
+      "state_files": [
+        "progress.md",
+        "session-handoff.md",
+        "tasks/current-task.md"
+      ],
+      "validation": [
+        "npx -y @jasonwen/harness-hub@latest validate-harness \"D:\\context-eval\" --json",
+        "node scripts\\harness-validate.mjs",
+        "ruff check .",
+        "python -m pytest -q --basetemp C:\\tmp\\context-eval-pytest-full-harness-pr",
+        "python -m build --outdir .context-eval\\dist-harness-pr",
+        "python scripts\\inspect-package-artifacts.py .context-eval\\dist-harness-pr"
+      ]
+    }
+  ],
+  "worktree_policy": {
+    "write_task_isolation": "Use one git worktree or branch per write task.",
+    "code_organization": "Keep source code organized by project architecture, not by agent task folders."
+  },
+  "parallel_write_policy": {
+    "default": "blocked",
+    "allowed_when": [
+      "independent worktrees or branches",
+      "non-overlapping allowed paths",
+      "independent validation",
+      "single integration review point"
+    ],
+    "read_only_parallel_work": [
+      "research",
+      "review",
+      "log analysis",
+      "validation"
+    ]
+  }
+}

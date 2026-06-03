@@ -63,10 +63,12 @@ writes result rows plus run metadata.
 loader, runner, adapters, reporting, export, static UI rendering, and local app
 server code.
 
-`.agents/`, `.codex/skills/`, `openspec/`, and `scripts/` are maintainer
-capability library files. They support development, validation, release
-preparation, and project maintenance. They are not runtime package modules and
-are not part of the target repository evaluation surface.
+`.harness-hub/`, `.agents/`, `.codex/skills/`, `skills/`, `openspec/`,
+`scripts/`, and root harness state files such as `progress.md` and
+`session-handoff.md` are maintainer capability library files. They support
+development, validation, release preparation, and project maintenance. They are
+not runtime package modules and are not part of the target repository evaluation
+surface.
 
 ## Static UI And Local App Mode
 

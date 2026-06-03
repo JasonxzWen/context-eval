@@ -1,0 +1,1371 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-03T05:35:27.035Z",
+  "hubVersion": "0.1.0",
+  "agents": [
+    "standard"
+  ],
+  "components": [
+    {
+      "id": "harness:minimal",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "harness-template",
+      "source": "harness/minimal",
+      "dest": ".",
+      "files": [
+        {
+          "path": "AGENTS.md",
+          "sha256": "08c045b64863a7c5b1bbb5a35d1f89f3491c744b472d61fa116f754477346ab6",
+          "size": 1091
+        },
+        {
+          "path": "clean-state-checklist.md",
+          "sha256": "b4abdb8548d430380495128a6656baf3fc193313977f247f2b9f2749acda5bf6",
+          "size": 478
+        },
+        {
+          "path": "definition-of-done.md",
+          "sha256": "f6a6760723d7657263f8b3178ba70af92ac078b03ac5811a374a445190ff82b6",
+          "size": 622
+        },
+        {
+          "path": "feature_list.json",
+          "sha256": "208c335beb106f8052de025a57cebf258eafa9cf8fca0e10f68499b2c303742b",
+          "size": 1353
+        },
+        {
+          "path": "progress.md",
+          "sha256": "f01decaceac63365496df8466ca0193876144d220eb97da51f8bd360b8674913",
+          "size": 3020
+        },
+        {
+          "path": "scripts/harness-validate.mjs",
+          "sha256": "6dcd60b1a9bdb20c6de33ed1503e43f4bbfc6b0e22afcbb394366b3bcb8e8eeb",
+          "size": 5063
+        },
+        {
+          "path": "session-handoff.md",
+          "sha256": "54749b15bb05e747ef136f489a90da9ef5107498418d30bd3c3f48a556bbd5b0",
+          "size": 2055
+        },
+        {
+          "path": "tasks/current-task.md",
+          "sha256": "f66dad121bdc6467b7ddb785554c3095a029751a5e12761998297e0eb5e39fde",
+          "size": 2576
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:27.035Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:agent-introspection-debugging",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/agent-introspection-debugging",
+      "dest": "skills/agent-introspection-debugging",
+      "files": [
+        {
+          "path": "skills/agent-introspection-debugging/SKILL.md",
+          "sha256": "b8ea001e166a326236f61ffa458ae12bd2fa069aa47e269c1aa550c5176e1a33",
+          "size": 5581
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:answer-workflow",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/answer-workflow",
+      "dest": "skills/answer-workflow",
+      "files": [
+        {
+          "path": "skills/answer-workflow/SKILL.md",
+          "sha256": "0f23060a4f6f59644d7730876147bcceb2bd0ba4228130e304ba095c747fd783",
+          "size": 1460
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:claude-api",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/claude-api",
+      "dest": "skills/claude-api",
+      "files": [
+        {
+          "path": "skills/claude-api/LICENSE.txt",
+          "sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362",
+          "size": 11345
+        },
+        {
+          "path": "skills/claude-api/references/live-sources.md",
+          "sha256": "d9eca44abf6c83b90104daf2681d267bb22538dfcb6dc000eb4f6d6f006ada27",
+          "size": 1276
+        },
+        {
+          "path": "skills/claude-api/SKILL.md",
+          "sha256": "1dc9dd7911c47915d9b7386463856d03e9092ac1c8e1370671829a096de50c93",
+          "size": 2410
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:clone-website",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/clone-website",
+      "dest": "skills/clone-website",
+      "files": [
+        {
+          "path": "skills/clone-website/assets/component-spec-template.md",
+          "sha256": "ca064a63b29e4c602d51c52f2a6a9ca54a3b601510e8b9cf5efabb4a184fe51f",
+          "size": 623
+        },
+        {
+          "path": "skills/clone-website/references/extraction-checklist.md",
+          "sha256": "525222cfe95976ac2f66e12dc2763e635a3bc969683e533efe731f358b823734",
+          "size": 1369
+        },
+        {
+          "path": "skills/clone-website/references/safety-and-permissions.md",
+          "sha256": "949b31bdaa92712d24dfaecfe3831bb7341454e212fd25d73822d4a09e6b15d4",
+          "size": 1336
+        },
+        {
+          "path": "skills/clone-website/references/upstream-workflow.md",
+          "sha256": "24f46b0cf1c6aea6b33cce121db6b123c84a85dae57886c4911151a5467c1630",
+          "size": 1316
+        },
+        {
+          "path": "skills/clone-website/SKILL.md",
+          "sha256": "5d74d7661f4d18cb33456f8dd7e40ca42232a2bda3f10d61a37db68c86f68147",
+          "size": 2826
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:coding-standards",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/coding-standards",
+      "dest": "skills/coding-standards",
+      "files": [
+        {
+          "path": "skills/coding-standards/references/review-checklist.md",
+          "sha256": "ef107bc35a0e88eb21c9b302b37717b4cb30f0cdac056cdcf708310e1e9bb86d",
+          "size": 800
+        },
+        {
+          "path": "skills/coding-standards/SKILL.md",
+          "sha256": "d575fc4953bb2ebee0fc7c1637a02ba53f84391e68907821341e572d0d859fc3",
+          "size": 12701
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:compound-code-review",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/compound-code-review",
+      "dest": "skills/compound-code-review",
+      "files": [
+        {
+          "path": "skills/compound-code-review/references/findings-schema.json",
+          "sha256": "8bebe6791c53a22f444a45f2e42caa257ead59cf0a4c25eac98d9c614e06c02f",
+          "size": 2419
+        },
+        {
+          "path": "skills/compound-code-review/references/persona-catalog.md",
+          "sha256": "b0b41581f417be02cb33754edbff1c7e1e83414f1ef44ee31fc224168c536304",
+          "size": 1946
+        },
+        {
+          "path": "skills/compound-code-review/references/review-output-template.md",
+          "sha256": "945b84c9d0c58f3a4fa4f4bbc84a34fbce2bc40153ee19f4107d5f4deec9604d",
+          "size": 2274
+        },
+        {
+          "path": "skills/compound-code-review/SKILL.md",
+          "sha256": "2fdf1be0de85b5087fc1c2d43390d75833b92dd95657b09bd1fc23f1736e3d1e",
+          "size": 5463
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:delivery-workflow",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/delivery-workflow",
+      "dest": "skills/delivery-workflow",
+      "files": [
+        {
+          "path": "skills/delivery-workflow/SKILL.md",
+          "sha256": "b04255df4697f4f431cff2226ca5b4d20a2a68e9131dca7b695a71dd9eeac0a7",
+          "size": 1503
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:design-taste-frontend",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/design-taste-frontend",
+      "dest": "skills/design-taste-frontend",
+      "files": [
+        {
+          "path": "skills/design-taste-frontend/references/design-read-and-systems.md",
+          "sha256": "a7773e4ca1ba96b44e4b59d4d7985a9f37318ee0f80b9e421502caceed86b642",
+          "size": 3691
+        },
+        {
+          "path": "skills/design-taste-frontend/references/redesign-and-preflight.md",
+          "sha256": "6d8d7240ecde63e5ad3433f899b4644c003f325de50405f5851fb8f4c5a5df7a",
+          "size": 2883
+        },
+        {
+          "path": "skills/design-taste-frontend/references/visual-discipline.md",
+          "sha256": "d0a7b8acc2ec9580af2a2064d1a92b1dbf4fc9b332abada307f7d7afae1656f5",
+          "size": 4030
+        },
+        {
+          "path": "skills/design-taste-frontend/SKILL.md",
+          "sha256": "10ac20c8572631fa645972c45650f4da1538c4b0c43306b56f8e4067c0f2a466",
+          "size": 3024
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:diagnose",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/diagnose",
+      "dest": "skills/diagnose",
+      "files": [
+        {
+          "path": "skills/diagnose/scripts/hitl-loop.template.ps1",
+          "sha256": "5f3be003e590a21a40d5cbdd7832dd7544876e557bf7296496d274805bdeec00",
+          "size": 785
+        },
+        {
+          "path": "skills/diagnose/SKILL.md",
+          "sha256": "3fe957932653eced8667f1e3629fb978645628a02dd5f8ab0368660925b55fda",
+          "size": 3265
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:diagnosis-workflow",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/diagnosis-workflow",
+      "dest": "skills/diagnosis-workflow",
+      "files": [
+        {
+          "path": "skills/diagnosis-workflow/SKILL.md",
+          "sha256": "8813849e519ddfbc59d8a07c00a74c18a6bb90b5ab7141523470a0be5dfce007",
+          "size": 1645
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:doc-coauthoring",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/doc-coauthoring",
+      "dest": "skills/doc-coauthoring",
+      "files": [
+        {
+          "path": "skills/doc-coauthoring/SKILL.md",
+          "sha256": "33b60a000e45c7793d3238ac59803f361ff1e146f98b4e1e1ef8bc491da14cc2",
+          "size": 1620
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:documentation-lookup",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/documentation-lookup",
+      "dest": "skills/documentation-lookup",
+      "files": [
+        {
+          "path": "skills/documentation-lookup/SKILL.md",
+          "sha256": "beaede84eea6ad052afdbcbd965459d468f4673f1a7f421cb79ead1a96bd42f8",
+          "size": 4861
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:e2e-testing",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/e2e-testing",
+      "dest": "skills/e2e-testing",
+      "files": [
+        {
+          "path": "skills/e2e-testing/SKILL.md",
+          "sha256": "e5a3db9447024e103e03ea818270c34e68c33813d6d110aa37cf53a69c530670",
+          "size": 8387
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:effective-interact",
+      "version": "0.2.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/effective-interact",
+      "dest": "skills/effective-interact",
+      "files": [
+        {
+          "path": "skills/effective-interact/assets/components/interaction-ui.css",
+          "sha256": "57b744136c24fe5e457b9549fdb7f128976334596291c97fac51cacd331723ba",
+          "size": 22392
+        },
+        {
+          "path": "skills/effective-interact/assets/components/interaction-ui.js",
+          "sha256": "c3072948eb9275b730f50a8be5b1f38f60586d1b8e61393b6c7019008fdf7c31",
+          "size": 10926
+        },
+        {
+          "path": "skills/effective-interact/assets/components/rich-render-runtime.css",
+          "sha256": "5e6292f81c03b8c74e01a8f07b0a88d1b2d19f188483a2e9574286a513f88cd9",
+          "size": 1402
+        },
+        {
+          "path": "skills/effective-interact/assets/components/rich-render-runtime.js",
+          "sha256": "0853cea9fdc1e2fb2d38c25f4bd1195a70216bbdb69ea3f754cd389f1cc11adf",
+          "size": 14851
+        },
+        {
+          "path": "skills/effective-interact/assets/fixtures/chart-accessibility-stress-report.json",
+          "sha256": "0d8d28da824af5aeea94253526e12b7a4d6a8c6ff2035503e89549639bca7d8f",
+          "size": 4547
+        },
+        {
+          "path": "skills/effective-interact/assets/fixtures/communication-mode-cases.json",
+          "sha256": "297c65447173984c23e3c52466a0b8dfebd2519b9f008fc50903f9233d9b856b",
+          "size": 1656
+        },
+        {
+          "path": "skills/effective-interact/assets/fixtures/concise-handoff-report.json",
+          "sha256": "cec5549a69328406e7206131e3dbf0db59b84305a66b0ff3f29b5077490c5f97",
+          "size": 1231
+        },
+        {
+          "path": "skills/effective-interact/assets/fixtures/content-first-change-report.json",
+          "sha256": "0db67f15e1eafe1bac7ef84adcf7973e818e1dc4072d3a3c046553d2e5abc4d2",
+          "size": 2523
+        },
+        {
+          "path": "skills/effective-interact/assets/fixtures/decision-brief-self-check-report.json",
+          "sha256": "bbff7a8f45b57d4282d809a93534ad5b69590e14615398221de6b9570feb8961",
+          "size": 6130
+        },
+        {
+          "path": "skills/effective-interact/assets/fixtures/decision-quality-report.json",
+          "sha256": "06687eb33be8b1469f6cd21bec8600ed7ad80f1a2df2e91e8012886ea74b90c9",
+          "size": 3051
+        },
+        {
+          "path": "skills/effective-interact/assets/fixtures/disposable-export-editor-report.json",
+          "sha256": "3ffb03b2bd8e3dfb3d876bd5de4df573e780b6149465521b487ec3faa092640c",
+          "size": 6574
+        },
+        {
+          "path": "skills/effective-interact/assets/fixtures/html-effectiveness-pattern-library-report.json",
+          "sha256": "8d43aa8bdb741fe6d964af92600418e57571c5064bfd9f1786f03da6cbb26d90",
+          "size": 15660
+        },
+        {
+          "path": "skills/effective-interact/assets/fixtures/option-gallery-report.json",
+          "sha256": "6245ffae2229a3d8bdcfe170fe3065ba7b4de53d3112997d1268a10a1ae25477",
+          "size": 4756
+        },
+        {
+          "path": "skills/effective-interact/assets/fixtures/pre-rendered-report.json",
+          "sha256": "7842d815a33cde6715080434ea833a31cbd27e58e0d0b4c384881e449a3a40f7",
+          "size": 3598
+        },
+        {
+          "path": "skills/effective-interact/assets/fixtures/runtime-cdn-stress-report.json",
+          "sha256": "e316591f5dcccc3563c3b2fdb0bc698310e33ca9de86f36cbfe6c94971f93ddd",
+          "size": 14749
+        },
+        {
+          "path": "skills/effective-interact/assets/fixtures/runtime-report.json",
+          "sha256": "97bf16e54da15629f4085426ce966a133e3bcdaa55a06b4baadfb72cfeddc52a",
+          "size": 1770
+        },
+        {
+          "path": "skills/effective-interact/assets/fixtures/session-ledger-report.json",
+          "sha256": "44f7d417ed2fd7686ce1751980b456bf046f4cc48bc8a738e526daf3ed8cacfc",
+          "size": 6061
+        },
+        {
+          "path": "skills/effective-interact/assets/fixtures/skill-structure-map-report.json",
+          "sha256": "2007b6cb95643db2189bb7b58bdac155d80465aaa6408859c9f103c674ad2e5c",
+          "size": 10992
+        },
+        {
+          "path": "skills/effective-interact/assets/fixtures/source-to-insight-blog-report.json",
+          "sha256": "896b4e90c2fcbb6ed64c411a01d027576b95e34fce863242f110a0419bab6379",
+          "size": 3163
+        },
+        {
+          "path": "skills/effective-interact/assets/fixtures/table-component-report.json",
+          "sha256": "835bdb766fbfa98ad4083cf152114305d5cdbd961d2abd192ae5e7365a4a1717",
+          "size": 2822
+        },
+        {
+          "path": "skills/effective-interact/assets/fixtures/trigger-scope-retro-report.json",
+          "sha256": "643d8c79bf7f7617a9579cd96e4e01d76eda928717f76960f5a463632b12cc54",
+          "size": 8535
+        },
+        {
+          "path": "skills/effective-interact/assets/templates/conclusion-dashboard.html",
+          "sha256": "363ba4bb310aec2a9aa325ea42e2d5bf0db9cda3f73e5d1379704b941ea97412",
+          "size": 8992
+        },
+        {
+          "path": "skills/effective-interact/assets/templates/decision-matrix.html",
+          "sha256": "3554acd3f9941a6ff7a7d8bae4a0f9d75e23e805669707b1fccfaad32fd9671f",
+          "size": 3896
+        },
+        {
+          "path": "skills/effective-interact/assets/templates/editor-workbench.html",
+          "sha256": "0286ee630c42b43da7bd04d04c140aa477e8419752a6fd654c2101f3eb670bd2",
+          "size": 4540
+        },
+        {
+          "path": "skills/effective-interact/assets/templates/implementation-handoff.html",
+          "sha256": "1f74d15fa4400a4f944e2c124710dc5c3de487961e26748dc983fe05c618f10d",
+          "size": 3478
+        },
+        {
+          "path": "skills/effective-interact/assets/templates/implementation-plan.html",
+          "sha256": "2cfb2e19db6d2380936f62e06ed1e3a0b8440adfc849a10ae12e5c8f1ff6805e",
+          "size": 5420
+        },
+        {
+          "path": "skills/effective-interact/assets/templates/research-explainer.html",
+          "sha256": "419c28f2544c54ce595966be3f69b951ed43e54b0fe202cb49407adc7fac8d31",
+          "size": 7860
+        },
+        {
+          "path": "skills/effective-interact/assets/templates/review-findings.html",
+          "sha256": "d11c16408ae66d306b5de04b9c775248bc22c7ee180499240c5d28a0b3c43b67",
+          "size": 9238
+        },
+        {
+          "path": "skills/effective-interact/assets/templates/visual-exploration.html",
+          "sha256": "e3e19434fa930914091bac4edb4e53c97ecd11e4e00543d91615106d79b17b16",
+          "size": 5409
+        },
+        {
+          "path": "skills/effective-interact/evals/routing-cases.json",
+          "sha256": "b4158f0d38a9de553890f0002802af43a1b896ee038ba571fa8f7cb05ec63d1d",
+          "size": 16345
+        },
+        {
+          "path": "skills/effective-interact/references/html-aesthetic-preflight.md",
+          "sha256": "a52f01ed65a12fa3f1b576cef8d6e963a9df197f067f920b0671d2094af09cae",
+          "size": 2226
+        },
+        {
+          "path": "skills/effective-interact/references/html-effectiveness-patterns.md",
+          "sha256": "cb48e794d5c95779ac5ac6044e7305f6a4fd8de76a470be0839b5a78118cabee",
+          "size": 9530
+        },
+        {
+          "path": "skills/effective-interact/references/interaction-input-schema.json",
+          "sha256": "fc181c7a6e9d7cc13b767010b44bd6cbfe2fd8932a4987e63d7eff3d811b41c7",
+          "size": 12056
+        },
+        {
+          "path": "skills/effective-interact/references/interaction-patterns.md",
+          "sha256": "553bbccd1281297f4ad767388740971b13fc493131313ec7f6edae4e5ec8bc76",
+          "size": 42206
+        },
+        {
+          "path": "skills/effective-interact/references/session-ledger-schema.json",
+          "sha256": "bc7d747809385d3e2284bbb69dbb33cc69b5aef1ccfc69b27c9f8244259cec9f",
+          "size": 1861
+        },
+        {
+          "path": "skills/effective-interact/scripts/create-interaction.mjs",
+          "sha256": "13105199c191e638d56f9fb2f8f3270194f841fdd4f5a2da5e01dc09a6ea86b4",
+          "size": 67230
+        },
+        {
+          "path": "skills/effective-interact/scripts/validate-interaction.mjs",
+          "sha256": "b6ed52e71408738c8df3c44401199638fd3d6a33e4d2707c8758f2d8eb077682",
+          "size": 55245
+        },
+        {
+          "path": "skills/effective-interact/SKILL.md",
+          "sha256": "e150ce3c0fff75e2f0d81952e21ec1acaa9617da4a60f095dda09dfc374a6916",
+          "size": 9182
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:feynman-learning-coach",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/feynman-learning-coach",
+      "dest": "skills/feynman-learning-coach",
+      "files": [
+        {
+          "path": "skills/feynman-learning-coach/references/feynman-session-patterns.md",
+          "sha256": "1499784080421d7d22ac81c6b65c4a35472b00b48a9692a4950877c4869c2878",
+          "size": 2562
+        },
+        {
+          "path": "skills/feynman-learning-coach/scripts/log_learning_event.py",
+          "sha256": "7dc5966b0df8edfed5529e399a346f035e1d618391d4576140cd6fac3a27a7fc",
+          "size": 5923
+        },
+        {
+          "path": "skills/feynman-learning-coach/SKILL.md",
+          "sha256": "55d2c89292851adb0087e5d5389d6651a5436518e4820d3393099695873bf1d2",
+          "size": 4896
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:frontend-design",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/frontend-design",
+      "dest": "skills/frontend-design",
+      "files": [
+        {
+          "path": "skills/frontend-design/LICENSE.txt",
+          "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+          "size": 10174
+        },
+        {
+          "path": "skills/frontend-design/SKILL.md",
+          "sha256": "f5f3b34c8d62b561dffe882bc6f4fdda93cc7312201e67fb1e382767a04e5de9",
+          "size": 4250
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:frontend-patterns",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/frontend-patterns",
+      "dest": "skills/frontend-patterns",
+      "files": [
+        {
+          "path": "skills/frontend-patterns/references/pattern-checklist.md",
+          "sha256": "e14a17269e0929ddfb23e21c45461ae60271f93395b3190ce4fbab462f5a3e14",
+          "size": 1018
+        },
+        {
+          "path": "skills/frontend-patterns/SKILL.md",
+          "sha256": "a5681759459e498790b02ba850a01e9a1b1b34e9d8930d4a95a7cb04fd08f64c",
+          "size": 15510
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:frontend-slides",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/frontend-slides",
+      "dest": "skills/frontend-slides",
+      "files": [
+        {
+          "path": "skills/frontend-slides/SKILL.md",
+          "sha256": "7616cd3285ff80c430b92e97be1407aee445a18d74a3da5aea98cab544cbe447",
+          "size": 6445
+        },
+        {
+          "path": "skills/frontend-slides/STYLE_PRESETS.md",
+          "sha256": "f3448493022f8fa3f858319b14c0c48a35d441864dc78a2411f7938c28e7a265",
+          "size": 9145
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:grill-me",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/grill-me",
+      "dest": "skills/grill-me",
+      "files": [
+        {
+          "path": "skills/grill-me/SKILL.md",
+          "sha256": "1d46ffb7c82e2029e4210f671deda86dbdb8e369fa329b58bc1feb5d956abbb9",
+          "size": 2741
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:handoff",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/handoff",
+      "dest": "skills/handoff",
+      "files": [
+        {
+          "path": "skills/handoff/SKILL.md",
+          "sha256": "86152323160ecdd6a6e4741514a16dcb981d7705c482f50c418565fb02be450f",
+          "size": 2186
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:hub-maintenance-workflow",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/hub-maintenance-workflow",
+      "dest": "skills/hub-maintenance-workflow",
+      "files": [
+        {
+          "path": "skills/hub-maintenance-workflow/SKILL.md",
+          "sha256": "c9a916c791e2a45f7c24f94b0d9e8265cb9208824cc0d2a63637c9a92bda52f1",
+          "size": 2804
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:internal-comms",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/internal-comms",
+      "dest": "skills/internal-comms",
+      "files": [
+        {
+          "path": "skills/internal-comms/LICENSE.txt",
+          "sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362",
+          "size": 11345
+        },
+        {
+          "path": "skills/internal-comms/references/3p-updates.md",
+          "sha256": "f7cb618918a047b0a633b47185958208698bc07a58bd1b723c42379eff3a8dd6",
+          "size": 3274
+        },
+        {
+          "path": "skills/internal-comms/references/company-newsletter.md",
+          "sha256": "30f81cfbdb03858a006169c72169024089c7c5d3d32611d337782da4f38c86b5",
+          "size": 3295
+        },
+        {
+          "path": "skills/internal-comms/references/faq-answers.md",
+          "sha256": "5ecd3356cd6666937f2ebefa753253edfdbdca15e368d07baf398bfcced72484",
+          "size": 2366
+        },
+        {
+          "path": "skills/internal-comms/references/general-comms.md",
+          "sha256": "4d3a4bb198a77626bcf018e96b2b45a2dbabed172d4ade0fcd70d23ae8a47a47",
+          "size": 602
+        },
+        {
+          "path": "skills/internal-comms/SKILL.md",
+          "sha256": "8c5b83c5b2645f8ba5773b4688069660c46287a17ce016e24c4deeb4101b76ce",
+          "size": 1628
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:mcp-builder",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/mcp-builder",
+      "dest": "skills/mcp-builder",
+      "files": [
+        {
+          "path": "skills/mcp-builder/LICENSE.txt",
+          "sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362",
+          "size": 11345
+        },
+        {
+          "path": "skills/mcp-builder/references/evaluation.md",
+          "sha256": "a213e1bc53374a6747752887cf25b5b8537c5c2fb9cfb4cbb418b45a29a4861b",
+          "size": 22052
+        },
+        {
+          "path": "skills/mcp-builder/references/mcp_best_practices.md",
+          "sha256": "80fb4369a349447cf18ecdd7494fe7938b6065377e9f08c077cec411093a3007",
+          "size": 7330
+        },
+        {
+          "path": "skills/mcp-builder/references/node_mcp_server.md",
+          "sha256": "c3ba35a4f599dd53be9c6555ae72c19a7bf412cd5426576c2c08d42755482c66",
+          "size": 28550
+        },
+        {
+          "path": "skills/mcp-builder/references/python_mcp_server.md",
+          "sha256": "df1b236d8d8c83007ab1bd41826a1d3ca3de755567ce8b714cbc2385c488bd7a",
+          "size": 25114
+        },
+        {
+          "path": "skills/mcp-builder/scripts/connections.py",
+          "sha256": "294d84a87ada527a12ec66d6955ba0560671767d41c7b2e3634bef343a047908",
+          "size": 5171
+        },
+        {
+          "path": "skills/mcp-builder/scripts/evaluation.py",
+          "sha256": "97a907f08b7f4253e9a0919f26cb552351797761e63a20697f950e59ccca3589",
+          "size": 12770
+        },
+        {
+          "path": "skills/mcp-builder/scripts/example_evaluation.xml",
+          "sha256": "9272b348ddcc4b06ba562367ccd0770e018158c0068ac5116d5e34aaeff8777a",
+          "size": 1194
+        },
+        {
+          "path": "skills/mcp-builder/scripts/requirements.txt",
+          "sha256": "d5d7558b2368ecea9dfeed7d1fbc71ee9e0750bebd1282faa527d528a344c3c7",
+          "size": 29
+        },
+        {
+          "path": "skills/mcp-builder/SKILL.md",
+          "sha256": "921c651234e86ecb7f79537b4457d4fe702d79233c7aeee1192c21063138615c",
+          "size": 9237
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:openspec-apply-change",
+      "version": "1.0.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/openspec-apply-change",
+      "dest": "skills/openspec-apply-change",
+      "files": [
+        {
+          "path": "skills/openspec-apply-change/SKILL.md",
+          "sha256": "1ea5e32d72658dd3b903ce91daea60065c69241ed4753cc4e7d75d203ed6d1d6",
+          "size": 4753
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:openspec-archive-change",
+      "version": "1.0.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/openspec-archive-change",
+      "dest": "skills/openspec-archive-change",
+      "files": [
+        {
+          "path": "skills/openspec-archive-change/SKILL.md",
+          "sha256": "09af64dffc82db700fed2a8340f454f9a0dc01f65f7a17dce65164359325c7fe",
+          "size": 4214
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:openspec-explore",
+      "version": "1.0.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/openspec-explore",
+      "dest": "skills/openspec-explore",
+      "files": [
+        {
+          "path": "skills/openspec-explore/SKILL.md",
+          "sha256": "30d999506c2971c05083d30e48c7bee27fcf826ee226c3428d68dead33b82f5f",
+          "size": 4996
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:openspec-propose",
+      "version": "1.0.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/openspec-propose",
+      "dest": "skills/openspec-propose",
+      "files": [
+        {
+          "path": "skills/openspec-propose/SKILL.md",
+          "sha256": "23b40b5a1731ffe4eddd3d44fbba93372125ac09df3561ad9e0aaf266f086eea",
+          "size": 4689
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:product-capability",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/product-capability",
+      "dest": "skills/product-capability",
+      "files": [
+        {
+          "path": "skills/product-capability/SKILL.md",
+          "sha256": "bf5e945fc0ebb50d45bd5ae8af0e844e098984dd69daaf8614a000b9d7202383",
+          "size": 4299
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:prototype",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/prototype",
+      "dest": "skills/prototype",
+      "files": [
+        {
+          "path": "skills/prototype/references/logic-prototype.md",
+          "sha256": "76026e6e5449adeab8fc59e9bee5bb7dc9042784d085f82459911d50e699468d",
+          "size": 789
+        },
+        {
+          "path": "skills/prototype/references/ui-prototype.md",
+          "sha256": "59ad0fdb41846d4fbc9f4c8c25ebf8818faf69837f5556a1124ec6db20fd3488",
+          "size": 944
+        },
+        {
+          "path": "skills/prototype/SKILL.md",
+          "sha256": "28eb7dfe6063b72539726a885cc1af633bccc218a04dad6e8d4bd5ec416ed9b6",
+          "size": 3056
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:review-workflow",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/review-workflow",
+      "dest": "skills/review-workflow",
+      "files": [
+        {
+          "path": "skills/review-workflow/SKILL.md",
+          "sha256": "21742be4f3a3774003f5129cd6edd6a8cea565b54ff8740faed2745a47be8aae",
+          "size": 1747
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:sdd-workflow",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/sdd-workflow",
+      "dest": "skills/sdd-workflow",
+      "files": [
+        {
+          "path": "skills/sdd-workflow/SKILL.md",
+          "sha256": "695a1ff0d8c23e5a26f2c03b5699b25956d37e9f2d48252ef08789044b54ab86",
+          "size": 2939
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:security-review",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/security-review",
+      "dest": "skills/security-review",
+      "files": [
+        {
+          "path": "skills/security-review/SKILL.md",
+          "sha256": "a432b79dcf4b36c37663ea243ee3b912b4402c8cc47de5a49410bdef9327eee7",
+          "size": 12244
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:skill-creator",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/skill-creator",
+      "dest": "skills/skill-creator",
+      "files": [
+        {
+          "path": "skills/skill-creator/LICENSE.txt",
+          "sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362",
+          "size": 11345
+        },
+        {
+          "path": "skills/skill-creator/references/evaluation-template.md",
+          "sha256": "0834485e9f5954abe809248ee0296e9dc26288d6e75894ea0070b01ba381e922",
+          "size": 420
+        },
+        {
+          "path": "skills/skill-creator/SKILL.md",
+          "sha256": "c6b06afb4deb86ffee661d4d58df8f71c954cacb67b90aec0b2b0ae62732d055",
+          "size": 2171
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:slack-gif-creator",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/slack-gif-creator",
+      "dest": "skills/slack-gif-creator",
+      "files": [
+        {
+          "path": "skills/slack-gif-creator/LICENSE.txt",
+          "sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362",
+          "size": 11345
+        },
+        {
+          "path": "skills/slack-gif-creator/scripts/__init__.py",
+          "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+          "size": 1
+        },
+        {
+          "path": "skills/slack-gif-creator/scripts/core/__init__.py",
+          "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+          "size": 1
+        },
+        {
+          "path": "skills/slack-gif-creator/scripts/core/easing.py",
+          "sha256": "60bc943449802541f0f0881a874faa7ef408aaaf0b758fde756664ada7740452",
+          "size": 6265
+        },
+        {
+          "path": "skills/slack-gif-creator/scripts/core/frame_composer.py",
+          "sha256": "a127ea8f2a58893ea10a5c7b5cab4e2010af6515adc538676eb0cc14f5a03985",
+          "size": 4548
+        },
+        {
+          "path": "skills/slack-gif-creator/scripts/core/gif_builder.py",
+          "sha256": "b6f50d738c491ee0438a2e86e897f71cdab9792494ba4605f140befb0bddbf89",
+          "size": 9847
+        },
+        {
+          "path": "skills/slack-gif-creator/scripts/core/validators.py",
+          "sha256": "56bd19e3aae05f8387d78ec8185d6098b3dc909d1fa041211753da37212528a3",
+          "size": 3785
+        },
+        {
+          "path": "skills/slack-gif-creator/scripts/requirements.txt",
+          "sha256": "edc7108a0c6b56183566c71ee96830f6dc791e3b41952112d9cb56b33a6bd757",
+          "size": 66
+        },
+        {
+          "path": "skills/slack-gif-creator/SKILL.md",
+          "sha256": "6a1c3a76ef8a9aa5b21fe5d51323c676f37f2e8e269907974a71bf9dfbb2cce9",
+          "size": 8078
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:stop-slop",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/stop-slop",
+      "dest": "skills/stop-slop",
+      "files": [
+        {
+          "path": "skills/stop-slop/references/examples.md",
+          "sha256": "49c592899eb4457f95d0767e15e3143569e2cef50f2927c3174e62432984cd3d",
+          "size": 1686
+        },
+        {
+          "path": "skills/stop-slop/references/phrases.md",
+          "sha256": "4ca1b7e97123b5c67eff3dc97e5e977332e0b24021265c1553888a93ec33fa93",
+          "size": 2915
+        },
+        {
+          "path": "skills/stop-slop/references/structures.md",
+          "sha256": "ffbf1316c7fb5aaf552de005609a64a9639b546ecd76bfb0e482864d5bbe6f58",
+          "size": 5255
+        },
+        {
+          "path": "skills/stop-slop/SKILL.md",
+          "sha256": "a3b48eb3767be104f7b56adf0106ceb01003b07ec1b6f8bfcc74dcb41e98f60a",
+          "size": 2804
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:tdd-workflow",
+      "version": "0.2.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/tdd-workflow",
+      "dest": "skills/tdd-workflow",
+      "files": [
+        {
+          "path": "skills/tdd-workflow/references/interface-design.md",
+          "sha256": "369fe8ef0b405b3057f2501b82880a6c7119b629438bd7a100da15857c04cd44",
+          "size": 703
+        },
+        {
+          "path": "skills/tdd-workflow/references/mocking.md",
+          "sha256": "196bbce76d0414c06e4565bded59bc025388884f2b90ad9f526ae8fad847dbe1",
+          "size": 521
+        },
+        {
+          "path": "skills/tdd-workflow/references/refactoring.md",
+          "sha256": "f6d4f9ee43bd0345d01eb9f05ec7c220f6ae2f28e842e93de690000dc55ba60a",
+          "size": 604
+        },
+        {
+          "path": "skills/tdd-workflow/references/tests.md",
+          "sha256": "ef07517394fc6f41892434e83ed6d11084b47f3711aeded042b04fdb3d049c6b",
+          "size": 589
+        },
+        {
+          "path": "skills/tdd-workflow/SKILL.md",
+          "sha256": "4a2d6899c2886f4d0f5f1730bda7f434fe7e5352677db7ddc3e0a39cb4b30e3f",
+          "size": 3896
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:theme-factory",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/theme-factory",
+      "dest": "skills/theme-factory",
+      "files": [
+        {
+          "path": "skills/theme-factory/assets/theme-showcase.pdf",
+          "sha256": "3e126eca9fe99088051f7cb984c97cedb31c7d9e09ce0ba5d61bd01e70a0d253",
+          "size": 124310
+        },
+        {
+          "path": "skills/theme-factory/assets/themes/arctic-frost.md",
+          "sha256": "868a75a8fb5b2a61d0f0ab87c437fe632d3cbab6371c418f06aa2816ac109ae0",
+          "size": 544
+        },
+        {
+          "path": "skills/theme-factory/assets/themes/botanical-garden.md",
+          "sha256": "222cb8e7496abc9b75b29453c809fb9839e7e4b01fa45deecdd896b38d087765",
+          "size": 519
+        },
+        {
+          "path": "skills/theme-factory/assets/themes/desert-rose.md",
+          "sha256": "bd065b8629be3b64655183927e248e3d892a27b8d184b009cfba89c96102744f",
+          "size": 496
+        },
+        {
+          "path": "skills/theme-factory/assets/themes/forest-canopy.md",
+          "sha256": "ecb722efa24688e808b5bf323c334ca2349e989cfddd72ce8400ce5d4c4bd3e7",
+          "size": 506
+        },
+        {
+          "path": "skills/theme-factory/assets/themes/golden-hour.md",
+          "sha256": "3444a00df971d3c2f06b665e21a2e9eb5d7d7d6f6281f2758773b8345776a139",
+          "size": 528
+        },
+        {
+          "path": "skills/theme-factory/assets/themes/midnight-galaxy.md",
+          "sha256": "0e134c4c0324df41e34ac314269aa6829cd378cf3c304b31858d0cd158d2f944",
+          "size": 513
+        },
+        {
+          "path": "skills/theme-factory/assets/themes/modern-minimalist.md",
+          "sha256": "b8bc572b75948d4df69c401af703b9262ed6820a3ceb270da30a529e92763614",
+          "size": 549
+        },
+        {
+          "path": "skills/theme-factory/assets/themes/ocean-depths.md",
+          "sha256": "a7ad8eec85341dbfcb2665da827a4b6a4baee08ab3335ac02421f18e6b46b2e2",
+          "size": 555
+        },
+        {
+          "path": "skills/theme-factory/assets/themes/sunset-boulevard.md",
+          "sha256": "658af11ab04be4923692571081ffb42a428141ae537703117b9236d9f8ee22a3",
+          "size": 558
+        },
+        {
+          "path": "skills/theme-factory/assets/themes/tech-innovation.md",
+          "sha256": "183648163026dd5eeba3df5effa335b55ba333c3ee1fe215278605e55f40a52a",
+          "size": 547
+        },
+        {
+          "path": "skills/theme-factory/LICENSE.txt",
+          "sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362",
+          "size": 11345
+        },
+        {
+          "path": "skills/theme-factory/SKILL.md",
+          "sha256": "45c8789afe47bc76299f80d0a43a0fa80a4cec5cc581e6e17133d6c30e3fffba",
+          "size": 3274
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:verification-loop",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/verification-loop",
+      "dest": "skills/verification-loop",
+      "files": [
+        {
+          "path": "skills/verification-loop/SKILL.md",
+          "sha256": "580a4ef2a8cc7d76f94d28a02d346a5cbb444115b19afe2017c5fb5bf6fae844",
+          "size": 2620
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:web-artifacts-builder",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/web-artifacts-builder",
+      "dest": "skills/web-artifacts-builder",
+      "files": [
+        {
+          "path": "skills/web-artifacts-builder/LICENSE.txt",
+          "sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362",
+          "size": 11345
+        },
+        {
+          "path": "skills/web-artifacts-builder/scripts/bundle-artifact.sh",
+          "sha256": "abf0e480bf6585b56fab8526a407dfb7dc740812bddd70c636e1e8f3df5f9618",
+          "size": 1517
+        },
+        {
+          "path": "skills/web-artifacts-builder/scripts/init-artifact.sh",
+          "sha256": "355e5dd4382aaaee91f01f1627eaeab30b2676ffa8d9b3ec328a1ae450ebccaa",
+          "size": 9924
+        },
+        {
+          "path": "skills/web-artifacts-builder/scripts/shadcn-components.tar.gz",
+          "sha256": "1296f069e825de7933de7e8ac63672495cacce3f88f2dc45554dbcddbcbca60f",
+          "size": 19967
+        },
+        {
+          "path": "skills/web-artifacts-builder/SKILL.md",
+          "sha256": "a421c1f44513baf7f41976c62ec9fb2d365be457dae2da68ae8667cf36262eb2",
+          "size": 3010
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:web-design-guidelines",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/web-design-guidelines",
+      "dest": "skills/web-design-guidelines",
+      "files": [
+        {
+          "path": "skills/web-design-guidelines/SKILL.md",
+          "sha256": "7a5dfeeb82c33cf4ea6e378282bc9370073144315a57f631fffe9ccb41e569d1",
+          "size": 1413
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:webapp-testing",
+      "version": "0.1.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/webapp-testing",
+      "dest": "skills/webapp-testing",
+      "files": [
+        {
+          "path": "skills/webapp-testing/examples/console_logging.py",
+          "sha256": "ea46877289acb82da7e7ce59d0bc37c8977cd57e2a006d0c88d7a1c625bf95da",
+          "size": 1027
+        },
+        {
+          "path": "skills/webapp-testing/examples/element_discovery.py",
+          "sha256": "d63c89604a22f8845d724e95dda45db49b1bf57c25ce0a83afbb7b8da3d402f0",
+          "size": 1463
+        },
+        {
+          "path": "skills/webapp-testing/examples/static_html_automation.py",
+          "sha256": "9d533aafb875ee3ab8b8ebf8f5b9003ac8d999da3d09b285cce252e623140064",
+          "size": 953
+        },
+        {
+          "path": "skills/webapp-testing/LICENSE.txt",
+          "sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362",
+          "size": 11345
+        },
+        {
+          "path": "skills/webapp-testing/scripts/with_server.py",
+          "sha256": "b0dcf4918935b795f4eda9821579b9902119235ff4447f687a30286e7d0925fd",
+          "size": 3693
+        },
+        {
+          "path": "skills/webapp-testing/SKILL.md",
+          "sha256": "979e667dfbcbea2398f9d23d440a80f48bbfd5ec8de17206fa52bbf04574b3b4",
+          "size": 3848
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    },
+    {
+      "id": "skill:workflow-router",
+      "version": "0.12.0",
+      "agent": "standard",
+      "kind": "skill",
+      "source": "skills/workflow-router",
+      "dest": "skills/workflow-router",
+      "files": [
+        {
+          "path": "skills/workflow-router/references/intent-taxonomy.md",
+          "sha256": "e3ff2136a938e211e16e43919627cbe9337e373da02be16b7a5a323a5f26e39b",
+          "size": 2375
+        },
+        {
+          "path": "skills/workflow-router/references/orchestration-policy.md",
+          "sha256": "a3cffff6ad8b6d064290277b43fba95acb3eb45b1c7c5c74fe2155ae13d74817",
+          "size": 2951
+        },
+        {
+          "path": "skills/workflow-router/references/state-handoff.md",
+          "sha256": "1a7597a75496f2c915c9d63e9747cfb45a0fc31a05a4520dd8141b51b17ad3cb",
+          "size": 1578
+        },
+        {
+          "path": "skills/workflow-router/scripts/advisory-check.mjs",
+          "sha256": "bc813e8ed5d55290ff4c703f9d3bd14df084fcf0cd7c9c57c450a9b43f18bdaa",
+          "size": 6580
+        },
+        {
+          "path": "skills/workflow-router/scripts/helper-contract-check.mjs",
+          "sha256": "a4c72449c4d6ac6b61fca35273f592587d4f7f382f6dd55414acd01ba336c459",
+          "size": 6024
+        },
+        {
+          "path": "skills/workflow-router/scripts/owner-contract-check.mjs",
+          "sha256": "bd1dc8d6119e0e0c037035513469a6b733b9ba733022abf50ca432a60cef1bea",
+          "size": 8958
+        },
+        {
+          "path": "skills/workflow-router/scripts/route-intent.mjs",
+          "sha256": "d553c8ce628b56235be6cd5c76060f2d953d1e3f545b66908ac098ed80f2a472",
+          "size": 15325
+        },
+        {
+          "path": "skills/workflow-router/scripts/skill-activation-check.mjs",
+          "sha256": "868641c4303a3dd32eb93dac8a88bfa704958b1265d340632af035bac8cfb289",
+          "size": 24337
+        },
+        {
+          "path": "skills/workflow-router/scripts/workflow-check.mjs",
+          "sha256": "2a9ea921ad5c1e066d841d8092f74e013e3534d3666b2eeebf7e5134a4df68d7",
+          "size": 5791
+        },
+        {
+          "path": "skills/workflow-router/SKILL.md",
+          "sha256": "2976649651e764684f8a532bebcfe26e25ee457316a09285011f405fb28cbe59",
+          "size": 3160
+        }
+      ],
+      "installedAt": "2026-06-03T05:35:25.500Z",
+      "status": "installed"
+    }
+  ]
+}

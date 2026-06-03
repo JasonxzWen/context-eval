@@ -8,19 +8,30 @@ This repository vendors the development capability library from:
 - Latest refreshed commit: `586950abb086828bca7361ec3f17c5397bdd05c3`
 - Import date: `2026-05-08`
 - Latest refresh date: `2026-06-02`
+- Minimal harness install date: `2026-06-03`
+- Minimal harness package: `@jasonwen/harness-hub@0.1.11`
 
 Imported capability roots:
 
 - `.agents/skills/`
 - `.codex/skills/`
 - `.codex/agents/`
+- `.harness-hub/lock.json`
+- `skills/`
 - `openspec/`
 - `scripts/`
+- root minimal harness files:
+  - `AGENTS.md`
+  - `clean-state-checklist.md`
+  - `definition-of-done.md`
+  - `feature_list.json`
+  - `progress.md`
+  - `session-handoff.md`
+  - `tasks/current-task.md`
 
-The upstream repository's `AGENTS.md` and `README.md` files were intentionally
-not imported. Files named `AGENTS.md` or `README*` inside the imported roots
-were also skipped to avoid changing this repository's agent instructions or
-duplicating upstream project documentation.
+The upstream repository's `README.md` file is intentionally not imported. The
+root `AGENTS.md` now comes from the Harness Hub minimal target bootstrap and is
+tracked as this repository's concise Codex operating contract.
 
 The imported assets are used as project-local development support: skill
 definitions, focused agent role configs, OpenSpec helpers, workflow scripts,
@@ -53,10 +64,20 @@ It also includes newer upstream skills such as `effective-interact`,
 refresh adds `clone-website`, `design-taste-frontend`,
 `karpathy-guidelines`, `source-to-insight-blog`, and `stop-slop`.
 
-The refresh still does not import Harness Hub npm CLI lifecycle code,
-`harness/minimal` root harness files, `.claude-plugin/`, `site/`, or upstream
-top-level reports because those are source-repo tooling, host packaging, or
-target-repo bootstrap assets, not context-eval runtime package inputs.
+The `2026-06-03` update runs the Harness Hub standard minimal bootstrap and
+records lock-backed ownership in `.harness-hub/lock.json`. It installs the
+root continuity files, `scripts/harness-validate.mjs`, and the standard
+`skills/` tree. The lock currently records 43 managed components:
+`harness:minimal` plus 42 standard skills. `harness-hub update --dry-run`
+reports no pending updates or blockers for those managed components.
+
+The update still does not import Harness Hub npm CLI lifecycle source code,
+`.claude-plugin/`, `site/`, or upstream top-level reports because those are
+source-repo tooling, host packaging, or generated artifacts, not context-eval
+runtime package inputs. `.harness-hub/reports/` is ignored so generated install
+reports remain local. `harness:website-cloner` is visible in the upstream
+component list, but it is an explicit smoke scaffold outside the standard
+minimal target and is not managed by this lock.
 
 Most upstream Harness Hub documentation was intentionally removed from this
 repository because it describes general skill-pack research, source-project
@@ -65,10 +86,11 @@ specific to context-eval. This file is the retained provenance record.
 
 The optional Codex configuration is tracked as `.codex/config.example.toml`.
 Maintainers can copy it to `.codex/config.toml` locally when they want to opt in
-to the project-local skills and agent roles. The active `.codex/config.toml`
-path is ignored so ordinary clones do not silently enable external tooling.
+to the project-local `.codex/skills/` and agent roles. The active
+`.codex/config.toml` path is ignored so ordinary clones do not silently enable
+external tooling.
 
-Codex local mode and git worktrees use the tracked `.codex/skills/` tree
-directly. No machine-specific Harness Hub setup command is required for a fresh
-context-eval worktree; skill availability is validated with
+Harness Hub minimal state is validated with `node scripts\harness-validate.mjs`
+and `npx -y @jasonwen/harness-hub@latest validate-harness . --json`. The
+legacy project-local `.codex/skills/` tree is still validated with
 `powershell -ExecutionPolicy Bypass -File scripts\validate-skills.ps1 -SkipExternal`.

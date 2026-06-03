@@ -172,10 +172,13 @@ def test_release_checklist_documents_package_build_scope() -> None:
         "includes `context_eval/`",
         "includes `context_eval/reports/templates/`",
         "do not include `.context-eval/`",
+        "do not include `.harness-hub/`",
         "do not include `.agents/`",
         "do not include `.codex/skills/`",
+        "do not include `skills/`",
         "do not include `openspec/`",
         "do not include `scripts/`",
+        "do not include root harness state files",
     ]:
         assert term in text
 
@@ -189,10 +192,13 @@ def test_release_checklist_documents_artifact_inspection_command() -> None:
         "requires `context_eval/`",
         "requires `context_eval/reports/templates/`",
         "rejects `.context-eval/`",
+        "rejects `.harness-hub/`",
         "rejects `.agents/`",
         "rejects `.codex/skills/`",
+        "rejects `skills/`",
         "rejects `openspec/`",
         "rejects `scripts/`",
+        "rejects root harness state files",
     ]:
         assert term in text
 
@@ -559,8 +565,11 @@ def test_harness_hub_import_documents_refreshed_standard_skills() -> None:
         "Former source name: `JasonxzWen/skill-hub`",
         "Latest refreshed commit: `586950abb086828bca7361ec3f17c5397bdd05c3`",
         "Latest refresh date: `2026-06-02`",
+        "Minimal harness install date: `2026-06-03`",
+        "Minimal harness package: `@jasonwen/harness-hub@0.1.11`",
         "migrates the current upstream `skills/` set into",
         "syncs the current Harness Hub standard `skills/` set",
+        "`harness:minimal` plus 42 standard skills",
         "`html-work-reports`",
         "`compound-code-review`",
         "`diagnose`",
@@ -572,11 +581,32 @@ def test_harness_hub_import_documents_refreshed_standard_skills() -> None:
         "`karpathy-guidelines`",
         "`source-to-insight-blog`",
         "`stop-slop`",
-        "does not import Harness Hub npm CLI lifecycle code",
-        "`harness/minimal` root harness files",
-        "Codex local mode and git worktrees use the tracked `.codex/skills/` tree",
+        "does not import Harness Hub npm CLI lifecycle source code",
+        "`harness:website-cloner` is visible in the upstream",
+        "not managed by this lock",
+        "Harness Hub minimal state is validated with `node scripts\\harness-validate.mjs`",
     ]:
         assert term in text
+
+
+def test_harness_hub_minimal_install_files_are_present() -> None:
+    for relative in [
+        ".harness-hub/lock.json",
+        "AGENTS.md",
+        "clean-state-checklist.md",
+        "definition-of-done.md",
+        "feature_list.json",
+        "progress.md",
+        "scripts/harness-validate.mjs",
+        "session-handoff.md",
+        "tasks/current-task.md",
+        "skills/workflow-router/SKILL.md",
+        "skills/hub-maintenance-workflow/SKILL.md",
+        "skills/clone-website/SKILL.md",
+    ]:
+        assert Path(relative).exists()
+
+    assert ".harness-hub/reports/" in Path(".gitignore").read_text(encoding="utf-8")
 
 
 def test_html_work_reports_skill_assets_are_installed() -> None:

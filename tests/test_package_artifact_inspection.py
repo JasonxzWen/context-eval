@@ -85,6 +85,9 @@ def test_package_artifact_inspector_rejects_forbidden_entries(tmp_path: Path) ->
             "context_eval/__init__.py",
             "context_eval/reports/templates/report.md.j2",
             ".agents/skills/example/SKILL.md",
+            "skills/workflow-router/SKILL.md",
+            ".harness-hub/lock.json",
+            "AGENTS.md",
         ],
     )
     _write_sdist(
@@ -93,6 +96,8 @@ def test_package_artifact_inspector_rejects_forbidden_entries(tmp_path: Path) ->
             "context_eval-0.1.0/context_eval/__init__.py",
             "context_eval-0.1.0/context_eval/reports/templates/report.md.j2",
             "context_eval-0.1.0/scripts/validate-skills.ps1",
+            "context_eval-0.1.0/tasks/current-task.md",
+            "context_eval-0.1.0/progress.md",
         ],
     )
 
@@ -101,4 +106,8 @@ def test_package_artifact_inspector_rejects_forbidden_entries(tmp_path: Path) ->
     assert result.returncode == 1
     assert "forbidden entry" in result.stderr
     assert ".agents/" in result.stderr
+    assert ".harness-hub/" in result.stderr
+    assert "skills/" in result.stderr
     assert "scripts/" in result.stderr
+    assert "AGENTS.md" in result.stderr
+    assert "tasks/" in result.stderr

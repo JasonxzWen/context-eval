@@ -178,8 +178,9 @@ tasks:
 
 ## Maintainer Tooling
 
-Project-local skills and agent role configs from Harness Hub, formerly
-`skill-hub`, are vendored for maintainers, but active Codex configuration is
-opt-in. Copy
-`.codex/config.example.toml` to `.codex/config.toml` locally only when you want
-to enable those workflows.
+Project-local skills, root harness files, and agent role configs from Harness
+Hub, formerly `skill-hub`, are vendored for maintainers. The root minimal
+harness can be checked with `node scripts\harness-validate.mjs`. Active Codex
+configuration remains opt-in: copy `.codex/config.example.toml` to
+`.codex/config.toml` locally only when you want to enable those host-specific
+workflows.
