@@ -2,80 +2,84 @@
 
 ## Goal
 
-Implement the post-PR-D onboarding shell follow-up: include structured Codex
-interaction turn counts in the simplified run conclusion and in the operation
-complexity scoring path.
+Record completion of the context-eval onboarding shell plan from the June 3
+handoff. No active onboarding-shell implementation task remains.
 
 ## Assumptions
 
-- PR A, PR B, PR C, and PR D are merged into `main`.
-- The repository is on a fresh branch from latest `main`:
-  `codex/onboarding-turn-summary`.
-- `interaction_turn_count` is already available on `ResultCase` from structured
-  Codex JSONL telemetry.
-- Missing turn telemetry must remain unavailable in UI and evidence notes; do
-  not infer it from stdout or stderr.
+- PR #62, PR #63, PR #64, PR #65, and PR #66 are merged into `main`.
+- The repository has the Harness Hub state files and uses them for task
+  tracking.
+- This closeout record does not add product behavior or code changes.
 
 ## Non-goals
 
-- Do not change backend telemetry collection.
-- Do not change the onboarding shell layout beyond the metric display hook.
-- Do not make broad CSS or visual redesign changes.
-- Do not change scoring weights; keep operation complexity at weight 8.
+- Do not change frontend or backend behavior.
+- Do not change package metadata.
+- Do not start a new product scope.
 
 ## Worktree / Branch
 
 - Worktree: `C:\Users\Admin\.codex\worktrees\a3f4\context-eval`
-- Branch: `codex/onboarding-turn-summary`
+- Branch: `codex/onboarding-plan-closeout`
 
 ## Allowed paths
 
-- `frontend/src/scoring.ts`
-- `frontend/src/scoring.test.ts`
-- `frontend/src/components/RunScoreSummary.tsx`
-- `frontend/src/App.test.tsx`
-- `frontend/e2e/app-shell.spec.ts`
 - `progress.md`
 - `session-handoff.md`
 - `tasks/current-task.md`
 
 ## Forbidden paths
 
-- Backend telemetry/model/export files.
-- Broad frontend style rewrites.
+- Frontend source and tests.
+- Backend source and tests.
+- Package metadata.
 - Harness install files outside task/progress/handoff records.
-- Package metadata changes unless validation proves they are required.
 
 ## Acceptance criteria
 
-- Operation complexity scoring accounts for structured interaction turn counts
-  together with tool call counts.
-- Missing structured turn counts remain unknown and create an evidence gap
-  instead of being treated as zero.
-- The simplified `RunScoreSummary` conclusion shows interaction turns for
-  baseline and comparison cases.
-- The default onboarding E2E path asserts that interaction turns are visible in
-  the simplified conclusion before the advanced workbench is revealed.
-- Existing App and Playwright workflows continue to pass.
+- Harness state records that the onboarding shell plan is complete.
+- Completed PRs are listed with their scope.
+- Current invariants are listed for future work.
+- Validation evidence from the final implementation PR is recorded.
+- No remaining onboarding-shell development step is listed as pending.
 
 ## Validation commands
 
-- `cd frontend; npm run test`
-- `cd frontend; npm run build`
-- `cd frontend; npx playwright test e2e/app-shell.spec.ts`
-- `cd frontend; npm run validate`
 - `node scripts\harness-validate.mjs`
 - `git diff --check`
 - `git status --short --branch`
 
 ## Parallel writes
 
-- Default: blocked for this task.
+- Default: blocked for this closeout task.
 - Use read-only parallel commands only for inspection or validation.
 
 ## Handoff requirements
 
-- Update `progress.md`.
-- Update `session-handoff.md`.
-- Run `node scripts/harness-validate.mjs`.
-- Record validation evidence and the next concrete action before handoff.
+- Keep `progress.md` in completed state.
+- Keep `session-handoff.md` in completed state.
+- Keep this file in completed state while preserving harness-required section
+  markers.
+
+## Completed PRs
+
+- PR #62: scoring engine and unit tests.
+- PR #63: onboarding shell and simplified score summary.
+- PR #64: advanced workbench boundary.
+- PR #65: structured Codex interaction turn count.
+- PR #66: interaction turns in onboarding summary scoring and display.
+
+## Current Invariants
+
+- Default users enter the onboarding home.
+- Empty workspaces expose one primary demo action and hide advanced setup.
+- Demo completion shows a simplified conclusion before detailed evidence.
+- Detailed results and legacy configuration appear only through
+  `高级工作台` or `查看完整证据`.
+- Composite scoring accounts for correctness, speed, cost, operation
+  complexity, change scope, and evidence confidence.
+- Operation complexity includes collected tool calls and structured interaction
+  turns.
+- Missing structured turn telemetry is not inferred from logs and remains
+  unavailable in UI/evidence notes.
