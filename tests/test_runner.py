@@ -336,6 +336,7 @@ def test_runner_records_codex_jsonl_artifacts_and_telemetry(tmp_path: Path) -> N
     assert result["completion_tokens"] == 7
     assert result["total_tokens"] == 27
     assert result["reasoning_tokens"] == 3
+    assert result["interaction_turn_count"] == 1
     assert result["command_call_count"] == 1
     assert result["model_name"] == "gpt-5.4"
     assert result["tool_call_count"] == 1

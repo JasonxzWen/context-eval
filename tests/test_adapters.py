@@ -80,6 +80,7 @@ def test_noop_telemetry_collector_returns_unavailable_result(tmp_path: Path) -> 
     [
         ("source", ""),
         ("prompt_tokens", -1),
+        ("interaction_turn_count", -1),
         ("tool_calls_by_name", {"": 1}),
         ("tool_calls_by_name", {"read": -1}),
     ],
@@ -490,6 +491,7 @@ def test_codex_jsonl_collector_saves_stdout_and_normalizes_usage(
     assert result.completion_tokens == 40
     assert result.total_tokens == 140
     assert result.reasoning_tokens == 12
+    assert result.interaction_turn_count == 1
     assert result.command_call_count == 1
     assert result.tool_call_count == 2
     assert result.tool_calls_by_name == {
@@ -523,6 +525,7 @@ def test_codex_jsonl_collector_reports_missing_usage_as_partial(
     assert result.status == "partial"
     assert result.source == "codex-jsonl"
     assert "missing turn.completed usage" in (result.error or "")
+    assert result.interaction_turn_count is None
     assert "codex_usage_missing" in result.telemetry_evidence_gaps
     assert "codex_output_last_message_missing" in result.telemetry_evidence_gaps
     assert (output_dir / "codex-final-message.md").read_text(encoding="utf-8") == "Done"

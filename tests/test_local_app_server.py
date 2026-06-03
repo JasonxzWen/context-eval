@@ -255,6 +255,7 @@ def test_local_app_reports_empty_workspace_and_bootstraps_demo(tmp_path: Path) -
     assert by_variant["experiment"]["telemetry_source"] == "codex-jsonl"
     assert by_variant["experiment"]["total_tokens"] == 180
     assert by_variant["experiment"]["cached_input_tokens"] == 30
+    assert by_variant["experiment"]["interaction_turn_count"] == 1
     assert by_variant["experiment"]["tool_calls_by_name"]["mcp:filesystem/edit_file"] == 1
     assert by_variant["experiment"]["command_call_count"] == 1
     assert by_variant["experiment"]["model_name"] == "gpt-5.4"

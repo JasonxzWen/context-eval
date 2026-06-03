@@ -360,6 +360,7 @@ class CodexJsonlTelemetryCollector(TelemetryCollector):
             else 0,
             tool_calls_by_name=dict(sorted(metrics["tool_calls_by_name"].items())),
             command_call_count=metrics["command_call_count"],
+            interaction_turn_count=metrics["interaction_turn_count"],
             model_name=model_name,
             telemetry_evidence_gaps=evidence_gaps,
             codex_events_path=str(events_file),
@@ -373,12 +374,15 @@ class CodexJsonlTelemetryCollector(TelemetryCollector):
     def _normalize_events(events: list[dict]) -> dict[str, object]:
         tool_calls: Counter[str] = Counter()
         command_call_count = 0
+        interaction_turn_count = 0
         usage: dict | None = None
         last_agent_message: str | None = None
         error_reason: str | None = None
 
         for event in events:
             event_type = event.get("type")
+            if event_type in {"turn.completed", "turn.failed"}:
+                interaction_turn_count += 1
             if event_type == "turn.completed" and isinstance(event.get("usage"), dict):
                 usage = event["usage"]
             elif event_type == "turn.failed" and isinstance(event.get("error"), dict):
@@ -413,6 +417,7 @@ class CodexJsonlTelemetryCollector(TelemetryCollector):
             "usage": usage,
             "tool_calls_by_name": tool_calls,
             "command_call_count": command_call_count,
+            "interaction_turn_count": interaction_turn_count or None,
             "last_agent_message": last_agent_message,
             "error_reason": error_reason or None,
         }

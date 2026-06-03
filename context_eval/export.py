@@ -12,7 +12,7 @@ from typing import Any
 from context_eval.models import CaseResult
 from context_eval.reporting import status_counts_map
 
-EXPORT_SCHEMA_VERSION = "2"
+EXPORT_SCHEMA_VERSION = "3"
 
 CASE_COLUMNS = [
     "run_id",
@@ -37,6 +37,7 @@ CASE_COLUMNS = [
     "reasoning_tokens",
     "tool_call_count",
     "command_call_count",
+    "interaction_turn_count",
     "tool_calls_by_name",
     "reasoning_step_count",
     "model_name",
@@ -187,6 +188,9 @@ def agent_summary_rows(results: list[CaseResult]) -> list[dict[str, Any]]:
                 "avg_command_call_count": _mean_optional(
                     item.command_call_count for item in items
                 ),
+                "avg_interaction_turn_count": _mean_optional(
+                    item.interaction_turn_count for item in items
+                ),
                 "telemetry_statuses": status_counts_map(telemetry_statuses),
                 "common_tool_names": _common_tool_names(tool_counts),
                 "common_model_names": _common_model_names(model_counts),
@@ -310,6 +314,7 @@ def _case_csv_row(result: CaseResult) -> dict[str, str | int]:
         "reasoning_step_count": _format_optional_int(result.reasoning_step_count),
         "tool_call_count": _format_optional_int(result.tool_call_count),
         "command_call_count": _format_optional_int(result.command_call_count),
+        "interaction_turn_count": _format_optional_int(result.interaction_turn_count),
         "tool_calls_by_name": _format_tool_calls_csv(result.tool_calls_by_name),
         "model_name": result.model_name or "",
         "provider_name": result.provider_name or "",
@@ -372,6 +377,7 @@ def _case_json_row(
         "reasoning_step_count": result.reasoning_step_count,
         "tool_call_count": result.tool_call_count,
         "command_call_count": result.command_call_count,
+        "interaction_turn_count": result.interaction_turn_count,
         "tool_calls_by_name": dict(sorted(result.tool_calls_by_name.items())),
         "model_name": result.model_name,
         "provider_name": result.provider_name,

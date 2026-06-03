@@ -277,6 +277,7 @@ export type ResultCase = {
   reasoning_step_count?: number | null;
   tool_call_count?: number | null;
   command_call_count?: number | null;
+  interaction_turn_count?: number | null;
   model_name?: string | null;
   provider_name?: string | null;
   telemetry_evidence_gaps?: string[];

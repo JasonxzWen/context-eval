@@ -1279,6 +1279,7 @@ describe('App workflow shell', () => {
               reasoning_step_count: 2,
               tool_call_count: 1,
               command_call_count: 1,
+              interaction_turn_count: 1,
               model_name: 'gpt-5.4',
               telemetry_evidence_gaps: [],
               codex_events_path: 'artifacts/fix-greeting-punctuation__baseline__coco/codex-events.jsonl',
@@ -1335,6 +1336,7 @@ describe('App workflow shell', () => {
             reasoning_step_count: 2,
             tool_call_count: 1,
             command_call_count: 1,
+            interaction_turn_count: 1,
             model_name: 'gpt-5.4',
             telemetry_evidence_gaps: [],
             codex_events_path: 'artifacts/fix-greeting-punctuation__baseline__coco/codex-events.jsonl',
@@ -1458,6 +1460,7 @@ describe('App workflow shell', () => {
     expect(screen.getByText('输出 7')).toBeVisible();
     expect(screen.getAllByText('推理 3').length).toBeGreaterThan(0);
     expect(screen.getByText('命令 calls')).toBeVisible();
+    expect(screen.getByTestId('codex-usage-panel')).toHaveTextContent(/交互轮次\s*1/);
     expect(screen.getAllByText('gpt-5.4').length).toBeGreaterThan(0);
     expect(screen.getByText('未发现结构化缺口')).toBeVisible();
     expect(screen.getByText('artifacts/fix-greeting-punctuation__baseline__coco/codex-events.jsonl')).toBeVisible();
