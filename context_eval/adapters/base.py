@@ -27,6 +27,7 @@ class TelemetryCollectionResult(BaseModel):
     tool_call_count: int | None = Field(default=None, ge=0)
     tool_calls_by_name: dict[str, int] = Field(default_factory=dict)
     command_call_count: int | None = Field(default=None, ge=0)
+    interaction_turn_count: int | None = Field(default=None, ge=0)
     model_name: str | None = None
     provider_name: str | None = None
     telemetry_evidence_gaps: list[str] = Field(default_factory=list)

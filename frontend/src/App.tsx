@@ -176,6 +176,10 @@ function metricValue(value: number | string | null | undefined, suffix = '') {
   return `${value}${suffix}`;
 }
 
+function collectedMetricValue(value: number | null | undefined) {
+  return value === null || value === undefined ? '未采集' : String(value);
+}
+
 function displayVariantName(name: string | null | undefined) {
   if (!name) return '-';
   return name === 'baseline' ? 'baseline（默认上下文）' : name;
@@ -1605,6 +1609,7 @@ export function App() {
                             Tool {metricValue(caseDetail.case.tool_call_count)} / 命令{' '}
                             {metricValue(caseDetail.case.command_call_count)}
                           </small>
+                          <small>交互轮次 {collectedMetricValue(caseDetail.case.interaction_turn_count)}</small>
                           {caseDetail.case.telemetry_error && <small>{caseDetail.case.telemetry_error}</small>}
                         </dd>
                       </div>
@@ -1784,6 +1789,10 @@ export function App() {
                         <div>
                           <dt>命令 calls</dt>
                           <dd>{metricValue(caseDetail.case.command_call_count)}</dd>
+                        </div>
+                        <div>
+                          <dt>交互轮次</dt>
+                          <dd>{collectedMetricValue(caseDetail.case.interaction_turn_count)}</dd>
                         </div>
                         <div>
                           <dt>模型</dt>

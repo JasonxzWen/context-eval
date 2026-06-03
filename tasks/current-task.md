@@ -2,67 +2,82 @@
 
 ## Goal
 
-Implement PR C for the context-eval onboarding shell plan: give the old
-detailed workbench an explicit `AdvancedWorkbench` boundary so it remains a
-secondary mode and is not part of the default onboarding viewport.
+Implement PR D for the context-eval onboarding shell plan: add structured
+Codex interaction turn counting from JSONL telemetry and surface it in result
+models, exports, and the frontend result detail view.
 
 ## Assumptions
 
-- PR A is merged into `main`; `frontend/src/scoring.ts` is available.
-- PR B is merged into `main`; `OnboardingHome` and `RunScoreSummary` are the
-  default entry point.
+- PR A, PR B, and PR C are merged into `main`.
 - The repository is on a fresh branch from latest `main`:
-  `codex/onboarding-advanced-workbench`.
-- This PR should be a small structural boundary and test hardening step, not a
-  visual redesign.
+  `codex/codex-turn-count`.
+- Turn counts must come from structured Codex JSONL events only.
+- Missing or unrecognized telemetry should remain `null` / `未采集`, not guessed
+  from stdout or stderr.
 
 ## Non-goals
 
-- Do not implement PR D Codex interaction turn counting.
-- Do not change backend telemetry collection or result persistence.
-- Do not rewrite task, variant, agent, or result internals.
-- Do not make broad CSS changes.
+- Do not change onboarding shell layout or CSS beyond the smallest display hook
+  needed for the new metric.
+- Do not infer turns from unstructured logs.
+- Do not change scoring weights in this PR unless a type field is needed for
+  future scoring.
 
 ## Worktree / Branch
 
 - Worktree: `C:\Users\Admin\.codex\worktrees\a3f4\context-eval`
-- Branch: `codex/onboarding-advanced-workbench`
+- Branch: `codex/codex-turn-count`
 
 ## Allowed paths
 
+- `context_eval/adapters/base.py`
+- `context_eval/adapters/command.py`
+- `context_eval/models.py`
+- `context_eval/reporting.py`
+- `context_eval/export.py`
+- `context_eval/runner.py`
+- `context_eval/local_app.py`
+- `frontend/src/types.ts`
 - `frontend/src/App.tsx`
 - `frontend/src/App.test.tsx`
-- `frontend/src/components/AdvancedWorkbench.tsx`
 - `frontend/e2e/app-shell.spec.ts`
+- `scripts/validate-codex-first.py`
+- `tests/test_adapters.py`
+- `tests/test_runner.py`
+- `tests/test_local_app_server.py`
+- `tests/test_codex_sessions.py`
+- `tests/test_export.py`
 - `progress.md`
 - `session-handoff.md`
 - `tasks/current-task.md`
 
 ## Forbidden paths
 
-- `context_eval/`
-- Backend tests under `tests/`
+- Broad frontend style rewrites.
 - Harness install files outside task/progress/handoff records.
-- Broad CSS rewrites or visual redesign work.
+- Package metadata changes unless validation proves they are required.
 
 ## Acceptance criteria
 
-- The old workbench is represented by an `AdvancedWorkbench` component
-  boundary.
-- `AdvancedWorkbench` is not rendered on the default onboarding viewport.
-- Clicking `高级工作台` renders `AdvancedWorkbench` and preserves the existing
-  detailed workbench behavior.
-- Clicking `查看完整证据` after a completed run renders `AdvancedWorkbench` and
-  preserves the existing detailed results behavior.
-- Default onboarding tests assert the old workbench boundary is absent until a
-  reveal action.
-- Existing App and Playwright workflows continue to pass.
+- `TelemetryCollectionResult` has `interaction_turn_count: int | null`.
+- `CaseResult` has `interaction_turn_count: int | null`.
+- `CodexJsonlTelemetryCollector` counts interaction turns only from structured
+  JSONL events.
+- Runner result creation preserves the collected turn count.
+- Local app results, compare payloads, and exports include the new field.
+- Frontend types include the new field.
+- Result detail UI shows the metric as a structured Codex hard metric and uses
+  `未采集` when it is unavailable.
+- Tests cover counted turns, missing telemetry staying null, runner propagation,
+  and local app/API exposure.
 
 ## Validation commands
 
-- `node scripts\harness-validate.mjs`
+- `python -m pytest -q tests\test_adapters.py tests\test_runner.py tests\test_local_app_server.py tests\test_codex_sessions.py`
+- `python scripts\validate-codex-first.py`
 - `cd frontend; npm run test`
 - `cd frontend; npm run validate`
+- `node scripts\harness-validate.mjs`
 - `git diff --check`
 - `git status --short --branch`
 

@@ -72,6 +72,7 @@ def test_export_run_csv_is_deterministic_and_preserves_missing_telemetry(
                 reasoning_tokens=4,
                 tool_call_count=2,
                 command_call_count=1,
+                interaction_turn_count=3,
                 tool_calls_by_name={"write": 1, "read": 1},
                 model_name="gpt-5.4",
                 provider_name="openai",
@@ -97,7 +98,8 @@ def test_export_run_csv_is_deterministic_and_preserves_missing_telemetry(
         "validation_status,confidence,telemetry_status,telemetry_source,telemetry_error,"
         "duration_seconds,agent_duration_seconds,"
         "prompt_tokens,cached_input_tokens,completion_tokens,total_tokens,reasoning_tokens,"
-        "tool_call_count,command_call_count,tool_calls_by_name,reasoning_step_count,"
+        "tool_call_count,command_call_count,interaction_turn_count,tool_calls_by_name,"
+        "reasoning_step_count,"
         "model_name,provider_name,telemetry_evidence_gaps,codex_events_path,"
         "codex_final_message_path,codex_error_reason,"
         "hard_evaluation_status,hard_evaluation_score,hard_evaluation_max_score,"
@@ -119,6 +121,7 @@ def test_export_run_csv_is_deterministic_and_preserves_missing_telemetry(
     assert rows[0]["reference_evidence_files"] == '["README.md"]'
     assert rows[0]["cached_input_tokens"] == "5"
     assert rows[0]["command_call_count"] == "1"
+    assert rows[0]["interaction_turn_count"] == "3"
     assert rows[0]["model_name"] == "gpt-5.4"
     assert rows[0]["provider_name"] == "openai"
     assert rows[0]["telemetry_evidence_gaps"] == ""
@@ -133,6 +136,7 @@ def test_export_run_csv_is_deterministic_and_preserves_missing_telemetry(
     assert rows[0]["soft_evaluation_score"] == ""
     assert rows[1]["cached_input_tokens"] == ""
     assert rows[1]["command_call_count"] == ""
+    assert rows[1]["interaction_turn_count"] == ""
     assert rows[1]["model_name"] == ""
 
 
@@ -157,6 +161,7 @@ def test_export_run_json_contains_sorted_cases_and_agent_summaries(tmp_path: Pat
                 total_tokens=50,
                 tool_call_count=3,
                 command_call_count=2,
+                interaction_turn_count=2,
                 telemetry_status="partial",
                 telemetry_source="codex-jsonl",
                 telemetry_error="completion_tokens must be a non-negative integer",
@@ -184,6 +189,7 @@ def test_export_run_json_contains_sorted_cases_and_agent_summaries(tmp_path: Pat
                 total_tokens=30,
                 tool_call_count=1,
                 command_call_count=1,
+                interaction_turn_count=1,
                 tool_calls_by_name={"edit": 1},
                 model_name="gpt-5.4",
                 reference_evidence={
@@ -217,7 +223,7 @@ def test_export_run_json_contains_sorted_cases_and_agent_summaries(tmp_path: Pat
         )
     )
 
-    assert payload["export_schema_version"] == "2"
+    assert payload["export_schema_version"] == "3"
     assert payload["exported_at"] == "2026-05-11T05:30:00Z"
     assert payload["source_files"] == ["results.jsonl", "run_metadata.json"]
     assert payload["case_count"] == 3
@@ -241,6 +247,7 @@ def test_export_run_json_contains_sorted_cases_and_agent_summaries(tmp_path: Pat
     assert payload["cases"][0]["agent_duration_seconds"] == 1.5
     assert payload["cases"][0]["cached_input_tokens"] == 4
     assert payload["cases"][0]["command_call_count"] == 1
+    assert payload["cases"][0]["interaction_turn_count"] == 1
     assert payload["cases"][0]["model_name"] == "gpt-5.4"
     assert payload["cases"][0]["telemetry_evidence_gaps"] == []
     assert payload["cases"][0]["hard_evaluation_status"] == "not_configured"
@@ -252,6 +259,7 @@ def test_export_run_json_contains_sorted_cases_and_agent_summaries(tmp_path: Pat
         == "completion_tokens must be a non-negative integer"
     )
     assert payload["cases"][1]["command_call_count"] == 2
+    assert payload["cases"][1]["interaction_turn_count"] == 2
     assert payload["cases"][1]["telemetry_evidence_gaps"] == ["codex_usage_missing"]
     assert payload["cases"][1]["codex_error_reason"] == "usage event missing"
     assert payload["cases"][2]["total_tokens"] is None
@@ -269,6 +277,7 @@ def test_export_run_json_contains_sorted_cases_and_agent_summaries(tmp_path: Pat
             "avg_total_tokens": 40,
             "avg_tool_call_count": 2,
             "avg_command_call_count": 1.5,
+            "avg_interaction_turn_count": 1.5,
             "telemetry_statuses": {"collected": 1, "partial": 1},
             "common_tool_names": ["edit"],
             "common_model_names": ["gpt-5.4"],
@@ -282,6 +291,7 @@ def test_export_run_json_contains_sorted_cases_and_agent_summaries(tmp_path: Pat
             "avg_total_tokens": None,
             "avg_tool_call_count": None,
             "avg_command_call_count": None,
+            "avg_interaction_turn_count": None,
             "telemetry_statuses": {"unavailable": 1},
             "common_tool_names": [],
             "common_model_names": [],

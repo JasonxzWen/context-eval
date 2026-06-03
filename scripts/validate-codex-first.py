@@ -8,6 +8,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import tempfile
 from datetime import datetime
 from pathlib import Path
 
@@ -115,6 +116,23 @@ def _evidence_dir(repo_root: Path, requested: Path | None) -> Path:
     return evidence_dir
 
 
+def _pytest_base_temp(evidence_dir: Path) -> Path:
+    configured = os.environ.get("CONTEXT_EVAL_PYTEST_BASETEMP")
+    if configured:
+        base_temp = Path(configured)
+    elif os.name == "nt":
+        base_temp = (
+            Path(tempfile.gettempdir())
+            / "context-eval-codex-first"
+            / evidence_dir.name
+            / "pytest-tmp"
+        )
+    else:
+        base_temp = evidence_dir / "pytest-tmp"
+    base_temp.mkdir(parents=True, exist_ok=True)
+    return base_temp
+
+
 def _run_live_codex_check(evidence_dir: Path) -> None:
     codex = shutil.which("codex")
     if not codex:
@@ -138,6 +156,7 @@ def main() -> int:
     repo_root = Path(__file__).resolve().parents[1]
     frontend_dir = repo_root / "frontend"
     evidence_dir = _evidence_dir(repo_root, args.evidence_dir)
+    pytest_base_temp = _pytest_base_temp(evidence_dir)
 
     print(f"Codex-first evidence: {evidence_dir}")
 
@@ -150,7 +169,7 @@ def main() -> int:
             *PYTHON_TESTS,
             "-q",
             "--basetemp",
-            str(evidence_dir / "pytest-tmp"),
+            str(pytest_base_temp),
         ],
         cwd=repo_root,
         evidence_dir=evidence_dir,

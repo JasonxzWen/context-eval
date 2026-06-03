@@ -39,6 +39,9 @@ def telemetry_summary(items: list[CaseResult]) -> dict[str, object]:
         "avg_total_tokens": _mean_available(item.total_tokens for item in items),
         "avg_tool_calls": _mean_available(item.tool_call_count for item in items),
         "avg_command_calls": _mean_available(item.command_call_count for item in items),
+        "avg_interaction_turns": _mean_available(
+            item.interaction_turn_count for item in items
+        ),
         "common_tool_names": _common_tool_names(items),
     }
 

@@ -554,6 +554,7 @@ class ContextEvalRunner:
         result.tool_call_count = telemetry.tool_call_count
         result.tool_calls_by_name = telemetry.tool_calls_by_name
         result.command_call_count = telemetry.command_call_count
+        result.interaction_turn_count = telemetry.interaction_turn_count
         result.model_name = telemetry.model_name
         result.provider_name = telemetry.provider_name
         result.telemetry_evidence_gaps = telemetry.telemetry_evidence_gaps
