@@ -2,37 +2,53 @@
 
 ## Current Status
 
-- Harness Hub standard minimal harness is installed and validated locally.
+- Current branch: `codex/onboarding-score-shell`.
+- Branch is fast-forwarded to latest `origin/main` that contains PR #61 and the
+  Harness Hub minimal harness.
+- Active task is PR A: frontend scoring engine plus focused unit tests for the
+  onboarding shell plan.
+- PR A implementation is complete locally and validated; next action is to
+  commit, push, open a PR, wait for checks, and merge it before starting PR B.
 
 ## Changed Files
 
-- Added `.harness-hub/` with lock and install report.
-- Updated `.gitignore` to keep `.harness-hub/reports/` local.
-- Added root harness files: `AGENTS.md`, `clean-state-checklist.md`,
-  `definition-of-done.md`, `feature_list.json`, `progress.md`,
-  `session-handoff.md`, and `tasks/current-task.md`.
-- Added `scripts/harness-validate.mjs`.
-- Added the standard `skills/` tree.
-- Updated README, configuration docs, Harness Hub provenance docs, and
-  readiness tests to match the installed minimal harness.
-- Updated lint and package artifact boundaries so root Harness Hub capabilities
-  stay outside runtime package checks.
+- `frontend/src/scoring.ts`
+  - Adds `scoreRunResults(results: ResultsPayload | ResultCase[])`.
+  - Scores correctness, speed, cost, operation complexity, and change scope.
+  - Compares variants within `task_id + agent_name + trial_index`.
+  - Prevents correctness-failed variants from winning due to lower resource use.
+  - Lowers confidence for missing telemetry and leaves unavailable metrics
+    unscored instead of guessing zeroes.
+- `frontend/src/types.ts`
+  - Exposes the backend-provided `trial_index` field on `ResultCase`.
+- `frontend/src/scoring.test.ts`
+  - Covers pass vs fail, pass vs pass resource comparison, no-clear-winner
+    threshold, missing telemetry confidence, hard/soft scoring, and structured
+    trial grouping.
+- `tasks/current-task.md`
+  - Records PR A scope, allowed paths, forbidden paths, acceptance criteria, and
+    validation commands.
+- `progress.md`
+  - Records PR A status and validation evidence.
+- `session-handoff.md`
+  - This handoff record.
 
 ## Validation Evidence
 
-- `npx -y @jasonwen/harness-hub@latest validate-harness "D:\context-eval" --json`: exit code 0, overall 100, benchmark 100.
-- `npx -y @jasonwen/harness-hub@latest status "D:\context-eval" --json`: 43 installed components, 169 managed files, 0 modified, 0 missing.
-- `npx -y @jasonwen/harness-hub@latest update "D:\context-eval" --dry-run --json`: no updates, no blockers.
 - `node scripts\harness-validate.mjs`: passed.
-- `ruff check .`: passed.
-- `python -m pytest tests/test_project_readiness.py tests/test_package_artifact_inspection.py -q --basetemp .context-eval\pytest-tmp-harness-pr`: 46 passed.
-- `python -m pytest -q --basetemp C:\tmp\context-eval-pytest-full-harness-pr`: 330 passed, 2 deselected.
-- `python -m build --outdir .context-eval\dist-harness-pr`: passed.
-- `python scripts\inspect-package-artifacts.py .context-eval\dist-harness-pr`: passed.
-- `context-eval validate-config --config examples/basic/context-eval.yaml`: passed.
-- `context-eval validate-config --config examples/agent-matrix/context-eval.yaml`: passed.
-- `powershell -ExecutionPolicy Bypass -File scripts\validate-skills.ps1 -SkipExternal`: passed, 82 skills.
-- `git diff --check`: passed.
+- `cd frontend; npm run test -- src/scoring.test.ts`: passed, 6 tests.
+- `cd frontend; npm run validate`: passed.
+  - `npm run typecheck`: passed.
+  - `npm run test`: passed, 19 tests.
+  - `npm run build`: passed.
+  - `npm run e2e`: passed, 16 Playwright tests.
+
+## Residual Risk
+
+- Existing React `act(...)` warnings still print during `App.test.tsx`; they do
+  not fail the suite and were not introduced by PR A.
+- PR A intentionally does not wire the scoring engine into the onboarding UI;
+  that belongs to PR B after PR A is merged.
 
 ## Blockers
 
@@ -40,4 +56,5 @@
 
 ## Next Action
 
-- Open a PR with the standard Harness Hub minimal install.
+- Run final diff hygiene checks, commit and push PR A, create the PR, wait for
+  required checks, merge the PR, then update `main` before starting PR B.
