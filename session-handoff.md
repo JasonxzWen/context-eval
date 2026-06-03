@@ -2,58 +2,48 @@
 
 ## Current Status
 
-- Current branch: `codex/onboarding-turn-summary`.
-- Branch was created from latest `main` after PR #65 merged.
-- Active task is a post-PR-D onboarding shell follow-up: make the simplified
-  conclusion compare structured Codex interaction turns, not only detailed
-  evidence views.
-- Implementation is complete locally and frontend validation is passing; next
-  action is final harness/diff hygiene, commit, push, open PR, wait for remote
-  checks, and merge.
+- Current branch for this record update: `codex/onboarding-plan-closeout`.
+- Target state after merge: latest `main` contains the complete onboarding shell
+  refactor plan.
+- PR A through PR D plus the turn-summary follow-up are merged.
+- No implementation blocker remains.
 
-## Changed Files
+## Completed Work
 
-- `frontend/src/scoring.ts`
-  - Operation complexity now uses collected `tool_call_count` plus collected
-    `interaction_turn_count`.
-  - Missing Codex JSONL turn counts create an evidence gap instead of being
-    treated as zero.
-- `frontend/src/scoring.test.ts`
-  - Covers interaction turns affecting comparison verdicts.
-  - Covers missing interaction turns producing a confidence/evidence gap.
-- `frontend/src/components/RunScoreSummary.tsx`
-  - Adds `交互轮次` to the simplified conclusion metric grid.
-  - Shows `未采集` when structured turn counts are unavailable.
-- `frontend/src/App.test.tsx`
-  - Covers interaction turns in the onboarding demo conclusion.
-- `frontend/e2e/app-shell.spec.ts`
-  - Asserts `交互轮次` is visible in the default onboarding conclusion before
-    advanced evidence is revealed.
-- `tasks/current-task.md`, `progress.md`, and `session-handoff.md`
-  - Record the current follow-up scope and validation state.
+- PR #62 added the scoring engine and unit tests.
+- PR #63 added the default onboarding shell and simplified score summary.
+- PR #64 moved the old detailed UI behind the `AdvancedWorkbench` boundary.
+- PR #65 added structured Codex interaction turn counts through backend,
+  exports, frontend types, and detailed result views.
+- PR #66 added interaction turns to operation complexity scoring and the
+  simplified onboarding conclusion.
 
 ## Validation Evidence
 
-- `npm run test -- src/scoring.test.ts`: passed, 8 tests.
-- `npm run test -- src/App.test.tsx -t "runs the demo from onboarding"`:
-  passed.
-- `npx playwright test e2e/app-shell.spec.ts -g "empty workspace starts at first-run choices and bootstraps demo"`:
-  passed after rebuilding `frontend/dist`, 2 tests.
-- `cd frontend; npm run test`: passed, 23 tests.
-- `cd frontend; npm run validate`: passed.
-  - TypeScript check passed.
-  - Vitest passed, 23 tests.
-  - Build passed.
-  - Playwright E2E passed, 16 tests.
-- `node scripts\harness-validate.mjs`: passed.
-- `git diff --check`: passed.
+- PR #66 local validation passed:
+  - `npm run test -- src/scoring.test.ts`: 8 tests.
+  - `npm run test -- src/App.test.tsx -t "runs the demo from onboarding"`.
+  - `npx playwright test e2e/app-shell.spec.ts -g "empty workspace starts at first-run choices and bootstraps demo"`:
+    2 tests after `npm run build`.
+  - `cd frontend; npm run test`: 23 tests.
+  - `cd frontend; npm run validate`: typecheck, unit tests, build, and 16 E2E
+    tests.
+  - `node scripts\harness-validate.mjs`.
+  - `git diff --check`.
+- PR #66 remote checks passed:
+  - Codex-first validation.
+  - Frontend validation.
+  - Local E2E smoke.
+  - Package build.
+  - Python 3.11 and 3.12 on Ubuntu and Windows.
+  - Skill validation.
 
 ## Residual Risk
 
 - Existing React `act(...)` warnings still print during `App.test.tsx`; they do
-  not fail the suite and predate this follow-up.
-- E2E uses `npm run preview` and therefore serves `frontend/dist`; run
-  `npm run build` before invoking Playwright directly, or use
+  not fail the suite and predate the onboarding refactor.
+- Playwright E2E uses `npm run preview` and therefore serves `frontend/dist`;
+  run `npm run build` before invoking Playwright directly, or use
   `npm run validate`.
 
 ## Blockers
@@ -62,5 +52,5 @@
 
 ## Next Action
 
-- Review final diff, commit, push, create the follow-up PR, wait for all
-  required checks, merge it, and update local `main`.
+- No onboarding-shell development step remains after this closeout record lands
+  on `main`.
