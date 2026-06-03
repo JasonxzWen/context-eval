@@ -167,8 +167,12 @@ button:disabled {
 #agent-config,
 #run-console,
 #run-config,
+#run-plan,
+#run-progress,
+#project-switcher,
+#config-workbench,
 #results {
-  scroll-margin-top: 72px;
+  scroll-margin-top: 112px;
 }
 
 .notice {
@@ -759,9 +763,24 @@ button:disabled {
   order: 12;
 }
 
+.content-grid > .project-switcher-workbench {
+  order: 7;
+}
+
+.content-grid > .config-editor-workbench {
+  order: 8;
+}
+
 .content-grid > .yaml-panel {
   grid-column: span 6;
   order: 30;
+}
+
+.project-switcher-workbench .first-run-panel {
+  border: 0;
+  border-radius: 0;
+  padding: 14px 0 0;
+  background: transparent;
 }
 
 .panel-heading {

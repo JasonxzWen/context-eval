@@ -195,9 +195,10 @@ describe('App workflow shell', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByText('配置与任务细节'));
+    await waitFor(() => expect(screen.getByTestId('codex-run-console')).toBeVisible());
+    expect(screen.getByText('切换评测项目')).toBeVisible();
+    fireEvent.click(screen.getByText('切换评测项目'));
     await waitFor(() => expect(screen.getByRole('heading', { name: '打开或切换评测项目' })).toBeVisible());
-    expect(screen.getByTestId('codex-run-console')).toBeVisible();
     expect(screen.getByLabelText('本地仓库路径')).toHaveValue('./fixture-repo');
     expect(screen.getByText('从 Git URL 克隆')).toBeVisible();
     await waitFor(() => expect(screen.getByLabelText('仓库路径')).toHaveValue('./fixture-repo'));

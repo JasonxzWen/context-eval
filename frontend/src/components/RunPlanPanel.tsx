@@ -21,7 +21,7 @@ export function RunPlanPanel({
   runScope,
 }: RunPlanPanelProps) {
   return (
-    <section className="panel matrix-panel">
+    <section className="panel matrix-panel" id="run-plan">
       <div className="panel-heading">
         <h2>评测计划</h2>
         <span data-testid="matrix-count">{visibleCaseCount}</span>

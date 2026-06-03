@@ -367,11 +367,11 @@ function DesignerGuide() {
 function TopNav({ hasResults }: { hasResults: boolean }) {
   const links = [
     ['#run-console', '运行台'],
-    ['#task-config', '评测题目'],
-    ['#context-config', '对比资料'],
-    ['#agent-config', '本地 AI'],
     ['#run-config', '开始评测'],
+    ['#run-plan', '评测计划'],
+    ['#run-progress', '运行进度'],
     ['#results', hasResults ? '结果反馈' : '结果待生成'],
+    ['#config-workbench', '配置'],
   ];
   return (
     <nav className="top-nav" aria-label="工作台导航">
@@ -1135,26 +1135,66 @@ export function App() {
           runScope={runScope}
           visibleCaseCount={visibleCaseCount}
         />
-        <FirstRunPanel
-          title="打开或切换评测项目"
-          subtitle="要换项目时在这里填本地仓库路径或 Git URL；会覆盖当前评测配置"
-          showDemo={false}
-          projectRepoPath={projectRepoPath}
-          projectRepoUrl={projectRepoUrl}
-          projectCloneDir={projectCloneDir}
-          environment={environment}
-          environmentStatus={environmentStatus}
-          onProjectRepoPathChange={setProjectRepoPath}
-          onProjectRepoUrlChange={setProjectRepoUrl}
-          onProjectCloneDirChange={setProjectCloneDir}
-          onBootstrapDemo={() => guarded(bootstrapDemo)}
-          onInitializeProject={() => guarded(initializeProject)}
-          onCloneProject={() => guarded(cloneProject)}
-          onCheckEnvironment={() => guarded(() => checkEnvironment(projectRepoPath).then(() => undefined))}
+        <RunControls
+          cleanupPolicy={cleanupPolicy}
+          isRunActive={isRunActive}
+          plan={plan}
+          preflightChecks={preflightChecks}
+          preflightStatus={preflightStatus}
+          resultSummary={resultSummary}
+          results={results}
+          runBrief={runBrief}
+          runScope={runScope}
+          selectedCaseCount={visibleCaseCount}
+          serverMode={serverMode}
+          taskSummary={task?.expected_outcome?.summary || '未配置验收 / 仲裁目标'}
+          taskTitle={taskTitle}
+          tasks={loaded.editable.tasks}
+          variants={loaded.editable.variants}
+          agents={agents}
+          onCleanupPolicyChange={setCleanupPolicy}
+          onPlan={() => guarded(async () => { await planRun(); })}
+          onRevealResults={() => resultsPanelRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })}
+          onStart={() => guarded(startRun)}
+          onStop={() => guarded(stopRun)}
+          onToggleScope={toggleRunScope}
+          labelForCheck={(check) => labelFor(checkLabels, check)}
         />
-        <details className="advanced-workbench config-editor-workbench">
+        <RunPlanPanel
+          agents={agents}
+          taskCount={loaded.editable.tasks.length}
+          variants={loaded.editable.variants}
+          visibleCaseCount={visibleCaseCount}
+          plan={plan}
+          defaultTrials={localAppFixture.trials}
+          runScope={runScope}
+        />
+        <details className="advanced-workbench project-switcher-workbench" id="project-switcher">
+          <summary>
+            <span>切换评测项目</span>
+            <small>仅在要更换仓库时打开；会覆盖当前评测配置</small>
+          </summary>
+          <FirstRunPanel
+            title="打开或切换评测项目"
+            subtitle="填写本地仓库路径或 Git URL；会覆盖当前评测配置"
+            showDemo={false}
+            projectRepoPath={projectRepoPath}
+            projectRepoUrl={projectRepoUrl}
+            projectCloneDir={projectCloneDir}
+            environment={environment}
+            environmentStatus={environmentStatus}
+            onProjectRepoPathChange={setProjectRepoPath}
+            onProjectRepoUrlChange={setProjectRepoUrl}
+            onProjectCloneDirChange={setProjectCloneDir}
+            onBootstrapDemo={() => guarded(bootstrapDemo)}
+            onInitializeProject={() => guarded(initializeProject)}
+            onCloneProject={() => guarded(cloneProject)}
+            onCheckEnvironment={() => guarded(() => checkEnvironment(projectRepoPath).then(() => undefined))}
+          />
+        </details>
+        <details className="advanced-workbench config-editor-workbench" id="config-workbench">
           <summary data-testid="config-editors-toggle">
-            <span>高级配置编辑</span>
+            <span>编辑评测配置</span>
             <small>任务、对比资料、执行器和保存动作</small>
           </summary>
           <div className="advanced-grid">
@@ -1193,40 +1233,6 @@ export function App() {
         />
           </div>
         </details>
-        <RunControls
-          cleanupPolicy={cleanupPolicy}
-          isRunActive={isRunActive}
-          plan={plan}
-          preflightChecks={preflightChecks}
-          preflightStatus={preflightStatus}
-          resultSummary={resultSummary}
-          results={results}
-          runBrief={runBrief}
-          runScope={runScope}
-          selectedCaseCount={visibleCaseCount}
-          serverMode={serverMode}
-          taskSummary={task?.expected_outcome?.summary || '未配置验收 / 仲裁目标'}
-          taskTitle={taskTitle}
-          tasks={loaded.editable.tasks}
-          variants={loaded.editable.variants}
-          agents={agents}
-          onCleanupPolicyChange={setCleanupPolicy}
-          onPlan={() => guarded(async () => { await planRun(); })}
-          onRevealResults={() => resultsPanelRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })}
-          onStart={() => guarded(startRun)}
-          onStop={() => guarded(stopRun)}
-          onToggleScope={toggleRunScope}
-          labelForCheck={(check) => labelFor(checkLabels, check)}
-        />
-        <RunPlanPanel
-          agents={agents}
-          taskCount={loaded.editable.tasks.length}
-          variants={loaded.editable.variants}
-          visibleCaseCount={visibleCaseCount}
-          plan={plan}
-          defaultTrials={localAppFixture.trials}
-          runScope={runScope}
-        />
         <AdvancedConfigDetails
           agents={agents}
           configPath={configPath}

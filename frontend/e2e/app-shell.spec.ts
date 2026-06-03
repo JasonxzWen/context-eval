@@ -337,14 +337,15 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
     await page.waitForTimeout(100);
     const navBoxAfterScroll = await page.locator('.top-nav').boundingBox();
     expect(Math.round(navBoxAfterScroll?.y ?? -1)).toBe(0);
-    await page.locator('.top-nav a[href="#context-config"]').click();
+    await page.locator('.top-nav a[href="#config-workbench"]').click();
     await page.waitForTimeout(100);
     const navBoxAfterJump = await page.locator('.top-nav').boundingBox();
-    const contextBoxAfterJump = await page.locator('#context-config').boundingBox();
-    expect((contextBoxAfterJump?.y ?? 0) - ((navBoxAfterJump?.y ?? 0) + (navBoxAfterJump?.height ?? 0))).toBeGreaterThan(8);
+    const configBoxAfterJump = await page.locator('#config-workbench').boundingBox();
+    expect((configBoxAfterJump?.y ?? 0) - ((navBoxAfterJump?.y ?? 0) + (navBoxAfterJump?.height ?? 0))).toBeGreaterThan(8);
+    await page.locator('#context-config').scrollIntoViewIfNeeded();
     await expect(page.getByRole('heading', { name: '2 准备对比资料' })).toBeVisible();
     await expect(page.getByText(/一套方案就是运行时给 AI 看的资料/)).toBeVisible();
-    await page.locator('.top-nav a[href="#task-config"]').click();
+    await page.locator('#task-config').scrollIntoViewIfNeeded();
     await expect(page.getByRole('radiogroup', { name: '题目类型' })).toBeVisible();
     await expect(page.getByLabel('起始版本')).toBeVisible();
     await page.getByLabel('真实结果 / 修复说明').fill('Real fix evidence for browser acceptance.');
@@ -920,6 +921,9 @@ test('explains scoring gaps, baseline changes, and API errors in results UI', as
   });
 
   await page.goto('/');
+  await expect(page.getByTestId('codex-run-console')).toBeVisible();
+  await expect(page.getByText('切换评测项目', { exact: true })).toBeVisible();
+  await page.getByText('切换评测项目', { exact: true }).click();
   await expect(page.getByRole('heading', { name: '打开或切换评测项目' })).toBeVisible();
   await expect(page.getByLabel('本地仓库路径')).toHaveValue('./demo-repo');
   await expect(page.getByText('从 Git URL 克隆')).toBeVisible();
