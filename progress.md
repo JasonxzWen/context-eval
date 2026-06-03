@@ -2,6 +2,37 @@
 
 ## Current State
 
+- Active task is PR A for the onboarding shell plan on
+  `codex/onboarding-score-shell`.
+- The branch has been fast-forwarded to latest `origin/main` after PR #61, so
+  the Harness Hub minimal harness is present and in use.
+- `tasks/current-task.md` now records the PR A scope, allowed paths, forbidden
+  paths, acceptance criteria, and validation commands.
+- `frontend/src/scoring.ts` adds `scoreRunResults(results)` for frontend result
+  scoring across correctness, speed, cost, operation complexity, and change
+  scope.
+- `frontend/src/types.ts` now exposes the backend `trial_index` field so PR A
+  comparisons use structured trial grouping instead of inferring from logs.
+- `frontend/src/scoring.test.ts` covers pass/fail precedence, pass/pass
+  resource comparison, the 5-point no-clear-winner threshold, missing telemetry
+  confidence handling, hard/soft evaluation correctness scoring, and structured
+  trial grouping.
+- No broad CSS, App shell, component, or backend changes are part of PR A.
+
+## PR A Validation
+
+- `node scripts\harness-validate.mjs` passed.
+- `cd frontend; npm run test -- src/scoring.test.ts` passed: 6 tests.
+- `cd frontend; npm run validate` passed:
+  - TypeScript check passed.
+  - Vitest passed: 19 tests.
+  - Vite build passed.
+  - Playwright E2E passed: 16 tests.
+- Vitest still prints existing React `act(...)` warnings in `App.test.tsx`;
+  the suite passes and this warning predates PR A.
+
+## Harness Install State
+
 - Harness Hub minimal harness has been installed in `D:\context-eval`.
 - The install created root harness state files, `scripts/harness-validate.mjs`,
   `.harness-hub/lock.json`, and the standard `skills/` tree.

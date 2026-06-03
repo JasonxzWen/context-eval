@@ -261,6 +261,7 @@ export type ResultCase = {
   case_type?: TaskCaseType | null;
   reference_evidence?: ReferenceEvidence | null;
   variant: string;
+  trial_index?: number;
   status: string;
   validation_status: string;
   confidence: string;
