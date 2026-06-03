@@ -120,10 +120,14 @@ Inspect package configuration before release:
 - The artifact inspection command requires `context_eval/`.
 - The artifact inspection command requires `context_eval/reports/templates/`.
 - The artifact inspection command rejects `.context-eval/`.
+- The artifact inspection command rejects `.harness-hub/`.
 - The artifact inspection command rejects `.agents/`.
 - The artifact inspection command rejects `.codex/skills/`.
+- The artifact inspection command rejects `skills/`.
 - The artifact inspection command rejects `openspec/`.
 - The artifact inspection command rejects `scripts/`.
+- The artifact inspection command rejects root harness state files such as
+  `AGENTS.md`, `progress.md`, `session-handoff.md`, and `tasks/`.
 - Package metadata must use `project.license` as an SPDX string, currently
   `license = "MIT"`.
 - Package metadata must not use table-form license metadata such as
@@ -131,10 +135,13 @@ Inspect package configuration before release:
 - The artifacts must include entries that show it includes `context_eval/`.
 - The artifacts must include entries that show it includes `context_eval/reports/templates/`.
 - The artifacts do not include `.context-eval/`.
+- The artifacts do not include `.harness-hub/`.
 - The artifacts do not include `.agents/`.
 - The artifacts do not include `.codex/skills/`.
+- The artifacts do not include `skills/`.
 - The artifacts do not include `openspec/`.
 - The artifacts do not include `scripts/`.
+- The artifacts do not include root harness state files.
 - License metadata modernization does not change the runtime package scope.
 - Active `.codex/config.toml` must not be committed; use
   `.codex/config.example.toml` only.

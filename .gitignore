@@ -9,6 +9,7 @@ build/
 dist/
 *.egg-info/
 .context-eval/
+.harness-hub/reports/
 .coverage
 .codex/config.toml
 frontend/node_modules/

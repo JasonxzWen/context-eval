@@ -12,8 +12,9 @@ package.
 ## Product Boundaries
 
 - `context_eval/` is the runtime Python package.
-- `.agents/`, `.codex/skills/`, `openspec/`, and `scripts/` are maintainer
-  capability library files, not runtime package modules.
+- `.harness-hub/`, `.agents/`, `.codex/skills/`, `skills/`, `openspec/`,
+  `scripts/`, and root harness state files are maintainer capability library
+  files, not runtime package modules.
 - Deleted general-purpose Harness Hub source documents must not be restored.
 - Active `.codex/config.toml` must not be committed; maintainers can copy
   `.codex/config.example.toml` locally.
@@ -337,8 +338,9 @@ maintainer capability library files in the runtime package.
   changelog checks, and tag/publish preparation into a clear release workflow.
 - Keep CI and local release commands aligned.
 - Preserve packaging scope: include `context_eval/` and report templates; reject
-  `.agents/`, `.codex/skills/`, `openspec/`, `scripts/`, run artifacts, and
-  active `.codex/config.toml`.
+  `.harness-hub/`, `.agents/`, `.codex/skills/`, `skills/`, `openspec/`,
+  `scripts/`, root harness state files, run artifacts, and active
+  `.codex/config.toml`.
 - Document supported Python versions and platform gates.
 - Add automation only after the manual path remains stable in tests.
 

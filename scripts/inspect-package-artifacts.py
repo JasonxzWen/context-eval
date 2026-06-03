@@ -16,10 +16,19 @@ REQUIRED_PREFIXES = (
 
 FORBIDDEN_PREFIXES = (
     ".context-eval/",
+    ".harness-hub/",
     ".agents/",
     ".codex/skills/",
+    "skills/",
     "openspec/",
     "scripts/",
+    "AGENTS.md",
+    "clean-state-checklist.md",
+    "definition-of-done.md",
+    "feature_list.json",
+    "progress.md",
+    "session-handoff.md",
+    "tasks/",
 )
 
 

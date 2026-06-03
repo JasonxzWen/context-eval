@@ -576,27 +576,25 @@ The artifact inspection command checks the built wheel and sdist against the
 runtime package scope documented there.
 The release-state check catches hidden local release blockers before building package artifacts.
 
-`context_eval/` is the runtime package. `.agents/`, `.codex/skills/`,
-`openspec/`, and `scripts/` are maintainer capability library files and are not runtime package modules.
+`context_eval/` is the runtime package. `.harness-hub/`, `.agents/`,
+`.codex/skills/`, `skills/`, `openspec/`, `scripts/`, and root harness state
+files are maintainer capability library files, not runtime package modules.
 
 ## Development Capability Library
 
-This repository includes a vendored project-local skill and workflow library
-from `JasonxzWen/harness-hub`, formerly `skill-hub`, under `.agents/`,
-`.codex/`, `openspec/`, and `scripts/`. It provides reusable development
-skills, focused agent role configs, OpenSpec helpers, workflow utilities, and
-skill validation scripts for maintainers working on context-eval. The refreshed
-maintainer skill set includes workflow routing, Harness Hub maintenance,
-delivery closeout, deep code review, reproducible diagnosis, frontend taste
-checks, authorized website-clone guidance, source-backed insight writing, and
-plan pressure testing; these support development handoffs and reviews but are
-not runtime package features.
+This repository includes a project-local skill and workflow library from
+`JasonxzWen/harness-hub`, formerly `skill-hub`. The tracked Harness Hub surface
+now includes the standard minimal root harness files, `.harness-hub/lock.json`,
+the standard `skills/` tree, the legacy `.agents/` and `.codex/` skill trees,
+OpenSpec helpers, and workflow utilities. These support development handoffs and
+reviews but are not runtime package features.
 
-The upstream `AGENTS.md`, `README.md`, npm CLI lifecycle, root harness template,
-Claude plugin package, site output, and general-purpose Harness Hub research
-docs are intentionally not included. Optional Codex configuration is provided as
-`.codex/config.example.toml`; copy it to `.codex/config.toml` locally only when
-you want to opt in to those maintainer workflows. See
+The standard minimal install is validated with
+`node scripts\harness-validate.mjs` and can be audited with
+`npx -y @jasonwen/harness-hub@latest status . --json`. Generated Harness Hub
+reports stay local under `.harness-hub/reports/`. Optional Codex configuration
+is provided as `.codex/config.example.toml`; copy it to `.codex/config.toml`
+locally only when you want to opt in to those maintainer workflows. See
 `docs/harness-hub-import.md` for provenance and import scope.
 
 ## Roadmap
