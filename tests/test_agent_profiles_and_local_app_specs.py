@@ -173,7 +173,7 @@ def test_openspec_specs_define_scenarios_for_agent_profiles_and_local_app() -> N
         "### Requirement: No-command-line product path",
         "#### Scenario: Packaged launcher starts the loopback app",
         "#### Scenario: Startup failures show diagnostics",
-        "### Requirement: Harness readiness reference",
+        "### Requirement: Codex-first harness validation",
     ]:
         assert term in app_spec
 

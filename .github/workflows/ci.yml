@@ -88,6 +88,40 @@ jobs:
       - name: Validate frontend
         run: python scripts/validate-frontend.py --install --install-browsers --install-system-deps
 
+  codex-first-validation:
+    name: Codex-first validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Python package
+        run: python -m pip install -e ".[dev]"
+
+      - name: Validate Codex-first workflow
+        run: python scripts/validate-codex-first.py --install-frontend --install-browsers --install-system-deps
+
+      - name: Upload Codex-first evidence
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: codex-first-evidence
+          path: .context-eval/verification/codex-first/
+          if-no-files-found: ignore
+
   skill-validation:
     name: Skill validation
     runs-on: windows-latest

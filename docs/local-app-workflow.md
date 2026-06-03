@@ -135,10 +135,11 @@ On first launch, an empty portable `workspace` must not pretend that
 two explicit choices:
 
 - **Try demo** creates a package-local demo repository, initializes it as a Git
-  repository, writes `context-eval.yaml`, `tasks.yaml`, context overlays, a fake
-  local agent, validation command, hard-evaluation checks, and JSON telemetry.
-  The demo produces a two-variant matrix where baseline and experiment can be
-  compared without requiring Coco or another external coding agent.
+  repository, writes `context-eval.yaml`, `tasks.yaml`, context overlays, a
+  fake Codex-shaped local agent, validation command, hard-evaluation checks,
+  and `codex-jsonl` telemetry. The demo produces a two-variant matrix where
+  baseline and experiment can be compared without requiring live Codex, Coco,
+  or another external coding agent.
 - **Open real project** creates starter evaluation files for an existing local
   Git repository path. The user still needs to review the generated agent
   command, context overlays, and task definitions before spending agent time.
@@ -350,36 +351,29 @@ create run workspaces.
 
 ## Harness Readiness Reference
 
-This phase uses `https://github.com/JasonxzWen/harness-hub`, formerly
-`skill-hub`, as a selective reference and maintainer-skill source, not as
-runtime app code. The inspected reference commit for this PR is
-`586950abb086828bca7361ec3f17c5397bdd05c3`.
+The active harness plan is Codex-first validation. The default PR gate should
+prove the local app can complete a Codex-shaped evaluation through deterministic
+fake-Codex automation before any live `codex exec` smoke is considered.
 
-Useful patterns to borrow:
+The harness is documented in `docs/local-app-harness-readiness.md` and covers:
 
-- explicit `build`, `test`, `validate`, and release-validation gates;
-- side-effect-free `validate-harness` checks for root harness files, QA
-  boundaries, trigger hygiene, verification commands, and lifecycle state;
-- a readable acceptance matrix that distinguishes local API, frontend,
-  browser, OpenSpec, lint, and diff checks;
-- readiness analysis that is evidence-backed, category-based, and read-only
-  instead of a single score;
-- `effective-interact` and delivery handoffs that keep primary report content
-  pre-rendered, self-contained, source-linked, validator-checked, and PR-state
-  aware;
-- Codex self-bootstrap and worktree setup patterns that prove local skills can
-  be regenerated or validated from the repository root;
-- fixture repositories and fake/local agents before any real external-agent
-  smoke is considered.
+- a fake Codex runner that mimics `codex exec --json --output-last-message`;
+- local app API tests for preflight, run planning, lifecycle, logs, results,
+  exports, and artifact safety;
+- Playwright E2E as the primary acceptance layer for the full Codex-first user
+  journey;
+- a root `python scripts/validate-codex-first.py` wrapper shared by local
+  validation and CI;
+- a dedicated CI job that runs the deterministic fake workflow and uploads
+  evidence on failure.
 
-Out of scope for this repository phase:
+Out of scope for the default gate:
 
-- installing Harness Hub assets into target repositories or external coding
-  agents;
-- copying Harness Hub's repository structure into the `context_eval` runtime;
-- running Harness Hub `init-harness` as a default setup step for context-eval;
-- hosted dashboards, remote databases, or agent leaderboards;
-- automatic commits to a user's target repository.
+- live `codex exec` execution;
+- provider credentials, hosted services, network access, or model availability;
+- installing external coding agents or target repository dependencies;
+- hosted dashboards, remote databases, leaderboards, or automatic
+  target-repository commits.
 
 ## Non-Goals
 

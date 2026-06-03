@@ -9,9 +9,14 @@ const e2eDir = path.dirname(fileURLToPath(import.meta.url));
 const frontendDir = path.resolve(e2eDir, '..');
 const repoRoot = path.resolve(frontendDir, '..');
 const python = process.env.CONTEXT_EVAL_PYTHON || process.env.PYTHON || 'python';
+const evidenceDir = process.env.CONTEXT_EVAL_EVIDENCE_DIR || '';
 
 function toPosix(value: string) {
   return value.replace(/\\/g, '/');
+}
+
+function safeName(value: string) {
+  return value.replace(/[^a-zA-Z0-9_.-]+/g, '-').replace(/^-+|-+$/g, '') || 'workspace';
 }
 
 function run(command: string, args: string[], cwd: string) {
@@ -75,6 +80,12 @@ function copyFixtureRepo(workspace: string) {
 }
 
 function removeWorkspace(workspace: string) {
+  if (evidenceDir && fs.existsSync(workspace)) {
+    const destination = path.join(evidenceDir, 'workspaces', safeName(path.basename(workspace)));
+    fs.mkdirSync(path.dirname(destination), { recursive: true });
+    fs.rmSync(destination, { recursive: true, force: true });
+    fs.cpSync(workspace, destination, { recursive: true });
+  }
   try {
     fs.rmSync(workspace, {
       recursive: true,
@@ -241,6 +252,13 @@ async function expectNoVerticalButtonText(page: Page) {
 }
 
 async function startLocalApp(workspace: string, options: { config?: string | null } = { config: 'context-eval.yaml' }) {
+  const serverLogPath = evidenceDir
+    ? path.join(evidenceDir, 'local-app-server', `${safeName(path.basename(workspace))}.log`)
+    : '';
+  if (serverLogPath) {
+    fs.mkdirSync(path.dirname(serverLogPath), { recursive: true });
+    fs.writeFileSync(serverLogPath, '', 'utf-8');
+  }
   const args = [
     '-m',
     'context_eval',
@@ -270,7 +288,11 @@ async function startLocalApp(workspace: string, options: { config?: string | nul
       }, 20000);
       let output = '';
       const onData = (chunk: Buffer) => {
-        output += chunk.toString();
+        const text = chunk.toString();
+        output += text;
+        if (serverLogPath) {
+          fs.appendFileSync(serverLogPath, text, 'utf-8');
+        }
         const match = output.match(/http:\/\/127\.0\.0\.1:\d+/);
         if (match) {
           clearTimeout(timer);
@@ -306,6 +328,9 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
 
     await expect(page.locator('.run-brief-panel')).toContainText('baseline vs experiment');
     await expect(page.getByTestId('codex-run-console')).toBeVisible();
+    await expect(page.getByTestId('codex-run-console')).toContainText('demo-agent');
+    await expect(page.getByTestId('codex-run-console')).toContainText('codex-jsonl');
+    await expect(page.getByTestId('codex-run-console')).toContainText('Codex CLI');
     await openConfigEditors(page);
     await expect(page.getByRole('heading', { name: '1 写评测题目' })).toBeVisible();
     await page.evaluate(() => window.scrollTo(0, 1400));
@@ -360,6 +385,12 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
     await expect(page.getByRole('heading', { name: '变更与打分材料' })).toBeVisible();
     await expect(page.locator('.case-detail-panel')).toContainText('experiment');
     await expect(page.locator('.artifact-pane').first()).toBeVisible();
+    await expect(page.getByTestId('codex-usage-panel')).toBeVisible();
+    await expect(page.getByTestId('codex-usage-panel')).toContainText('codex-jsonl');
+    await expect(page.getByTestId('codex-usage-panel')).toContainText('180');
+    await expect(page.getByTestId('codex-usage-panel')).toContainText('gpt-5.4');
+    await expect(page.getByTestId('codex-usage-panel')).toContainText('codex-events.jsonl');
+    await expect(page.getByTestId('codex-usage-panel')).toContainText('codex-final-message.md');
 
     await page.getByLabel('反馈结论').selectOption('pass');
     await page.getByLabel('反馈可信度').selectOption('high');

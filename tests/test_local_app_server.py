@@ -219,10 +219,17 @@ def test_local_app_reports_empty_workspace_and_bootstraps_demo(tmp_path: Path) -
     assert loaded["editable"]["repo"]["path"] == "./demo-repo"
     assert loaded["resolved"]["agents"] == ["demo-agent"]
     assert loaded["resolved"]["variants"] == ["baseline", "experiment"]
+    assert loaded["editable"]["agents"][0]["kind"] == "codex-cli"
+    assert loaded["editable"]["agents"][0]["telemetry"] == {
+        "collector": "codex-jsonl",
+        "file": "codex-events.jsonl",
+        "environment_variable": "CONTEXT_EVAL_TELEMETRY_FILE",
+    }
 
     plan = service.plan_run(config_path="context-eval.yaml", cleanup_policy="successful")
     assert plan["case_count"] == 2
     assert {case["variant"] for case in plan["cases"]} == {"baseline", "experiment"}
+    assert plan["codex_profile_diagnostics"] == []
 
     started = service.start_run(
         config_path="context-eval.yaml",
@@ -245,8 +252,17 @@ def test_local_app_reports_empty_workspace_and_bootstraps_demo(tmp_path: Path) -
     assert by_variant["baseline"]["hard_evaluation_status"] == "failed"
     assert by_variant["experiment"]["hard_evaluation_status"] == "passed"
     assert by_variant["experiment"]["telemetry_status"] == "collected"
+    assert by_variant["experiment"]["telemetry_source"] == "codex-jsonl"
     assert by_variant["experiment"]["total_tokens"] == 180
-    assert by_variant["experiment"]["tool_calls_by_name"]["edit_file"] == 1
+    assert by_variant["experiment"]["cached_input_tokens"] == 30
+    assert by_variant["experiment"]["tool_calls_by_name"]["mcp:filesystem/edit_file"] == 1
+    assert by_variant["experiment"]["command_call_count"] == 1
+    assert by_variant["experiment"]["model_name"] == "gpt-5.4"
+    assert by_variant["experiment"]["telemetry_evidence_gaps"] == []
+    assert by_variant["experiment"]["codex_events_path"].endswith("codex-events.jsonl")
+    assert by_variant["experiment"]["codex_final_message_path"].endswith(
+        "codex-final-message.md"
+    )
     assert results["selected_baseline_variant"] == "baseline"
     assert results["available_baseline_variants"] == ["baseline", "experiment"]
     assert results["evaluation_explanation"]["hard_evaluation"]["score_meaning"].startswith(
