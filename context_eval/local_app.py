@@ -149,18 +149,32 @@ DEMO_AGENT_SCRIPT = dedent(
     r'''
     from __future__ import annotations
 
+    import argparse
     import json
-    import os
     import sys
     import time
     from pathlib import Path
 
+    def parse_args() -> argparse.Namespace:
+        parser = argparse.ArgumentParser()
+        parser.add_argument("prompt_file", nargs="?")
+        parser.add_argument("--fake-command", default="")
+        parser.add_argument("--json", action="store_true")
+        parser.add_argument("--model", default="gpt-5.4")
+        parser.add_argument("--output-last-message")
+        parser.add_argument("-C", "--workspace", default=".")
+        return parser.parse_known_args()[0]
+
+    def read_prompt(prompt_file: str | None) -> str:
+        if prompt_file and prompt_file != "-" and Path(prompt_file).exists():
+            return Path(prompt_file).read_text(encoding="utf-8")
+        if not sys.stdin.isatty():
+            return sys.stdin.read()
+        return ""
+
+    args = parse_args()
     started = time.monotonic()
-    prompt_text = (
-        Path(sys.argv[1]).read_text(encoding="utf-8")
-        if len(sys.argv) > 1 and Path(sys.argv[1]).exists()
-        else ""
-    )
+    prompt_text = read_prompt(args.prompt_file)
     source = Path("fixture_app/greetings.py")
     instructions = Path("AGENTS.md")
     instruction_text = instructions.read_text(encoding="utf-8") if instructions.exists() else ""
@@ -186,31 +200,65 @@ DEMO_AGENT_SCRIPT = dedent(
         )
         source.write_text(text, encoding="utf-8")
 
-    telemetry_file = os.environ.get("CONTEXT_EVAL_TELEMETRY_FILE")
-    if telemetry_file:
-        Path(telemetry_file).write_text(
-            json.dumps(
-                {
-                    "task_status": "completed",
-                    "agent_duration_seconds": round(time.monotonic() - started, 4),
-                    "prompt_tokens": 120,
-                    "completion_tokens": 60,
-                    "total_tokens": 180,
-                    "reasoning_tokens": 24,
-                    "reasoning_step_count": 2,
-                    "tool_calls_by_name": {
-                        "read_file": 2,
-                        "edit_file": 1,
-                    },
-                    "files_read_count": 2,
-                    "files_written_count": 1,
+        final_message = "Fake Codex completed the demo change.\n"
+        if args.output_last_message:
+            final_message_path = Path(args.output_last_message)
+            final_message_path.parent.mkdir(parents=True, exist_ok=True)
+            final_message_path.write_text(final_message, encoding="utf-8")
+
+        events = [
+            {
+                "type": "thread.started",
+                "thread_id": "demo-codex-thread",
+                "model": args.model,
+            },
+            {
+                "type": "item.completed",
+                "item": {
+                    "id": "cmd-1",
+                    "type": "command_execution",
+                    "command": "python scripts/validate_demo.py",
+                    "aggregated_output": "ok",
+                    "exit_code": 0,
+                    "status": "completed",
                 },
-                indent=2,
-                sort_keys=True,
-            )
-            + "\n",
-            encoding="utf-8",
-        )
+            },
+            {
+                "type": "item.completed",
+                "item": {
+                    "id": "tool-1",
+                    "type": "mcp_tool_call",
+                    "server": "filesystem",
+                    "tool": "edit_file",
+                    "arguments": {"path": "fixture_app/greetings.py"},
+                    "result": {"changed": True},
+                    "error": None,
+                    "status": "completed",
+                },
+            },
+            {
+                "type": "item.completed",
+                "item": {
+                    "id": "msg-1",
+                    "type": "agent_message",
+                    "text": final_message.strip(),
+                },
+            },
+            {
+                "type": "turn.completed",
+                "usage": {
+                    "input_tokens": 120,
+                    "cached_input_tokens": 30,
+                    "output_tokens": 60,
+                    "reasoning_output_tokens": 24,
+                },
+                "duration_seconds": round(time.monotonic() - started, 4),
+                "model": args.model,
+            },
+        ]
+        for event in events:
+            print(json.dumps(event, sort_keys=True), flush=True)
+        print("fake codex stderr: demo run completed", file=sys.stderr, flush=True)
     '''
 ).lstrip()
 
@@ -975,13 +1023,18 @@ class LocalAppService:
             "repo": {"path": "./demo-repo", "base_ref": "main"},
             "agents": {
                 "demo-agent": {
-                    "kind": "custom",
-                    "command": f'"{python_exe}" scripts/example_agent.py "{{prompt_file}}"',
+                    "kind": "codex-cli",
+                    "command": (
+                        f'"{python_exe}" scripts/example_agent.py '
+                        '"--fake-command=codex exec" --json --model gpt-5.4 '
+                        '--output-last-message "{output_dir}/codex-final-message.md" '
+                        '-C "{workspace}" - < "{prompt_file}"'
+                    ),
                     "timeout_minutes": 2,
                     "network": "disabled",
                     "telemetry": {
-                        "collector": "json-file",
-                        "file": "telemetry.json",
+                        "collector": "codex-jsonl",
+                        "file": "codex-events.jsonl",
                     },
                 }
             },

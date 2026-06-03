@@ -111,8 +111,8 @@ loss of SDD/TDD discipline.
 11. PR K: Full Web UI Workflow For Non-Technical Users, after the server API is
     stable enough to avoid duplicating runner logic in the frontend. The first
     focused slice is a Chinese config/tasks editor with save-reload proof,
-    desktop/narrow browser acceptance, and a minimal harness-readiness
-    reference.
+    desktop/narrow browser acceptance, and a minimal deterministic harness
+    readiness gate.
 12. PR L: No-CLI Launcher And Packaging, after the local app workflow is stable
     and browser-verified.
 13. PR M: Real Project Evaluation Support, after the designer workflow can
@@ -851,8 +851,8 @@ preflight, run control, validation review, and result exploration.
   agent summaries, risk signals, validation output, patches, touched paths, and
   exports.
 - Keep static UI export available for offline sharing of completed run views.
-- Document the minimal harness-readiness reference from Harness Hub without
-  copying its repository structure or installing its assets.
+- Document the deterministic Codex-first harness gate without requiring live
+  Codex, provider credentials, hosted services, or external agent installs.
 
 ### Non-Goals
 

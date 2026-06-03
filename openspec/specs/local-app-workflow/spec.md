@@ -189,32 +189,22 @@ do not need to operate the command line after installation.
   repository dependencies, create commits, publish packages, create tags, or
   cross the manual publish checkpoint
 
-### Requirement: Harness readiness reference
+### Requirement: Codex-first harness validation
 
-The system SHALL use the current `JasonxzWen/harness-hub` repository, formerly
-`skill-hub`, only as a selective reference for explicit build/test/validate
-gates, harness validation patterns, Codex skill setup, and readiness analysis
-boundaries.
+The system SHALL use deterministic fake-Codex automation as the default local
+app readiness gate before any live `codex exec` smoke is considered.
 
-#### Scenario: Reference gates are documented without copying Harness Hub
+#### Scenario: Codex-first gate is documented
 
 - **WHEN** local app harness readiness is documented
-- **THEN** the documentation compares context-eval's Python, frontend,
-  OpenSpec, diff-check, and skill-validation gates against Harness Hub's
-  explicit build, test, validate, release-validate, validate-harness,
-  acceptance, and readiness patterns
+- **THEN** the documentation defines a fake Codex runner, local app API tests,
+  Playwright E2E acceptance, a root validation wrapper, and a dedicated CI job
+  for the Codex-first workflow
 
-#### Scenario: Codex local and worktree skills are validated
+#### Scenario: Default gate stays deterministic and local
 
-- **WHEN** the harness reference is applied to context-eval maintainer tooling
-- **THEN** the tracked `.codex/skills/` tree, current Harness Hub standard
-  skills, and per-skill `agents/openai.yaml` metadata are available from both
-  the main checkout and a fresh git worktree
-
-#### Scenario: Reference scope stays local and non-mutating
-
-- **WHEN** the harness reference is applied in this change
-- **THEN** it does not install Codex, Claude Code, traecli, coco, or Harness Hub
-  assets into users' target repositories, does not run `init-harness` as a
-  default setup step, and does not add a hosted dashboard, remote database,
-  leaderboard, or automatic target-repository commits
+- **WHEN** the Codex-first harness is applied in CI
+- **THEN** it does not run live `codex exec`, require provider credentials, call
+  hosted services, install external coding agents, install target repository
+  dependencies, or add a hosted dashboard, remote database, leaderboard, or
+  automatic target-repository commits

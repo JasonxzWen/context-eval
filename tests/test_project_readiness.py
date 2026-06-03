@@ -18,6 +18,42 @@ def test_ci_workflow_contains_required_quality_gates() -> None:
     assert "windows-latest" in text
 
 
+def test_ci_exposes_codex_first_validation_job() -> None:
+    workflow = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
+
+    assert "  codex-first-validation:" in workflow
+    job = workflow.split("  codex-first-validation:", maxsplit=1)[1].split(
+        "  skill-validation:",
+        maxsplit=1,
+    )[0]
+    validate_command = (
+        "python scripts/validate-codex-first.py "
+        "--install-frontend --install-browsers --install-system-deps"
+    )
+
+    for term in [
+        "name: Codex-first validation",
+        validate_command,
+        "actions/upload-artifact@v4",
+        ".context-eval/verification/codex-first/",
+    ]:
+        assert term in job
+
+
+def test_codex_first_validation_script_documents_focused_gate() -> None:
+    script = Path("scripts/validate-codex-first.py").read_text(encoding="utf-8")
+
+    for term in [
+        "test_local_app_reports_empty_workspace_and_bootstraps_demo",
+        "test_runner_records_codex_jsonl_artifacts_and_telemetry",
+        "empty workspace starts at first-run choices and bootstraps demo",
+        "--live-codex",
+        "PLAYWRIGHT_PORT",
+        ".context-eval",
+    ]:
+        assert term in script
+
+
 def test_pytest_declares_local_e2e_marker_outside_default_matrix() -> None:
     pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
     pytest_options = pyproject["tool"]["pytest"]["ini_options"]
@@ -493,39 +529,23 @@ def test_readme_documents_agent_executable_preflight() -> None:
         assert term in text
 
 
-def test_local_app_harness_readiness_documents_harness_hub_reference() -> None:
+def test_local_app_harness_readiness_documents_codex_first_gate() -> None:
     text = Path("docs/local-app-harness-readiness.md").read_text(encoding="utf-8")
 
     for term in [
-        "https://github.com/JasonxzWen/harness-hub",
-        "Former source name: `JasonxzWen/skill-hub`",
-        "586950abb086828bca7361ec3f17c5397bdd05c3",
-        "`build`",
-        "`test`",
-        "`validate`",
-        "`validate:release`",
-        "`validate-harness`",
-        "effective-interact",
-        "PR closeout",
-        "Skill library",
-        ".codex\\skills\\workflow-router\\SKILL.md",
-        "clone-website",
-        "design-taste-frontend",
-        "karpathy-guidelines",
-        "source-to-insight-blog",
-        "stop-slop",
-        "agents\\openai.yaml",
-        "worktree root",
-        "self-contained static HTML reports",
-        "source-linked file evidence",
-        "degraded browser coverage",
-        "python scripts\\validate-frontend.py --install --install-browsers",
-        "read-only",
-        "category-based",
-        "scoreless",
-        "maintainer tooling only",
-        "should not run `init-harness`",
-        "should not add a scoring model",
+        "Codex-First Harness Validation Plan",
+        "fake-Codex",
+        "codex exec --json --output-last-message",
+        "codex-events.jsonl",
+        "codex-final-message.md",
+        "Browser E2E",
+        "python scripts/validate-codex-first.py",
+        "--live-codex",
+        "Codex-first validation",
+        "Playwright trace",
+        "local app server log",
+        "run directory",
+        "must not block default CI",
         "automatic target-repository commit workflow",
     ]:
         assert term in text
