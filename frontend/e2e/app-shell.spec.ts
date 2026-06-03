@@ -49,6 +49,19 @@ async function openConfigEditors(page: Page) {
   }
 }
 
+async function openAdvancedWorkbench(page: Page) {
+  const consolePanel = page.getByTestId('codex-run-console');
+  if (!(await consolePanel.isVisible().catch(() => false))) {
+    await page.getByRole('button', { name: '高级工作台' }).click();
+  }
+  await expect(consolePanel).toBeVisible();
+}
+
+async function openProjectSetup(page: Page) {
+  await page.getByRole('button', { name: '我已经有项目' }).click();
+  await expect(page.getByRole('heading', { name: '我已经有项目' })).toBeVisible();
+}
+
 const environmentPayload = {
   ok: true,
   checks: [
@@ -319,11 +332,27 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
     await page.waitForLoadState('networkidle');
 
     await expect(page.getByRole('heading', { name: 'AGENTS.md / skills 效果对比' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: '打开评测项目' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: '本机检查' })).toBeVisible();
+    await expect(page.getByTestId('onboarding-home')).toBeVisible();
+    await expect(page.getByRole('button', { name: '运行一次 demo 评测' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '打开评测项目' })).toHaveCount(0);
+    await expect(page.getByLabel('本地仓库路径')).toHaveCount(0);
+    await expect(page.getByText('Git URL')).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: '1 写评测题目' })).toHaveCount(0);
     await expect(page.getByText('./fixture-repo')).toHaveCount(0);
 
-    await page.getByRole('button', { name: '试用示例' }).click();
+    await page.getByRole('button', { name: '运行一次 demo 评测' }).click();
+    await expect(page.getByRole('heading', { name: '综合分' })).toBeVisible({ timeout: 60000 });
+    await expect(page.getByText('baseline score')).toBeVisible();
+    await expect(page.getByText('experiment score')).toBeVisible();
+    await expect(page.getByText('耗时')).toBeVisible();
+    await expect(page.getByText('tokens')).toBeVisible();
+    await expect(page.getByText('tool calls')).toBeVisible();
+    await expect(page.getByText('修改文件')).toBeVisible();
+    await expect(page.getByText('证据可信度')).toBeVisible();
+    await expect(page.getByText(/推荐方案：|无明显胜出/)).toBeVisible();
+    await expect(page.getByTestId('codex-run-console')).toHaveCount(0);
+    await page.getByRole('button', { name: '查看完整证据' }).click();
+    await expect(page.getByTestId('codex-run-console')).toBeVisible();
     await expect(page.getByLabel('仓库路径', { exact: true })).toHaveValue('./demo-repo');
 
     await expect(page.locator('.run-brief-panel')).toContainText('baseline vs experiment');
@@ -420,7 +449,9 @@ test('empty workspace can open a real local project and surfaces bad project pat
   try {
     await page.goto(server.url);
     await page.waitForLoadState('networkidle');
-    await expect(page.getByRole('heading', { name: '打开评测项目' })).toBeVisible();
+    await expect(page.getByTestId('onboarding-home')).toBeVisible();
+    await expect(page.getByLabel('本地仓库路径')).toHaveCount(0);
+    await openProjectSetup(page);
 
     await page.getByLabel('本地仓库路径').fill(path.join(workspace, 'missing-repo'));
     await page.getByRole('button', { name: '打开并创建配置' }).click();
@@ -451,7 +482,8 @@ test('empty workspace can clone a project from Git URL', async ({ page }) => {
   try {
     await page.goto(server.url);
     await page.waitForLoadState('networkidle');
-    await expect(page.getByRole('heading', { name: '打开评测项目' })).toBeVisible();
+    await expect(page.getByTestId('onboarding-home')).toBeVisible();
+    await openProjectSetup(page);
 
     await page.getByLabel('Git URL').fill(pathToFileURL(fixture).href);
     await page.getByLabel('本地文件夹名').fill('SeriaServer');
@@ -481,7 +513,9 @@ test('structured editors copy, delete, save, and reject unsafe overlay paths', a
 
   try {
     await page.goto(server.url);
-    await page.getByRole('button', { name: '试用示例' }).click();
+    await page.getByRole('button', { name: '运行一次 demo 评测' }).click();
+    await expect(page.getByRole('heading', { name: '综合分' })).toBeVisible({ timeout: 60000 });
+    await page.getByRole('button', { name: '查看完整证据' }).click();
     await expect(page.getByTestId('codex-run-console')).toBeVisible();
     await openConfigEditors(page);
     await expect(page.getByRole('heading', { name: '1 写评测题目' })).toBeVisible();
@@ -548,6 +582,7 @@ test('renders the fixture-backed Coco hybrid shell', async ({ page }) => {
   await page.goto('/');
 
   await expect(page.getByRole('heading', { name: 'AGENTS.md / skills 效果对比' })).toBeVisible();
+  await openAdvancedWorkbench(page);
   await expect(page.getByTestId('codex-run-console')).toBeVisible();
   await expect(page.getByTestId('matrix-count')).toHaveText('8');
   await openConfigEditors(page);
@@ -920,6 +955,8 @@ test('explains scoring gaps, baseline changes, and API errors in results UI', as
   });
 
   await page.goto('/');
+  await expect(page.getByTestId('onboarding-home')).toBeVisible();
+  await openAdvancedWorkbench(page);
   await expect(page.getByRole('heading', { name: '打开或切换评测项目' })).toBeVisible();
   await expect(page.getByLabel('本地仓库路径')).toHaveValue('./demo-repo');
   await expect(page.getByText('从 Git URL 克隆')).toBeVisible();
@@ -1110,6 +1147,7 @@ test('can request stop for a running local run', async ({ page }) => {
   });
 
   await page.goto('/');
+  await openAdvancedWorkbench(page);
   const runButtons = page.locator('.run-brief-panel .button-row button');
   await runButtons.nth(1).click();
   await expect(page.getByTestId('run-status')).toContainText('运行中 0/1');
@@ -1131,6 +1169,7 @@ test('completes the local server workflow with fake Coco and hybrid evaluation',
     await page.goto(server.url);
 
     await expect(page.getByRole('heading', { name: 'AGENTS.md / skills 效果对比' })).toBeVisible();
+    await openAdvancedWorkbench(page);
     await page.getByText('配置与任务细节').click();
     await page.getByRole('button', { name: '加载配置' }).click();
     await expect(page.getByLabel('仓库路径', { exact: true })).toHaveValue(toPosix(fixture));

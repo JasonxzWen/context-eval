@@ -2,34 +2,40 @@
 
 ## Current State
 
-- Active task is PR A for the onboarding shell plan on
-  `codex/onboarding-score-shell`.
-- The branch has been fast-forwarded to latest `origin/main` after PR #61, so
-  the Harness Hub minimal harness is present and in use.
-- `tasks/current-task.md` now records the PR A scope, allowed paths, forbidden
+- Active task is PR B for the onboarding shell plan on
+  `codex/onboarding-home-shell`.
+- PR A was merged as PR #62; `frontend/src/scoring.ts` is available on `main`
+  and is now used by the onboarding summary.
+- `tasks/current-task.md` records the PR B scope, allowed paths, forbidden
   paths, acceptance criteria, and validation commands.
-- `frontend/src/scoring.ts` adds `scoreRunResults(results)` for frontend result
-  scoring across correctness, speed, cost, operation complexity, and change
-  scope.
-- `frontend/src/types.ts` now exposes the backend `trial_index` field so PR A
-  comparisons use structured trial grouping instead of inferring from logs.
-- `frontend/src/scoring.test.ts` covers pass/fail precedence, pass/pass
-  resource comparison, the 5-point no-clear-winner threshold, missing telemetry
-  confidence handling, hard/soft evaluation correctness scoring, and structured
-  trial grouping.
-- No broad CSS, App shell, component, or backend changes are part of PR A.
+- The default frontend entry point now renders `OnboardingHome`; the old
+  workbench, local path/Git URL controls, YAML editors, task editor, command
+  template, and run console stay hidden until the user opens project setup,
+  advanced workbench, or full evidence.
+- Empty connected workspaces expose `运行一次 demo 评测`; configured workspaces
+  expose `运行一次评测`; running state shows linear progress.
+- Completed runs render `RunScoreSummary`, which calls `scoreRunResults` and
+  shows `综合分`, baseline score, experiment score, recommendation/no clear
+  winner, duration, tokens, tool calls, changed files, and evidence confidence.
+- Existing detailed workbench behavior is still covered through explicit
+  `高级工作台` / `查看完整证据` reveal paths.
 
-## PR A Validation
+## PR B Validation
 
 - `node scripts\harness-validate.mjs` passed.
-- `cd frontend; npm run test -- src/scoring.test.ts` passed: 6 tests.
+- Browser smoke against `npm run preview` on a temporary local port passed:
+  onboarding home was visible and old setup/workbench controls were absent on
+  the default first viewport.
+- `cd frontend; npm run test` passed: 21 Vitest tests.
+- `cd frontend; npm run e2e -- e2e/app-shell.spec.ts` passed: 16 Playwright
+  tests.
 - `cd frontend; npm run validate` passed:
   - TypeScript check passed.
-  - Vitest passed: 19 tests.
+  - Vitest passed: 21 tests.
   - Vite build passed.
   - Playwright E2E passed: 16 tests.
 - Vitest still prints existing React `act(...)` warnings in `App.test.tsx`;
-  the suite passes and this warning predates PR A.
+  the suite passes and these warnings are not caused by PR B.
 
 ## Harness Install State
 

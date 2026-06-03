@@ -2,73 +2,76 @@
 
 ## Goal
 
-Implement PR A for the context-eval onboarding shell plan: add a frontend
-scoring engine and focused unit tests that can compare completed run results
-before the onboarding UI is rebuilt.
+Implement PR B for the context-eval onboarding shell plan: make the default
+frontend entry point an onboarding home that guides a new user through one demo
+or configured evaluation run, then shows a concise score summary before the old
+workbench is opened.
 
 ## Assumptions
 
-- The branch starts from the latest `origin/main`, including the Harness Hub
-  minimal harness files.
-- The scoring engine is frontend-only and consumes the existing `ResultCase`
-  and `ResultsPayload` types.
-- PR A must be completed, validated, opened as a PR, and merged before PR B
-  onboarding shell work begins.
+- PR A is merged into `main`; `frontend/src/scoring.ts` is available.
+- The repository is on a fresh branch from latest `main`:
+  `codex/onboarding-home-shell`.
+- The onboarding shell should reuse existing backend APIs and run state.
+- Small, scoped CSS additions are allowed for the new shell; broad CSS
+  redesign is deferred.
 
 ## Non-goals
 
-- Do not make broad CSS changes.
-- Do not rebuild the onboarding home, result cards, or advanced workbench in
-  this PR.
-- Do not change backend telemetry collection or add Codex turn counting in
-  this PR.
+- Do not implement PR C advanced workbench extraction as a full refactor.
+- Do not implement PR D Codex interaction turn counting.
+- Do not change backend telemetry collection or result persistence.
+- Do not rewrite the existing results workbench beyond the minimum integration
+  needed to hide it by default.
 
 ## Worktree / Branch
 
 - Worktree: `C:\Users\Admin\.codex\worktrees\a3f4\context-eval`
-- Branch: `codex/onboarding-score-shell`
+- Branch: `codex/onboarding-home-shell`
 
 ## Allowed paths
 
-- `frontend/src/scoring.ts`
-- `frontend/src/scoring.test.ts`
-- `frontend/src/types.ts`
+- `frontend/src/App.tsx`
+- `frontend/src/App.test.tsx`
+- `frontend/src/components/OnboardingHome.tsx`
+- `frontend/src/components/RunScoreSummary.tsx`
+- `frontend/src/styles.css`
+- `frontend/e2e/app-shell.spec.ts`
 - `progress.md`
 - `session-handoff.md`
 - `tasks/current-task.md`
 
 ## Forbidden paths
 
-- `frontend/src/App.tsx`
-- `frontend/src/styles.css`
-- `frontend/src/components/`
 - `context_eval/`
-- `tests/`
-- Runtime implementation files outside the frontend scoring module.
+- Backend tests under `tests/`
+- Harness install files outside task/progress/handoff records.
+- Broad CSS rewrites unrelated to the new onboarding shell.
 
 ## Acceptance criteria
 
-- `scoreRunResults(results: ResultsPayload | ResultCase[])` exists.
-- `ResultCase` exposes the backend-provided `trial_index` field for structured
-  grouping.
-- Scores include correctness, speed, cost, operation complexity, and change
-  scope components.
-- Correctness-failed variants cannot win because they are faster or cheaper.
-- Variants are compared within the same `task_id + agent_name + trial_index`
-  group.
-- Passing variants use duration, tokens, tool calls, and changed files to break
-  meaningful ties.
-- Score deltas below 5 points report no clear winner.
-- Missing telemetry lowers confidence and leaves unavailable resource metrics
-  unscored rather than guessing zeroes.
-- Hard and soft evaluation scores contribute to correctness.
-- The scoring module is validated by focused unit tests and the full frontend
-  validation gate.
+- All users land on `OnboardingHome` by default instead of the old workbench.
+- Empty workspaces show one primary action: `运行一次 demo 评测`.
+- Configured workspaces that have not run show one primary action:
+  `运行一次评测`.
+- Running state shows linear progress and does not expose the old workbench by
+  default.
+- Completed state shows `RunScoreSummary`.
+- The summary shows `综合分`, baseline score, experiment score, recommended
+  variant or `无明显胜出`, duration, tokens, tool calls, changed files, and
+  evidence confidence.
+- Secondary actions exist for `我已经有项目`, `高级工作台`, and
+  `查看完整证据`, without taking primary visual priority.
+- Local path, Git URL, YAML, task editor, command template, and old workbench
+  controls are hidden on the default first viewport.
+- `查看完整证据` or `高级工作台` reveals the existing detailed workbench.
+- Tests cover the default onboarding state, demo run path, score summary, and
+  advanced/full-evidence reveal behavior.
 
 ## Validation commands
 
 - `node scripts\harness-validate.mjs`
-- `cd frontend; npm run test -- src/scoring.test.ts`
+- `cd frontend; npm run test`
 - `cd frontend; npm run validate`
 - `git diff --check`
 - `git status --short --branch`
