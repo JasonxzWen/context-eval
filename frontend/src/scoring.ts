@@ -79,7 +79,7 @@ function scoreCases(cases: ResultCase[]) {
     const metricRanges = {
       speed: range(items.map(durationValue)),
       cost: range(items.map(costValue)),
-      complexity: range(items.map(toolCallValue)),
+      complexity: range(items.map(complexityValue)),
       change_scope: range(items.map(changedFilesValue)),
     };
 
@@ -114,9 +114,9 @@ function scoreCase(
       key: 'complexity',
       label: '操作复杂度',
       weight: 8,
-      value: toolCallValue(result),
+      value: complexityValue(result),
       range: metricRanges.complexity,
-      evidenceGap: '缺少结构化 tool calls，操作复杂度不参与评分。',
+      evidenceGap: '缺少结构化 tool calls 和交互轮次，操作复杂度不参与评分。',
     }),
     relativeComponent({
       key: 'change_scope',
@@ -384,6 +384,17 @@ function toolCallValue(result: ResultCase) {
   return finiteNumber(result.tool_call_count);
 }
 
+function interactionTurnValue(result: ResultCase) {
+  return finiteNumber(result.interaction_turn_count);
+}
+
+function complexityValue(result: ResultCase) {
+  const toolCalls = toolCallValue(result);
+  const interactionTurns = interactionTurnValue(result);
+  if (toolCalls == null && interactionTurns == null) return null;
+  return (toolCalls ?? 0) + (interactionTurns ?? 0);
+}
+
 function changedFilesValue(result: ResultCase) {
   return finiteNumber(result.changed_files);
 }
@@ -405,6 +416,9 @@ function caseEvidenceGaps(result: ResultCase) {
   }
   if (result.telemetry_source === 'codex-jsonl' && !result.codex_final_message_path) {
     gaps.push('缺少 codex final message 路径。');
+  }
+  if (result.telemetry_source === 'codex-jsonl' && interactionTurnValue(result) == null) {
+    gaps.push('缺少结构化交互轮次，操作复杂度只使用已采集指标。');
   }
   return gaps;
 }

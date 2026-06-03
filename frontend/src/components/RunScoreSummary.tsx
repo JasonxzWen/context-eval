@@ -25,6 +25,10 @@ function metricValue(value: number | null | undefined) {
   return value == null ? '-' : String(value);
 }
 
+function collectedMetricValue(value: number | null | undefined) {
+  return value == null ? '未采集' : String(value);
+}
+
 function winnerText(winner: string | null) {
   return winner ? `推荐方案：${winner}` : '无明显胜出';
 }
@@ -88,6 +92,13 @@ export function RunScoreSummary({ results, onViewEvidence }: RunScoreSummaryProp
           <dd>
             {metricValue(baselineCase?.tool_call_count)} /{' '}
             {metricValue(experimentCase?.tool_call_count)}
+          </dd>
+        </div>
+        <div>
+          <dt>交互轮次</dt>
+          <dd>
+            {collectedMetricValue(baselineCase?.interaction_turn_count)} /{' '}
+            {collectedMetricValue(experimentCase?.interaction_turn_count)}
           </dd>
         </div>
         <div>

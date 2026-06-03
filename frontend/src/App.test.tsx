@@ -285,6 +285,7 @@ describe('App workflow shell', () => {
               reasoning_tokens: 200,
               cached_input_tokens: 0,
               tool_call_count: 8,
+              interaction_turn_count: 6,
               changed_files: 4,
               hard_evaluation_status: 'passed',
               hard_evaluation_score: 4,
@@ -313,6 +314,7 @@ describe('App workflow shell', () => {
               reasoning_tokens: 80,
               cached_input_tokens: 50,
               tool_call_count: 3,
+              interaction_turn_count: 2,
               changed_files: 1,
               hard_evaluation_status: 'passed',
               hard_evaluation_score: 4,
@@ -343,6 +345,8 @@ describe('App workflow shell', () => {
     expect(screen.getByText('耗时')).toBeVisible();
     expect(screen.getByText('tokens')).toBeVisible();
     expect(screen.getByText('tool calls')).toBeVisible();
+    expect(screen.getByText('交互轮次')).toBeVisible();
+    expect(screen.getByText('6 / 2')).toBeVisible();
     expect(screen.getByText('修改文件')).toBeVisible();
     expect(screen.getByText('证据可信度')).toBeVisible();
     expect(screen.queryByTestId('codex-run-console')).toBeNull();

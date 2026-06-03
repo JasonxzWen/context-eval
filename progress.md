@@ -2,48 +2,37 @@
 
 ## Current State
 
-- Active task is PR D for the onboarding shell plan on
-  `codex/codex-turn-count`.
-- PR A (#62), PR B (#63), and PR C (#64) are merged into `main`; this branch
-  was created from the merged PR C tip.
-- `tasks/current-task.md` records PR D scope, allowed paths, forbidden paths,
-  acceptance criteria, and validation commands.
-- Structured Codex JSONL telemetry now carries `interaction_turn_count` through
-  `TelemetryCollectionResult`, `CaseResult`, runner persistence, local app
-  result payloads, reports, CSV export, and JSON export.
-- Frontend result details now show the collected interaction turn metric in the
-  Codex hard-metric area and render `未采集` when the structured JSONL data is
-  unavailable.
-- `scripts/validate-codex-first.py` now uses a short pytest basetemp on Windows
-  so the default Codex-first validation gate does not fail while preparing git
-  worktrees under long evidence paths.
+- Active task is the post-PR-D onboarding shell follow-up on
+  `codex/onboarding-turn-summary`.
+- PR A (#62), PR B (#63), PR C (#64), and PR D (#65) are merged into `main`.
+- `tasks/current-task.md` records the current follow-up scope, allowed paths,
+  forbidden paths, acceptance criteria, and validation commands.
+- The simplified onboarding conclusion now includes structured
+  `interaction_turn_count` in both scoring and visible result comparison.
+- Operation complexity scoring now uses collected tool calls plus collected
+  interaction turns, without treating missing turn telemetry as zero.
 
-## PR D Validation
+## Current Follow-Up Validation
 
-- Focused red run failed as expected before implementation for missing turn
-  count propagation.
-- Focused green run passed: 5 selected PR D tests.
-- Backend PR D suite passed: 82 tests in `tests/test_adapters.py`,
-  `tests/test_runner.py`, `tests/test_local_app_server.py`,
-  `tests/test_codex_sessions.py`, and `tests/test_export.py`.
-- `python scripts\validate-codex-first.py` initially exposed the Windows long
-  path issue, then passed after the short basetemp fix:
-  - Python contracts: 7 passed.
-  - Frontend typecheck passed.
-  - Frontend build passed.
-  - Codex-first Playwright smoke passed: 2 tests.
-- `cd frontend; npm run test` passed: 21 tests.
-- `python -m pytest -q --basetemp C:\tmp\context-eval-pytest-full-prd` passed:
-  331 passed, 2 deselected.
+- RED: `npm run test -- src/scoring.test.ts` failed before implementation
+  because lower interaction turns did not affect the comparison verdict.
+- GREEN: `npm run test -- src/scoring.test.ts` passed: 8 tests.
+- RED: the onboarding App test failed before UI implementation because
+  `交互轮次` was absent from the simplified conclusion.
+- GREEN: `npm run test -- src/App.test.tsx -t "runs the demo from onboarding"`
+  passed after adding the metric display.
+- `npx playwright test e2e/app-shell.spec.ts -g "empty workspace starts at first-run choices and bootstraps demo"`
+  passed after rebuilding `frontend/dist`: 2 tests.
+- `cd frontend; npm run test` passed: 23 tests.
 - `cd frontend; npm run validate` passed:
   - TypeScript check passed.
-  - Vitest passed: 21 tests.
+  - Vitest passed: 23 tests.
   - Vite build passed.
   - Playwright E2E passed: 16 tests.
 - `node scripts\harness-validate.mjs` passed.
 - `git diff --check` passed.
 - Vitest still prints existing React `act(...)` warnings in `App.test.tsx`;
-  the suite passes and these warnings predate PR D.
+  the suite passes and these warnings predate this follow-up.
 
 ## Harness Install State
 
@@ -58,5 +47,5 @@
 
 ## Pending Closeout
 
-- Review final diff, commit, push, create PR D, wait for checks, merge, and
-  update `main`.
+- Review final diff, commit, push, create the follow-up PR, wait for checks,
+  merge, and update `main`.

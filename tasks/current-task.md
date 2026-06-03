@@ -2,80 +2,67 @@
 
 ## Goal
 
-Implement PR D for the context-eval onboarding shell plan: add structured
-Codex interaction turn counting from JSONL telemetry and surface it in result
-models, exports, and the frontend result detail view.
+Implement the post-PR-D onboarding shell follow-up: include structured Codex
+interaction turn counts in the simplified run conclusion and in the operation
+complexity scoring path.
 
 ## Assumptions
 
-- PR A, PR B, and PR C are merged into `main`.
+- PR A, PR B, PR C, and PR D are merged into `main`.
 - The repository is on a fresh branch from latest `main`:
-  `codex/codex-turn-count`.
-- Turn counts must come from structured Codex JSONL events only.
-- Missing or unrecognized telemetry should remain `null` / `未采集`, not guessed
-  from stdout or stderr.
+  `codex/onboarding-turn-summary`.
+- `interaction_turn_count` is already available on `ResultCase` from structured
+  Codex JSONL telemetry.
+- Missing turn telemetry must remain unavailable in UI and evidence notes; do
+  not infer it from stdout or stderr.
 
 ## Non-goals
 
-- Do not change onboarding shell layout or CSS beyond the smallest display hook
-  needed for the new metric.
-- Do not infer turns from unstructured logs.
-- Do not change scoring weights in this PR unless a type field is needed for
-  future scoring.
+- Do not change backend telemetry collection.
+- Do not change the onboarding shell layout beyond the metric display hook.
+- Do not make broad CSS or visual redesign changes.
+- Do not change scoring weights; keep operation complexity at weight 8.
 
 ## Worktree / Branch
 
 - Worktree: `C:\Users\Admin\.codex\worktrees\a3f4\context-eval`
-- Branch: `codex/codex-turn-count`
+- Branch: `codex/onboarding-turn-summary`
 
 ## Allowed paths
 
-- `context_eval/adapters/base.py`
-- `context_eval/adapters/command.py`
-- `context_eval/models.py`
-- `context_eval/reporting.py`
-- `context_eval/export.py`
-- `context_eval/runner.py`
-- `context_eval/local_app.py`
-- `frontend/src/types.ts`
-- `frontend/src/App.tsx`
+- `frontend/src/scoring.ts`
+- `frontend/src/scoring.test.ts`
+- `frontend/src/components/RunScoreSummary.tsx`
 - `frontend/src/App.test.tsx`
 - `frontend/e2e/app-shell.spec.ts`
-- `scripts/validate-codex-first.py`
-- `tests/test_adapters.py`
-- `tests/test_runner.py`
-- `tests/test_local_app_server.py`
-- `tests/test_codex_sessions.py`
-- `tests/test_export.py`
 - `progress.md`
 - `session-handoff.md`
 - `tasks/current-task.md`
 
 ## Forbidden paths
 
+- Backend telemetry/model/export files.
 - Broad frontend style rewrites.
 - Harness install files outside task/progress/handoff records.
 - Package metadata changes unless validation proves they are required.
 
 ## Acceptance criteria
 
-- `TelemetryCollectionResult` has `interaction_turn_count: int | null`.
-- `CaseResult` has `interaction_turn_count: int | null`.
-- `CodexJsonlTelemetryCollector` counts interaction turns only from structured
-  JSONL events.
-- Runner result creation preserves the collected turn count.
-- Local app results, compare payloads, and exports include the new field.
-- Frontend types include the new field.
-- Result detail UI shows the metric as a structured Codex hard metric and uses
-  `未采集` when it is unavailable.
-- Tests cover counted turns, missing telemetry staying null, runner propagation,
-  and local app/API exposure.
+- Operation complexity scoring accounts for structured interaction turn counts
+  together with tool call counts.
+- Missing structured turn counts remain unknown and create an evidence gap
+  instead of being treated as zero.
+- The simplified `RunScoreSummary` conclusion shows interaction turns for
+  baseline and comparison cases.
+- The default onboarding E2E path asserts that interaction turns are visible in
+  the simplified conclusion before the advanced workbench is revealed.
+- Existing App and Playwright workflows continue to pass.
 
 ## Validation commands
 
-- `python -m pytest -q tests\test_adapters.py tests\test_runner.py tests\test_local_app_server.py tests\test_codex_sessions.py`
-- `python scripts\validate-codex-first.py`
 - `cd frontend; npm run test`
+- `cd frontend; npm run build`
+- `cd frontend; npx playwright test e2e/app-shell.spec.ts`
 - `cd frontend; npm run validate`
 - `node scripts\harness-validate.mjs`
 - `git diff --check`
@@ -85,8 +72,6 @@ models, exports, and the frontend result detail view.
 
 - Default: blocked for this task.
 - Use read-only parallel commands only for inspection or validation.
-- Any future parallel write work must use independent branches or worktrees,
-  non-overlapping paths, and a single integration review point.
 
 ## Handoff requirements
 
