@@ -24,6 +24,7 @@ function caseResult(overrides: Partial<ResultCase>): ResultCase {
     reasoning_tokens: 100,
     cached_input_tokens: 0,
     tool_call_count: 4,
+    interaction_turn_count: 1,
     changed_files: 2,
     hard_evaluation_status: 'passed',
     hard_evaluation_score: 4,
@@ -91,6 +92,36 @@ describe('scoreRunResults', () => {
     expect(summary.comparisons[0].reason).toContain('耗时、成本、操作复杂度或改动面更优');
   });
 
+  it('uses interaction turn counts as part of operation complexity', () => {
+    const summary = scoreRunResults([
+      caseResult({
+        variant: 'baseline',
+        tool_call_count: 2,
+        interaction_turn_count: 98,
+      }),
+      caseResult({
+        variant: 'experiment',
+        tool_call_count: 2,
+        interaction_turn_count: 1,
+      }),
+    ]);
+
+    expect(summary.comparisons[0]).toMatchObject({
+      verdict: 'comparison_wins',
+      winner_variant: 'experiment',
+    });
+    expect(summary.comparisons[0].score_delta).toBeGreaterThanOrEqual(5);
+    const baselineComplexity = summary.cases
+      .find((scoredCase) => scoredCase.variant === 'baseline')
+      ?.components.find((component) => component.key === 'complexity');
+    const experimentComplexity = summary.cases
+      .find((scoredCase) => scoredCase.variant === 'experiment')
+      ?.components.find((component) => component.key === 'complexity');
+    expect(baselineComplexity?.value).toBe(100);
+    expect(experimentComplexity?.value).toBe(3);
+    expect(experimentComplexity?.score ?? 0).toBeGreaterThan(baselineComplexity?.score ?? 0);
+  });
+
   it('reports no clear winner when the composite score delta is below five points', () => {
     const summary = scoreRunResults([
       caseResult({
@@ -129,6 +160,7 @@ describe('scoreRunResults', () => {
         reasoning_tokens: null,
         cached_input_tokens: null,
         tool_call_count: null,
+        interaction_turn_count: null,
       }),
     ]);
     const scoredCase = summary.cases[0];
@@ -141,6 +173,22 @@ describe('scoreRunResults', () => {
     expect(scoredCase.components.find((component) => component.key === 'speed')?.score).toBeNull();
     expect(scoredCase.components.find((component) => component.key === 'cost')?.score).toBeNull();
     expect(scoredCase.components.find((component) => component.key === 'complexity')?.score).toBeNull();
+  });
+
+  it('records an evidence gap instead of treating missing interaction turns as zero', () => {
+    const summary = scoreRunResults([
+      caseResult({
+        interaction_turn_count: null,
+        tool_call_count: 4,
+      }),
+    ]);
+    const scoredCase = summary.cases[0];
+    const complexity = scoredCase.components.find((component) => component.key === 'complexity');
+
+    expect(scoredCase.confidence).toBe('medium');
+    expect(scoredCase.evidence_gaps).toContain('缺少结构化交互轮次，操作复杂度只使用已采集指标。');
+    expect(complexity?.value).toBe(4);
+    expect(complexity?.score).not.toBeNull();
   });
 
   it('uses hard and soft evaluation scores as part of correctness', () => {

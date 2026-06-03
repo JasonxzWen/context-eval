@@ -2,64 +2,47 @@
 
 ## Current Status
 
-- Current branch: `codex/codex-turn-count`.
-- Branch was created from latest `main` after PR #64 merged.
-- Active task is PR D: structured Codex interaction turn counting from JSONL
-  telemetry.
-- Implementation is complete locally and broad validation is passing; next
-  action is final harness/diff hygiene, commit, push, open PR D, wait for remote
+- Current branch: `codex/onboarding-turn-summary`.
+- Branch was created from latest `main` after PR #65 merged.
+- Active task is a post-PR-D onboarding shell follow-up: make the simplified
+  conclusion compare structured Codex interaction turns, not only detailed
+  evidence views.
+- Implementation is complete locally and frontend validation is passing; next
+  action is final harness/diff hygiene, commit, push, open PR, wait for remote
   checks, and merge.
 
 ## Changed Files
 
-- `context_eval/adapters/base.py`
-  - Adds `interaction_turn_count` to `TelemetryCollectionResult`.
-- `context_eval/adapters/command.py`
-  - Counts structured Codex `turn.completed` and `turn.failed` JSONL events.
-  - Leaves missing or unrecognized structured turn telemetry as `None`.
-- `context_eval/models.py`
-  - Adds `interaction_turn_count` to `CaseResult`.
-- `context_eval/runner.py`
-  - Persists collected interaction turn counts into case results.
-- `context_eval/reporting.py`
-  - Adds average interaction turns to telemetry summaries.
-- `context_eval/export.py`
-  - Bumps export schema to version 3.
-  - Adds case-level `interaction_turn_count` and agent-level
-    `avg_interaction_turn_count`.
-- `frontend/src/types.ts`
-  - Adds the optional result case turn-count field.
-- `frontend/src/App.tsx`
-  - Shows interaction turns in the compact result detail and Codex JSONL usage
-    panel.
-  - Uses `未采集` for unavailable collected metrics.
+- `frontend/src/scoring.ts`
+  - Operation complexity now uses collected `tool_call_count` plus collected
+    `interaction_turn_count`.
+  - Missing Codex JSONL turn counts create an evidence gap instead of being
+    treated as zero.
+- `frontend/src/scoring.test.ts`
+  - Covers interaction turns affecting comparison verdicts.
+  - Covers missing interaction turns producing a confidence/evidence gap.
+- `frontend/src/components/RunScoreSummary.tsx`
+  - Adds `交互轮次` to the simplified conclusion metric grid.
+  - Shows `未采集` when structured turn counts are unavailable.
 - `frontend/src/App.test.tsx`
-  - Covers the new Codex usage panel metric.
-- `scripts/validate-codex-first.py`
-  - Uses a short pytest basetemp on Windows to avoid git worktree failures under
-    long evidence paths.
-- `tests/test_adapters.py`, `tests/test_runner.py`,
-  `tests/test_local_app_server.py`, and `tests/test_export.py`
-  - Cover validation constraints, JSONL collection, runner propagation, local
-    app exposure, CSV export, JSON export, and agent summaries.
+  - Covers interaction turns in the onboarding demo conclusion.
+- `frontend/e2e/app-shell.spec.ts`
+  - Asserts `交互轮次` is visible in the default onboarding conclusion before
+    advanced evidence is revealed.
 - `tasks/current-task.md`, `progress.md`, and `session-handoff.md`
-  - Record PR D scope and validation state.
+  - Record the current follow-up scope and validation state.
 
 ## Validation Evidence
 
-- Focused PR D tests passed after implementation: 5 selected tests.
-- Backend PR D suite passed: 82 tests.
-- `python scripts\validate-codex-first.py`: passed after the Windows short
-  basetemp script fix.
-  - Python contracts: 7 passed.
-  - Typecheck/build passed.
-  - Codex-first Playwright smoke: 2 passed.
-- `cd frontend; npm run test`: passed, 21 tests.
-- `python -m pytest -q --basetemp C:\tmp\context-eval-pytest-full-prd`:
-  passed, 331 tests, 2 deselected.
+- `npm run test -- src/scoring.test.ts`: passed, 8 tests.
+- `npm run test -- src/App.test.tsx -t "runs the demo from onboarding"`:
+  passed.
+- `npx playwright test e2e/app-shell.spec.ts -g "empty workspace starts at first-run choices and bootstraps demo"`:
+  passed after rebuilding `frontend/dist`, 2 tests.
+- `cd frontend; npm run test`: passed, 23 tests.
 - `cd frontend; npm run validate`: passed.
   - TypeScript check passed.
-  - Vitest passed, 21 tests.
+  - Vitest passed, 23 tests.
   - Build passed.
   - Playwright E2E passed, 16 tests.
 - `node scripts\harness-validate.mjs`: passed.
@@ -68,9 +51,10 @@
 ## Residual Risk
 
 - Existing React `act(...)` warnings still print during `App.test.tsx`; they do
-  not fail the suite and predate PR D.
-- The new interaction turn metric is intentionally sourced only from structured
-  Codex JSONL events. Runs without those events remain `null` / `未采集`.
+  not fail the suite and predate this follow-up.
+- E2E uses `npm run preview` and therefore serves `frontend/dist`; run
+  `npm run build` before invoking Playwright directly, or use
+  `npm run validate`.
 
 ## Blockers
 
@@ -78,5 +62,5 @@
 
 ## Next Action
 
-- Review final diff, commit, push, create PR D, wait for all required checks,
-  merge it, and update local `main`.
+- Review final diff, commit, push, create the follow-up PR, wait for all
+  required checks, merge it, and update local `main`.

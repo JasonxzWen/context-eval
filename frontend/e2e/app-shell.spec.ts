@@ -348,6 +348,7 @@ test('empty workspace starts at first-run choices and bootstraps demo', async ({
     await expect(page.getByText('耗时')).toBeVisible();
     await expect(page.getByText('tokens')).toBeVisible();
     await expect(page.getByText('tool calls')).toBeVisible();
+    await expect(page.getByText('交互轮次')).toBeVisible();
     await expect(page.getByText('修改文件')).toBeVisible();
     await expect(page.getByText('证据可信度')).toBeVisible();
     await expect(page.getByText(/推荐方案：|无明显胜出/)).toBeVisible();
