@@ -64,11 +64,10 @@ loader, runner, adapters, reporting, export, static UI rendering, and local app
 server code.
 
 `.harness-hub/`, `.agents/`, `.codex/skills/`, `skills/`, `openspec/`,
-`scripts/`, and root harness state files such as `progress.md` and
-`session-handoff.md` are maintainer capability library files. They support
-development, validation, release preparation, and project maintenance. They are
-not runtime package modules and are not part of the target repository evaluation
-surface.
+`scripts/`, root harness files, and ignored `.harness-hub/state/` files are
+maintainer capability library files. They support development, validation,
+release preparation, and project maintenance. They are not runtime package
+modules and are not part of the target repository evaluation surface.
 
 ## Static UI And Local App Mode
 

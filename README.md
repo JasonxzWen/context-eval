@@ -577,24 +577,29 @@ runtime package scope documented there.
 The release-state check catches hidden local release blockers before building package artifacts.
 
 `context_eval/` is the runtime package. `.harness-hub/`, `.agents/`,
-`.codex/skills/`, `skills/`, `openspec/`, `scripts/`, and root harness state
-files are maintainer capability library files, not runtime package modules.
+`.codex/skills/`, `skills/`, `openspec/`, `scripts/`, root harness files, and
+ignored `.harness-hub/state/` files are maintainer capability library files,
+not runtime package modules.
 
 ## Development Capability Library
 
 This repository includes a project-local skill and workflow library from
 `JasonxzWen/harness-hub`, formerly `skill-hub`. The tracked Harness Hub surface
 now includes the standard minimal root harness files, `.harness-hub/lock.json`,
-the standard `skills/` tree, the legacy `.agents/` and `.codex/` skill trees,
-OpenSpec helpers, and workflow utilities. These support development handoffs and
-reviews but are not runtime package features.
+`.harness-hub/.gitignore`, ignored `.harness-hub/state/` task files, the
+standard `skills/` tree, the legacy `.agents/` and `.codex/` skill trees,
+OpenSpec helpers, and workflow utilities. These support development handoffs
+and reviews but are not runtime package features.
 
 The standard minimal install is validated with
-`node scripts\harness-validate.mjs` and can be audited with
-`npx -y @jasonwen/harness-hub@latest status . --json`. Generated Harness Hub
-reports stay local under `.harness-hub/reports/`. Optional Codex configuration
-is provided as `.codex/config.example.toml`; copy it to `.codex/config.toml`
-locally only when you want to opt in to those maintainer workflows. See
+`node scripts\harness-validate.mjs`. Use
+`npx -y @jasonwen/harness-hub@latest check . --json` for read-only package
+release and target component update sniffing, and
+`npx -y @jasonwen/harness-hub@latest status . --json` for the full target
+component audit. Generated Harness Hub reports stay local under
+`.harness-hub/reports/`. Optional Codex configuration is provided as
+`.codex/config.example.toml`; copy it to `.codex/config.toml` locally only when
+you want to opt in to those maintainer workflows. See
 `docs/harness-hub-import.md` for provenance and import scope.
 
 ## Roadmap

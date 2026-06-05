@@ -10,6 +10,8 @@ This repository vendors the development capability library from:
 - Latest refresh date: `2026-06-02`
 - Minimal harness install date: `2026-06-03`
 - Minimal harness package: `@jasonwen/harness-hub@0.1.11`
+- Latest managed update date: `2026-06-05`
+- Latest managed update package: `@jasonwen/harness-hub@0.1.13`
 
 Imported capability roots:
 
@@ -17,6 +19,7 @@ Imported capability roots:
 - `.codex/skills/`
 - `.codex/agents/`
 - `.harness-hub/lock.json`
+- `.harness-hub/.gitignore`
 - `skills/`
 - `openspec/`
 - `scripts/`
@@ -24,10 +27,15 @@ Imported capability roots:
   - `AGENTS.md`
   - `clean-state-checklist.md`
   - `definition-of-done.md`
+  - `evaluator-rubric.md`
   - `feature_list.json`
-  - `progress.md`
-  - `session-handoff.md`
-  - `tasks/current-task.md`
+  - `quality-document.md`
+  - `scripts/harness-validate.mjs`
+- ignored local harness state files:
+  - `.harness-hub/state/current-task.md`
+  - `.harness-hub/state/decisions.md`
+  - `.harness-hub/state/progress.md`
+  - `.harness-hub/state/session-handoff.md`
 
 The upstream repository's `README.md` file is intentionally not imported. The
 root `AGENTS.md` now comes from the Harness Hub minimal target bootstrap and is
@@ -71,11 +79,21 @@ root continuity files, `scripts/harness-validate.mjs`, and the standard
 `harness:minimal` plus 42 standard skills. `harness-hub update --dry-run`
 reports no pending updates or blockers for those managed components.
 
+The `2026-06-05` update runs `npx -y @jasonwen/harness-hub@latest update . --yes
+--json` with package version `0.1.13`. It updates `harness:minimal` to `0.5.2`,
+`delivery-workflow` to `0.1.1`, and `effective-interact` to `0.2.1`. The
+minimal harness now stores active task, decisions, progress, and handoff under
+ignored `.harness-hub/state/` files, adds `evaluator-rubric.md` and
+`quality-document.md`, and documents `harness-hub check . --json` as the
+read-only startup check for CLI package release sniffing and target managed
+component update sniffing.
+
 The update still does not import Harness Hub npm CLI lifecycle source code,
 `.claude-plugin/`, `site/`, or upstream top-level reports because those are
 source-repo tooling, host packaging, or generated artifacts, not context-eval
-runtime package inputs. `.harness-hub/reports/` is ignored so generated install
-reports remain local. `harness:website-cloner` is visible in the upstream
+runtime package inputs. `.harness-hub/state/` and `.harness-hub/reports/` are
+ignored so active task state and generated install reports remain local.
+`harness:website-cloner` is visible in the upstream
 component list, but it is an explicit smoke scaffold outside the standard
 minimal target and is not managed by this lock.
 
@@ -90,7 +108,8 @@ to the project-local `.codex/skills/` and agent roles. The active
 `.codex/config.toml` path is ignored so ordinary clones do not silently enable
 external tooling.
 
-Harness Hub minimal state is validated with `node scripts\harness-validate.mjs`
-and `npx -y @jasonwen/harness-hub@latest validate-harness . --json`. The
-legacy project-local `.codex/skills/` tree is still validated with
+Harness Hub minimal state is validated with `node scripts\harness-validate.mjs`,
+`npx -y @jasonwen/harness-hub@latest check . --json`, and
+`npx -y @jasonwen/harness-hub@latest validate-harness . --json`. The legacy
+project-local `.codex/skills/` tree is still validated with
 `powershell -ExecutionPolicy Bypass -File scripts\validate-skills.ps1 -SkipExternal`.

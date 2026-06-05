@@ -126,8 +126,9 @@ Inspect package configuration before release:
 - The artifact inspection command rejects `skills/`.
 - The artifact inspection command rejects `openspec/`.
 - The artifact inspection command rejects `scripts/`.
-- The artifact inspection command rejects root harness state files such as
-  `AGENTS.md`, `progress.md`, `session-handoff.md`, and `tasks/`.
+- The artifact inspection command rejects root harness files such as
+  `AGENTS.md`, `evaluator-rubric.md`, `quality-document.md`, and
+  `feature_list.json`.
 - Package metadata must use `project.license` as an SPDX string, currently
   `license = "MIT"`.
 - Package metadata must not use table-form license metadata such as
@@ -141,7 +142,8 @@ Inspect package configuration before release:
 - The artifacts do not include `skills/`.
 - The artifacts do not include `openspec/`.
 - The artifacts do not include `scripts/`.
-- The artifacts do not include root harness state files.
+- The artifacts do not include root harness files or ignored
+  `.harness-hub/state/` files.
 - License metadata modernization does not change the runtime package scope.
 - Active `.codex/config.toml` must not be committed; use
   `.codex/config.example.toml` only.
