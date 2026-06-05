@@ -178,9 +178,11 @@ tasks:
 
 ## Maintainer Tooling
 
-Project-local skills, root harness files, and agent role configs from Harness
-Hub, formerly `skill-hub`, are vendored for maintainers. The root minimal
-harness can be checked with `node scripts\harness-validate.mjs`. Active Codex
-configuration remains opt-in: copy `.codex/config.example.toml` to
+Project-local skills, root harness files, ignored `.harness-hub/state/` task
+files, and agent role configs from Harness Hub, formerly `skill-hub`, are
+vendored for maintainers. The root minimal harness can be checked with
+`node scripts\harness-validate.mjs`; package release and managed-component
+updates can be sniffed with `npx -y @jasonwen/harness-hub@latest check . --json`.
+Active Codex configuration remains opt-in: copy `.codex/config.example.toml` to
 `.codex/config.toml` locally only when you want to enable those host-specific
 workflows.

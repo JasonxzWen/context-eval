@@ -178,7 +178,7 @@ def test_release_checklist_documents_package_build_scope() -> None:
         "do not include `skills/`",
         "do not include `openspec/`",
         "do not include `scripts/`",
-        "do not include root harness state files",
+        "do not include root harness files",
     ]:
         assert term in text
 
@@ -198,7 +198,7 @@ def test_release_checklist_documents_artifact_inspection_command() -> None:
         "rejects `skills/`",
         "rejects `openspec/`",
         "rejects `scripts/`",
-        "rejects root harness state files",
+        "rejects root harness files",
     ]:
         assert term in text
 
@@ -567,9 +567,15 @@ def test_harness_hub_import_documents_refreshed_standard_skills() -> None:
         "Latest refresh date: `2026-06-02`",
         "Minimal harness install date: `2026-06-03`",
         "Minimal harness package: `@jasonwen/harness-hub@0.1.11`",
+        "Latest managed update date: `2026-06-05`",
+        "Latest managed update package: `@jasonwen/harness-hub@0.1.13`",
         "migrates the current upstream `skills/` set into",
         "syncs the current Harness Hub standard `skills/` set",
         "`harness:minimal` plus 42 standard skills",
+        "updates `harness:minimal` to `0.5.2`",
+        "ignored `.harness-hub/state/` files",
+        "`harness-hub check . --json`",
+        "CLI package release sniffing",
         "`html-work-reports`",
         "`compound-code-review`",
         "`diagnose`",
@@ -592,14 +598,18 @@ def test_harness_hub_import_documents_refreshed_standard_skills() -> None:
 def test_harness_hub_minimal_install_files_are_present() -> None:
     for relative in [
         ".harness-hub/lock.json",
+        ".harness-hub/.gitignore",
+        ".harness-hub/state/current-task.md",
+        ".harness-hub/state/decisions.md",
+        ".harness-hub/state/progress.md",
+        ".harness-hub/state/session-handoff.md",
         "AGENTS.md",
         "clean-state-checklist.md",
         "definition-of-done.md",
+        "evaluator-rubric.md",
         "feature_list.json",
-        "progress.md",
+        "quality-document.md",
         "scripts/harness-validate.mjs",
-        "session-handoff.md",
-        "tasks/current-task.md",
         "skills/workflow-router/SKILL.md",
         "skills/hub-maintenance-workflow/SKILL.md",
         "skills/clone-website/SKILL.md",
@@ -607,6 +617,8 @@ def test_harness_hub_minimal_install_files_are_present() -> None:
         assert Path(relative).exists()
 
     assert ".harness-hub/reports/" in Path(".gitignore").read_text(encoding="utf-8")
+    assert "state/" in Path(".harness-hub/.gitignore").read_text(encoding="utf-8")
+    assert "reports/" in Path(".harness-hub/.gitignore").read_text(encoding="utf-8")
 
 
 def test_html_work_reports_skill_assets_are_installed() -> None:

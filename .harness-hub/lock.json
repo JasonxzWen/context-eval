@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-06-03T05:35:27.035Z",
+  "generatedAt": "2026-06-05T03:27:25.684Z",
   "hubVersion": "0.1.0",
   "agents": [
     "standard"
@@ -8,55 +8,80 @@
   "components": [
     {
       "id": "harness:minimal",
-      "version": "0.1.0",
+      "version": "0.5.2",
       "agent": "standard",
       "kind": "harness-template",
       "source": "harness/minimal",
       "dest": ".",
       "files": [
         {
+          "path": ".harness-hub/.gitignore",
+          "sha256": "358fe63bee5c2341b3c67f54313c431a2ef00ec0ff08742cb03a737a5d550e96",
+          "size": 16
+        },
+        {
+          "path": ".harness-hub/state/current-task.md",
+          "sha256": "f876c6c8eab7589127124badbda691c70e66596d469ae6b9352cf70d721f6f65",
+          "size": 2615,
+          "role": "local-state"
+        },
+        {
+          "path": ".harness-hub/state/decisions.md",
+          "sha256": "c7df1151cc0c56a0c7225e0eb130c42752c82a9113e328bf1024586fe7edb14b",
+          "size": 219,
+          "role": "local-state"
+        },
+        {
+          "path": ".harness-hub/state/progress.md",
+          "sha256": "0a441ca0c52699f5c921c606337e8e28fd7f6f6ddd5dea1b7e4776adb499105f",
+          "size": 3088,
+          "role": "local-state"
+        },
+        {
+          "path": ".harness-hub/state/session-handoff.md",
+          "sha256": "2e4367d887ab0ccf11063a558133864fad1a1a3b817e59f2df744b8e3a3d902b",
+          "size": 1953,
+          "role": "local-state"
+        },
+        {
           "path": "AGENTS.md",
-          "sha256": "08c045b64863a7c5b1bbb5a35d1f89f3491c744b472d61fa116f754477346ab6",
-          "size": 1091
+          "sha256": "d60e1c22fbd07eddb5d431ac5de68e2888f5aea2144f2dc6e924702111f4ae89",
+          "size": 4624
         },
         {
           "path": "clean-state-checklist.md",
-          "sha256": "b4abdb8548d430380495128a6656baf3fc193313977f247f2b9f2749acda5bf6",
-          "size": 478
+          "sha256": "8a7108e066a76faaa8458c808d5f4c858d4656965cef94c48d7643a4f82e0016",
+          "size": 2741
         },
         {
           "path": "definition-of-done.md",
-          "sha256": "f6a6760723d7657263f8b3178ba70af92ac078b03ac5811a374a445190ff82b6",
-          "size": 622
+          "sha256": "60ae37599ef3f60a97c96cb09b3dfa5499569836480e5fa7c34e799cb26a9b2a",
+          "size": 2266
+        },
+        {
+          "path": "evaluator-rubric.md",
+          "sha256": "e83ea7dc25e274d09bc9de532ec353baa6c74615ac6454f0ff42c5e48bbd2ae5",
+          "size": 1275
         },
         {
           "path": "feature_list.json",
-          "sha256": "208c335beb106f8052de025a57cebf258eafa9cf8fca0e10f68499b2c303742b",
-          "size": 1353
+          "sha256": "ae013691bbce27d4324eb80d714a7d63e20dd6f274179cef0cdb1dc9b2716182",
+          "size": 3169
         },
         {
-          "path": "progress.md",
-          "sha256": "f01decaceac63365496df8466ca0193876144d220eb97da51f8bd360b8674913",
-          "size": 3020
+          "path": "quality-document.md",
+          "sha256": "b5df48fb81cc331ba9f64c13630e0e8eeea2a4b3b5d65f6a68fde1ba02013394",
+          "size": 1078
         },
         {
           "path": "scripts/harness-validate.mjs",
-          "sha256": "6dcd60b1a9bdb20c6de33ed1503e43f4bbfc6b0e22afcbb394366b3bcb8e8eeb",
-          "size": 5063
-        },
-        {
-          "path": "session-handoff.md",
-          "sha256": "54749b15bb05e747ef136f489a90da9ef5107498418d30bd3c3f48a556bbd5b0",
-          "size": 2055
-        },
-        {
-          "path": "tasks/current-task.md",
-          "sha256": "f66dad121bdc6467b7ddb785554c3095a029751a5e12761998297e0eb5e39fde",
-          "size": 2576
+          "sha256": "c8c4fe2a807bbff7a8d202fc472bbc6210bd8ed53840294df56c93c653e3a2ac",
+          "size": 8990
         }
       ],
       "installedAt": "2026-06-03T05:35:27.035Z",
-      "status": "installed"
+      "status": "installed",
+      "updatedAt": "2026-06-05T03:27:25.684Z"
     },
     {
       "id": "skill:agent-introspection-debugging",
@@ -212,7 +237,7 @@
     },
     {
       "id": "skill:delivery-workflow",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "agent": "standard",
       "kind": "skill",
       "source": "skills/delivery-workflow",
@@ -220,12 +245,13 @@
       "files": [
         {
           "path": "skills/delivery-workflow/SKILL.md",
-          "sha256": "b04255df4697f4f431cff2226ca5b4d20a2a68e9131dca7b695a71dd9eeac0a7",
-          "size": 1503
+          "sha256": "17235085340fd722042097c26fab1beb814e1fe5229db883fbcae3689bd80bec",
+          "size": 2327
         }
       ],
       "installedAt": "2026-06-03T05:35:25.500Z",
-      "status": "installed"
+      "status": "installed",
+      "updatedAt": "2026-06-05T03:27:25.684Z"
     },
     {
       "id": "skill:design-taste-frontend",
@@ -351,7 +377,7 @@
     },
     {
       "id": "skill:effective-interact",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "agent": "standard",
       "kind": "skill",
       "source": "skills/effective-interact",
@@ -411,6 +437,11 @@
           "path": "skills/effective-interact/assets/fixtures/disposable-export-editor-report.json",
           "sha256": "3ffb03b2bd8e3dfb3d876bd5de4df573e780b6149465521b487ec3faa092640c",
           "size": 6574
+        },
+        {
+          "path": "skills/effective-interact/assets/fixtures/harness-vocabulary-explainer-report.json",
+          "sha256": "f92630749452a5510005d9d376058a38e0c6413ad5587805fd635611d959121d",
+          "size": 9945
         },
         {
           "path": "skills/effective-interact/assets/fixtures/html-effectiveness-pattern-library-report.json",
@@ -489,8 +520,8 @@
         },
         {
           "path": "skills/effective-interact/assets/templates/research-explainer.html",
-          "sha256": "419c28f2544c54ce595966be3f69b951ed43e54b0fe202cb49407adc7fac8d31",
-          "size": 7860
+          "sha256": "0917337b93f876018a85f0f35f2d0483da07192773b06ece4a9dd6d544f5b95d",
+          "size": 8609
         },
         {
           "path": "skills/effective-interact/assets/templates/review-findings.html",
@@ -514,8 +545,8 @@
         },
         {
           "path": "skills/effective-interact/references/html-effectiveness-patterns.md",
-          "sha256": "cb48e794d5c95779ac5ac6044e7305f6a4fd8de76a470be0839b5a78118cabee",
-          "size": 9530
+          "sha256": "37f0cb3790826dd2bc0b50a7916969f84c90ef624788aea6e5104625e9fc73bd",
+          "size": 9927
         },
         {
           "path": "skills/effective-interact/references/interaction-input-schema.json",
@@ -524,8 +555,8 @@
         },
         {
           "path": "skills/effective-interact/references/interaction-patterns.md",
-          "sha256": "553bbccd1281297f4ad767388740971b13fc493131313ec7f6edae4e5ec8bc76",
-          "size": 42206
+          "sha256": "280777b842493a04a315e20ac09ec935ad6518495bae6f7138ea42d748a9510c",
+          "size": 42692
         },
         {
           "path": "skills/effective-interact/references/session-ledger-schema.json",
@@ -534,8 +565,8 @@
         },
         {
           "path": "skills/effective-interact/scripts/create-interaction.mjs",
-          "sha256": "13105199c191e638d56f9fb2f8f3270194f841fdd4f5a2da5e01dc09a6ea86b4",
-          "size": 67230
+          "sha256": "ed7eecd5d6cc63c719f51b611fbab5204c0a952ffb3630f12fd2c74b0730b25c",
+          "size": 67242
         },
         {
           "path": "skills/effective-interact/scripts/validate-interaction.mjs",
@@ -549,7 +580,8 @@
         }
       ],
       "installedAt": "2026-06-03T05:35:25.500Z",
-      "status": "installed"
+      "status": "installed",
+      "updatedAt": "2026-06-05T03:27:25.684Z"
     },
     {
       "id": "skill:feynman-learning-coach",
